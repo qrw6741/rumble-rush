@@ -10,11 +10,18 @@ var _t := 0.0
 
 func _ready() -> void:
 	z_index = 8
+	_low = Save.low_graphics()
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
+var _low := false
+var _acc := 0.0
 
 func _process(delta: float) -> void:
 	_t += delta
-	queue_redraw()
+	_acc += delta
+	if not _low or _acc >= 0.05:
+		_acc = 0.0
+		queue_redraw()
 
 func _draw() -> void:
 	if mode.safe_half > 900.0:
@@ -39,7 +46,10 @@ func _draw() -> void:
 			var drift := Vector2(sin(_t * 0.8 + seed) * 6.0, cos(_t * 0.6 + seed) * 4.0)
 			var edge := minf(absf(p.x - c.x) - sh, absf(p.y - c.y) - sh)
 			var a := clampf(0.35 + edge / (T * 6.0), 0.35, 0.65)
-			draw_circle(p + drift, 30.0, Color(0.35, 0.82, 0.3, a * 0.7))
-			draw_circle(p + drift + Vector2(-10, -8), 18.0, Color(0.55, 0.95, 0.45, a * 0.6))
+			if _low and (col + r) % 2 == 1:
+				continue
+			draw_circle(p + drift, 30.0 if not _low else 40.0, Color(0.35, 0.82, 0.3, a * 0.7))
+			if not _low:
+				draw_circle(p + drift + Vector2(-10, -8), 18.0, Color(0.55, 0.95, 0.45, a * 0.6))
 	# glowing border line
 	draw_rect(safe, Color(0.6, 1.0, 0.5, 0.55 + 0.2 * sin(_t * 4.0)), false, 4.0)

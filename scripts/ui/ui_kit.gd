@@ -132,6 +132,7 @@ static func pop_in(c: CanvasItem, delay := 0.0, from_offset := Vector2.ZERO) -> 
 	if ctl:
 		ctl.scale = Vector2(0.88, 0.88)
 		target_pos = ctl.position
+		ctl.set_meta("pop_target", target_pos)
 		ctl.position += from_offset
 		ctl.resized.connect(func(): ctl.pivot_offset = ctl.size * 0.5, CONNECT_ONE_SHOT)
 		ctl.pivot_offset = ctl.size * 0.5

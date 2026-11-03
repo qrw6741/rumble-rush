@@ -22,9 +22,25 @@ func setup(m: ArenaMap) -> void:
 			leaves.append([Vector2(rng.randf_range(-15, 15), rng.randf_range(-17, 11)), rng.randf_range(8.0, 12.0), rng.randf() * TAU])
 		_leaves[c] = leaves
 
+var _low := false
+var _last_key := ""
+
+func _ready() -> void:
+	_low = Save.low_graphics()
+
 func _process(delta: float) -> void:
-	_t += delta
-	queue_redraw()
+	if not _low:
+		_t += delta
+		queue_redraw()
+		return
+	# static bushes: only redraw when the local player's hiding spot changes
+	var key := ""
+	if focus and is_instance_valid(focus) and focus.get("alive") and map.is_bush(focus.global_position):
+		key = str(map.world_to_cell(focus.global_position))
+	if key != _last_key or _t == 0.0:
+		_last_key = key
+		_t = 0.001
+		queue_redraw()
 
 func _alpha_for(center: Vector2) -> float:
 	if focus and is_instance_valid(focus) and focus.get("alive") and map.is_bush(focus.global_position):

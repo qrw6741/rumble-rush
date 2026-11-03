@@ -305,7 +305,7 @@ func _show(id: String) -> void:
 	stats.add_theme_constant_override("v_separation", 8)
 	_detail.add_child(stats)
 	var a: Dictionary = d.attack
-	var speed_name := "VERY FAST" if d.speed >= 265 else ("NORMAL" if d.speed >= 228 else "SLOW")
+	var speed_name := "VERY FAST" if d.speed >= 200 else ("NORMAL" if d.speed >= 168 else "SLOW")
 	_stat(stats, "HEALTH", str(int(d.health * m)), Color("4dff7a"))
 	_stat(stats, "DAMAGE", (str(int(a.damage * m)) + (" ×2" if a.kind == "twin_slash" else "")), Color("ff6b6b"))
 	_stat(stats, "RANGE", "%.1f tiles" % a.range, Color("8fd0ff"))

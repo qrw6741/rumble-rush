@@ -195,9 +195,14 @@ func _update_sprite(delta: float) -> void:
 	if view == null:
 		return
 	# only spend GPU time on brawlers that can actually be seen
-	var want := SubViewport.UPDATE_ALWAYS if (alive and is_visible_in_tree()) else SubViewport.UPDATE_DISABLED
-	if view.render_target_update_mode != want:
-		view.render_target_update_mode = want
+	if not (alive and is_visible_in_tree()):
+		view.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	elif Save.low_graphics():
+		# phones: each brawler re-renders every other frame (staggered), halving 3D cost
+		if (Engine.get_process_frames() + get_instance_id()) % 2 == 0:
+			view.render_target_update_mode = SubViewport.UPDATE_ONCE
+	elif view.render_target_update_mode != SubViewport.UPDATE_ALWAYS:
+		view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	view.pose(delta, _moving, recoil, BrawlerView.yaw_from_aim(aim_dir))
 	sprite.position = -view.feet_px * sprite.scale.x + Vector2(0, -air_h + 4.0)
 	var alpha := 1.0

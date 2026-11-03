@@ -1,9 +1,21 @@
 extends Control
 ## Entry point. Hands control to the Router, which shows the main menu.
 
+var _wrap: SubViewportContainer
+var _sub: SubViewport
+var _inner: Control
+var _portrait := false
+
 func _ready() -> void:
 	Router.root_container = self
 	randomize()
+	if OS.has_feature("web") or OS.has_feature("mobile"):
+		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
+		if Save.low_graphics():
+			get_tree().root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		Engine.max_fps = 0
+		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
+		_apply_orientation()
 	# Command line: `-- --autotest` runs an automated bot-vs-bot match (used for QA).
 	var args := OS.get_cmdline_user_args()
 	if "--gallery" in args:
@@ -120,3 +132,66 @@ func _demo_inputs(args: PackedStringArray) -> void:
 	if "--demo-super" in args:
 		p.super_charge = 1.0
 		Input.action_press("super")
+
+
+# ------------------------------------------------------------------ always-landscape
+## iPhone browsers can't lock orientation, so when the screen is held upright we
+## render the whole game into a landscape viewport and rotate it 90°. Touch input
+## is rotated back automatically by the SubViewportContainer.
+func _apply_orientation() -> void:
+	var ws := DisplayServer.window_get_size()
+	var portrait := ws.y > ws.x
+	var root := get_tree().root
+	if portrait != _portrait:
+		_portrait = portrait
+		root.content_scale_size = Vector2i(720, 1280) if portrait else Vector2i(1280, 720)
+		if portrait:
+			_wrap = SubViewportContainer.new()
+			_wrap.stretch = false
+			_wrap.mouse_filter = Control.MOUSE_FILTER_STOP
+			add_child(_wrap)
+			_sub = SubViewport.new()
+			_sub.handle_input_locally = false
+			_sub.physics_object_picking = false
+			_wrap.add_child(_sub)
+			_inner = Control.new()
+			_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			_sub.add_child(_inner)
+			_move_screens(self, _inner)
+		else:
+			_move_screens(_inner, self)
+			_wrap.queue_free()
+			_wrap = null
+			_sub = null
+			_inner = null
+	if _portrait:
+		# logical portrait size with a 720-wide base, e.g. 720 x 1558 on an iPhone
+		var ls := Vector2(720.0, 720.0 * float(ws.y) / float(ws.x))
+		_sub.size = Vector2i(int(ls.y), int(ls.x))
+		_wrap.size = Vector2(ls.y, ls.x)
+		_inner.size = Vector2(ls.y, ls.x)
+		_wrap.rotation = PI / 2.0
+		_wrap.position = Vector2(ls.x, 0)
+		if Router.current is Control:
+			(Router.current as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _move_screens(from: Node, to: Node) -> void:
+	Router.root_container = to
+	for c in from.get_children():
+		if c == _wrap:
+			continue
+		c.reparent(to, false)
+		_finish_entrance(c)
+		if c is Control:
+			(c as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		for cam in c.find_children("*", "Camera2D", true, false):
+			(cam as Camera2D).make_current()
+
+## Reparenting kills running entrance tweens, so snap those elements to their final state.
+func _finish_entrance(n: Node) -> void:
+	for c in n.find_children("*", "Control", true, false):
+		var ctl := c as Control
+		if ctl.has_meta("pop_target"):
+			ctl.modulate.a = 1.0
+			ctl.scale = Vector2.ONE
+			ctl.position = ctl.get_meta("pop_target")
