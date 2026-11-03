@@ -7,14 +7,16 @@ var _t := 0.0
 const LIFE := 0.28
 
 static func spawn(parent: Node, b: Brawler) -> void:
-	if b.sprite == null:
+	if b.sprite == null or b.sprite.texture == null:
 		return
 	var g := Ghost.new()
-	# snapshot the current frame so the after-image stays frozen in place
-	var img := b.view.get_texture().get_image()
-	if img == null:
-		return
-	g.texture = ImageTexture.create_from_image(img)
+	if b.bank != null:
+		g.texture = b.sprite.texture # baked frames are static textures already
+	else:
+		var img := b.sprite.texture.get_image()
+		if img == null:
+			return
+		g.texture = ImageTexture.create_from_image(img)
 	g.centered = false
 	g.scale = b.sprite.scale
 	g.position = b.global_position + b.sprite.position

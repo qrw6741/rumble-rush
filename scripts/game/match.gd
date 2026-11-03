@@ -145,6 +145,24 @@ func _ready() -> void:
 	if autoplay:
 		Engine.time_scale = sim_time_scale
 	hud.announce(Config.MODES[mode_id].name, Config.MODES[mode_id].color, 1.6, 52)
+	_bake_sprites()
+
+## Pre-render every brawler in this match into sprite frames (runs during the countdown).
+func _bake_sprites() -> void:
+	if not SpriteBank.can_bake():
+		return
+	var combos: Array = []
+	for b in brawlers:
+		var c := [b.id, b.skin]
+		if not c in combos:
+			combos.append(c)
+	await SpriteBank.bake(self, combos, Brawler.VIEW_PX)
+	if not is_inside_tree():
+		return
+	for b in brawlers:
+		var set = SpriteBank.get_set(b.id, b.skin)
+		if set != null:
+			b.use_bank(set)
 
 func _want_touch() -> bool:
 	var s: String = Save.setting("touch_controls")
@@ -166,11 +184,18 @@ func _fit_zoom() -> void:
 	if camera == null:
 		return
 	var vs := get_viewport_rect().size
-	var want_w := minf(map.size_px.x, T * 21.0) + T * 2.0
-	var z := clampf(vs.x / want_w, 0.7, 1.35)
-	# keep at least ~11 tiles of vertical view on very wide screens
-	z = min(z, vs.y / (T * 11.0))
+	# show ~25 tiles across and at least ~15 tiles top to bottom
+	var z := minf(vs.x / (T * 25.0), vs.y / (T * 15.0))
+	z = clampf(z, 0.6, 1.2)
 	camera.zoom = Vector2(z, z)
+	# on very wide screens the view is wider than the arena: keep the arena centred
+	var view := vs / z
+	var ex := maxf(T * 1.5, (view.x - map.size_px.x) * 0.5)
+	var ey := maxf(T * 1.5, (view.y - map.size_px.y) * 0.5)
+	camera.limit_left = int(-ex)
+	camera.limit_right = int(map.size_px.x + ex)
+	camera.limit_top = int(-maxf(ey, T * 3.0))
+	camera.limit_bottom = int(map.size_px.y + ey)
 
 ## Showdown: the player plus 9 bots, every brawler on their own team.
 func _spawn_solo() -> void:

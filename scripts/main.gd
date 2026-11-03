@@ -11,7 +11,7 @@ func _ready() -> void:
 	randomize()
 	if OS.has_feature("web") or OS.has_feature("mobile"):
 		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
-		if Save.low_graphics():
+		if Save.setting("graphics") == "low":
 			get_tree().root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		Engine.max_fps = 0
 		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
@@ -145,6 +145,10 @@ func _apply_orientation() -> void:
 	if portrait != _portrait:
 		_portrait = portrait
 		root.content_scale_size = Vector2i(720, 1280) if portrait else Vector2i(1280, 720)
+		if Save.setting("graphics") == "low":
+			root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+		else:
+			root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		if portrait:
 			_wrap = SubViewportContainer.new()
 			_wrap.stretch = false
@@ -167,7 +171,14 @@ func _apply_orientation() -> void:
 	if _portrait:
 		# logical portrait size with a 720-wide base, e.g. 720 x 1558 on an iPhone
 		var ls := Vector2(720.0, 720.0 * float(ws.y) / float(ws.x))
-		_sub.size = Vector2i(int(ls.y), int(ls.x))
+		# render the rotated game at the screen's real pixel density so it stays sharp
+		var dpi := maxf(1.0, float(ws.x) / ls.x)
+		if Save.setting("graphics") == "low":
+			dpi = 1.0
+		_sub.size = Vector2i(int(ls.y * dpi), int(ls.x * dpi))
+		_sub.size_2d_override = Vector2i(int(ls.y), int(ls.x))
+		_sub.size_2d_override_stretch = true
+		_wrap.scale = Vector2.ONE / dpi
 		_wrap.size = Vector2(ls.y, ls.x)
 		_inner.size = Vector2(ls.y, ls.x)
 		_wrap.rotation = PI / 2.0

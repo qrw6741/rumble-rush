@@ -74,6 +74,9 @@ var _ghost_t := 0.0
 var overhead: Node2D
 var view: BrawlerView
 var sprite: Sprite2D
+var bank = null        # baked sprite frames (SpriteBank) once ready
+var skin := ""
+var _yaw := 0.0
 const VIEW_PX := 256
 const SPRITE_SCALE := 0.6
 const FLASH_SHADER := preload("res://assets/shaders/sprite_flash.gdshader")
@@ -112,7 +115,8 @@ func _ready() -> void:
 	cs.shape = shape
 	add_child(cs)
 	# 3D model rendered into a texture and shown as a sprite
-	view = BrawlerView.create(id, "battle", VIEW_PX, true, Save.selected_skin(id) if is_player else "")
+	skin = Save.selected_skin(id) if is_player else ""
+	view = BrawlerView.create(id, "battle", VIEW_PX, true, skin)
 	add_child(view)
 	sprite = Sprite2D.new()
 	sprite.texture = view.get_texture()
@@ -191,7 +195,22 @@ func _physics_process(delta: float) -> void:
 	_update_sprite(delta)
 	queue_redraw()
 
+## Swap the live 3D render for pre-rendered frames (much cheaper).
+func use_bank(set: Dictionary) -> void:
+	bank = set
+	if view:
+		view.queue_free()
+		view = null
+	_update_sprite(0.0)
+
 func _update_sprite(delta: float) -> void:
+	_yaw = lerp_angle(_yaw, BrawlerView.yaw_from_aim(aim_dir), clampf(delta * 16.0, 0.0, 1.0)) if delta > 0.0 else BrawlerView.yaw_from_aim(aim_dir)
+	if bank != null:
+		sprite.texture = SpriteBank.frame_for(bank, _yaw, _moving, recoil, anim_t)
+		sprite.scale = Vector2.ONE * SPRITE_SCALE / float(bank.px_scale)
+		sprite.position = -Vector2(bank.feet) * sprite.scale.x + Vector2(0, -air_h + 4.0)
+		_apply_sprite_fx()
+		return
 	if view == null:
 		return
 	# only spend GPU time on brawlers that can actually be seen
@@ -205,6 +224,9 @@ func _update_sprite(delta: float) -> void:
 		view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	view.pose(delta, _moving, recoil, BrawlerView.yaw_from_aim(aim_dir))
 	sprite.position = -view.feet_px * sprite.scale.x + Vector2(0, -air_h + 4.0)
+	_apply_sprite_fx()
+
+func _apply_sprite_fx() -> void:
 	var alpha := 1.0
 	var viewer_team: int = game.view_team
 	if team == viewer_team and (in_bush() or invis_t > 0.0):
