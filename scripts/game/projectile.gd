@@ -94,5 +94,5 @@ func _finish(impact: bool) -> void:
 	queue_free()
 
 func _draw() -> void:
-	var tc: Color = Config.TEAM_COLORS[team]
+	var tc: Color = Config.tc(team)
 	BrawlerArt.draw_projectile(self, style, Brawler.BODY_OFFSET, dir, _t, tc, owner_b.d)

@@ -32,6 +32,16 @@ const MODES := {
 		"time_limit": 150.0,
 		"color": Color("b25bff"),
 		"maps": ["crystal_canyon", "neon_district"],
+		"icon": "mode_gem",
+	},
+	"showdown": {
+		"name": "SHOWDOWN",
+		"short": "Solo survival: 10 brawlers, last one standing wins.",
+		"rules": "Every brawler for themselves. Smash power boxes to grab POWER CELLS (+health and +damage). Poison clouds close in from the edges, so keep moving toward the centre. No respawns: survive to the end! Top 4 gain trophies.",
+		"time_limit": 240.0,
+		"color": Color("43c463"),
+		"maps": ["bone_desert"],
+		"icon": "mode_showdown",
 	},
 	"knockout": {
 		"name": "KNOCKOUT RUSH",
@@ -41,6 +51,7 @@ const MODES := {
 		"target": 10,
 		"color": Color("ff7a2b"),
 		"maps": ["neon_district", "crystal_canyon"],
+		"icon": "mode_knockout",
 	},
 }
 
@@ -130,6 +141,10 @@ const BOT_NAMES := ["Pixel", "Zapper", "Moxie", "Rook", "Tango", "Bolt", "Juno",
 const RARITY_COLORS := {
 	"RARE": Color("4fd36a"), "SUPER RARE": Color("3ea2ff"), "EPIC": Color("c25bff"), "MYTHIC": Color("ff4d5e"), "LEGENDARY": Color("ffd23a"),
 }
+
+## Team colour; in solo modes every opponent (team >= 1) shows as red.
+func tc(team: int) -> Color:
+	return TEAM_COLORS[0] if team == 0 else TEAM_COLORS[1]
 
 func brawler(id: String) -> Dictionary:
 	return BRAWLERS[id]

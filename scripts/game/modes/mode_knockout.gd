@@ -20,7 +20,7 @@ func on_ko(victim: Brawler, _killer: Brawler) -> void:
 		declare(t)
 	elif score[t] == target - 2:
 		var ours: bool = t == game.view_team
-		game.announce("2 KOs TO VICTORY!" if ours else "ENEMY NEEDS 2 MORE KOs!", Config.TEAM_COLORS[t], 1.5)
+		game.announce("2 KOs TO VICTORY!" if ours else "ENEMY NEEDS 2 MORE KOs!", Config.tc(t), 1.5)
 
 func respawn_delay(_b: Brawler) -> float:
 	return Config.RESPAWN_TIME + 2.0

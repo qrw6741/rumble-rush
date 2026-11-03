@@ -51,7 +51,11 @@ func setup(params: Dictionary) -> void:
 	quit_after = params.get("quit_after", false)
 	sim_time_scale = params.get("time_scale", 1.0)
 	var maps: Array = Config.MODES[mode_id].maps
-	map_id = params.get("map", maps[randi() % maps.size()])
+	var fallback: String = maps[randi() % maps.size()]
+	var chosen: String = Save.data.get("selected_map", "")
+	if chosen in maps and not params.has("map") and not params.get("autoplay", false):
+		fallback = chosen
+	map_id = params.get("map", fallback)
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
@@ -75,7 +79,10 @@ func _ready() -> void:
 	aim.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	map.build(map_id, entity_layer, bush_layer)
 
-	mode = ModeGem.new() if mode_id == "gem_grab" else ModeKnockout.new()
+	match mode_id:
+		"gem_grab": mode = ModeGem.new()
+		"showdown": mode = ModeShowdown.new()
+		_: mode = ModeKnockout.new()
 	mode.setup(self, mode_id)
 	if mode is ModeGem:
 		var mine := GemMine.new()
@@ -83,7 +90,17 @@ func _ready() -> void:
 		mine.position = map.gem_mine
 		zone_layer.add_child(mine)
 
-	_spawn_teams()
+	if mode is ModeShowdown:
+		_spawn_solo()
+		var pl := PoisonLayer.new()
+		pl.mode = mode
+		pl.map = map
+		world.add_child(pl)
+	else:
+		_spawn_teams()
+	map.crate_broken.connect(func(pos: Vector2):
+		if mode.has_method("on_crate_broken") and not ended:
+			mode.on_crate_broken(pos))
 
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
@@ -149,11 +166,44 @@ func _fit_zoom() -> void:
 	if camera == null:
 		return
 	var vs := get_viewport_rect().size
-	var want_w := map.size_px.x + T * 2.0
+	var want_w := minf(map.size_px.x, T * 21.0) + T * 2.0
 	var z := clampf(vs.x / want_w, 0.7, 1.35)
 	# keep at least ~11 tiles of vertical view on very wide screens
 	z = min(z, vs.y / (T * 11.0))
 	camera.zoom = Vector2(z, z)
+
+## Showdown: the player plus 9 bots, every brawler on their own team.
+func _spawn_solo() -> void:
+	var names: Array = Config.BOT_NAMES.duplicate()
+	names.shuffle()
+	var spawns: Array[Vector2] = map.ffa_spawns.duplicate()
+	var start := randi() % spawns.size()
+	for i in 10:
+		var is_player := i == 0
+		var bid: String = player_brawler if is_player else Config.BRAWLER_ORDER[randi() % Config.BRAWLER_ORDER.size()]
+		var b := Brawler.new()
+		var lvl := Save.brawler_level(bid) if is_player else clampi(Save.brawler_level(player_brawler) + randi_range(-1, 1), 1, Config.MAX_LEVEL)
+		var nm: String = Save.data.username if is_player else "%s (BOT)" % names[i % names.size()]
+		b.setup(bid, i, is_player, nm, lvl, self)
+		b.spawn_pos = spawns[(start + i) % spawns.size()]
+		b.position = b.spawn_pos
+		b.aim_dir = (map.size_px * 0.5 - b.spawn_pos).normalized()
+		entity_layer.add_child(b)
+		brawlers.append(b)
+		if is_player and not autoplay:
+			player = b
+			pc = PlayerController.new()
+			pc.setup(b, self)
+			b.controller = pc
+			b.add_child(pc)
+		else:
+			if is_player:
+				player = b
+			var brain := BotBrain.new()
+			brain.setup(b, self, difficulty)
+			b.controller = brain
+			b.add_child(brain)
+	view_team = player.team
 
 func _spawn_teams() -> void:
 	var pool: Array = Config.BRAWLER_ORDER.duplicate()
@@ -244,7 +294,7 @@ func _physics_process(delta: float) -> void:
 	if state != "playing":
 		return
 	for b in brawlers:
-		if not b.alive:
+		if not b.alive and b.respawn_t < INF:
 			b.respawn_t -= delta
 			if b.respawn_t <= 0.0:
 				b.respawn(b.spawn_pos)
@@ -362,7 +412,11 @@ func _build_pause_menu() -> Control:
 func finish_match(winner: int) -> void:
 	_finish_internal(winner, false)
 
-func _finish_internal(winner: int, forfeited: bool) -> void:
+## Showdown ends with a placement (1 = last brawler standing).
+func finish_showdown(place: int) -> void:
+	_finish_internal(view_team if place <= 4 else -2, false, place)
+
+func _finish_internal(winner: int, forfeited: bool, place := 0) -> void:
 	if ended:
 		return
 	ended = true
@@ -374,27 +428,45 @@ func _finish_internal(winner: int, forfeited: bool) -> void:
 		result = "win"
 	elif winner != -1:
 		result = "loss"
+	if mode is ModeShowdown and forfeited:
+		place = 10
+	if place > 0:
+		result = "win" if place <= 4 else "loss"
 	var mvp := _pick_mvp(winner)
 	var rewards := {}
 	if not autoplay:
-		rewards = Save.grant_match_rewards(_match_id, player.id, mode_id, result, player.stats.kos, player.stats.deaths, player.stats.damage, mvp == player)
+		rewards = Save.grant_match_rewards(_match_id, player.id, mode_id, result, player.stats.kos, player.stats.deaths, player.stats.damage, mvp == player, place)
 	var text: String = {"win": "VICTORY!", "loss": "DEFEAT", "draw": "DRAW"}[result]
+	if place > 0:
+		text = "#1 WINNER!" if place == 1 else "RANK #%d" % place
 	var col: Color = {"win": Color("ffd23a"), "loss": Color("ff4d5e"), "draw": Color.WHITE}[result]
 	Sfx.stop_music(0.4)
 	Sfx.play({"win": "victory", "loss": "defeat", "draw": "draw"}[result], 0.0, 0.0)
 	hud.announce(text, col, 3.0, 110)
 	Engine.time_scale = 0.35 if not autoplay else 1.0
+	if mode is ModeShowdown:
+		# survivors still standing get ranked by remaining health
+		var alive_list: Array = brawlers.filter(func(x): return x.alive and not mode.placement.has(x))
+		alive_list.sort_custom(func(x, y): return x.hp > y.hp)
+		var next_place := 1
+		for x in alive_list:
+			while next_place == place and x != player:
+				next_place += 1
+			mode.placement[x] = place if x == player and place > 0 else next_place
+			if x != player:
+				next_place += 1
 	var players: Array = []
 	for b in brawlers:
 		players.append({
 			"name": b.display_name, "brawler": b.id, "team": b.team, "is_player": b.is_player,
 			"kos": b.stats.kos, "deaths": b.stats.deaths, "damage": b.stats.damage,
 			"healing": b.stats.healing, "gems": b.stats.gems, "mvp": b == mvp, "level": b.level,
+			"place": int(mode.placement.get(b, 10)) if mode is ModeShowdown else 0,
 		})
 	var data := {
 		"result": result, "mode": mode_id, "map": map_id, "brawler": player.id,
 		"players": players, "rewards": rewards, "forfeit": forfeited,
-		"score": mode.hud(), "duration": _elapsed, "view_team": view_team,
+		"score": mode.hud(), "duration": _elapsed, "view_team": view_team, "place": place,
 	}
 	if quit_after:
 		print("AUTOTEST RESULT: ", JSON.stringify({"result": result, "winner": winner, "mode": mode_id, "map": map_id, "duration": snappedf(_elapsed, 0.1), "score": mode.hud(), "players": players}))
@@ -410,7 +482,7 @@ func _pick_mvp(winner: int) -> Brawler:
 	var best: Brawler = null
 	var best_s := -1.0
 	for b in brawlers:
-		if winner != -1 and b.team != winner:
+		if winner >= 0 and b.team != winner:
 			continue
 		var s: float = b.stats.kos * 3.0 + b.stats.damage / 900.0 + b.stats.healing / 900.0 + b.stats.gems * 1.5 - b.stats.deaths
 		if s > best_s:

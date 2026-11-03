@@ -236,6 +236,12 @@ func _ready() -> void:
 	check("select brawler -> back to menu with VEX", Save.data.selected_brawler == "vex" and Router.current.get("_view") != null and Router.current._view.model.id == "vex")
 	var mode_before: String = Save.data.selected_mode
 	await press_named("Mode")
+	var other_mode := "knockout" if mode_before == "gem_grab" else "gem_grab"
+	var ev = Router.current.find_child("Event_%s_%s" % [other_mode, Config.MODES[other_mode].maps[0]], true, false)
+	check("mode panel opens the event picker", ev != null)
+	if ev:
+		ev.pressed.emit()
+		await wait(0.7)
 	check("mode button cycles game mode", Save.data.selected_mode != mode_before)
 	await press_named("Settings")
 	check("settings opens", _screen_has_text("SOUND EFFECTS"))

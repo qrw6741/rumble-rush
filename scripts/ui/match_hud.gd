@@ -12,6 +12,7 @@ var _hint: Label
 var _fps: Label
 var _abilities: AbilityReadout
 var _board: Scoreboard
+var _left: Label
 var pause_button: Button
 
 func setup(g: Node) -> void:
@@ -25,12 +26,20 @@ func _ready() -> void:
 	_board = Scoreboard.new()
 	_board.game = game
 	_board.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_board.custom_minimum_size = Vector2(460, 96)
-	_board.position = Vector2(-230, 8)
+	_board.custom_minimum_size = Vector2(560, 120)
+	_board.position = Vector2(-280, 4)
 	add_child(_board)
 
-	pause_button = UIKit.button("II", UIKit.PANEL_LIGHT, 24, Vector2(64, 58))
-	pause_button.position = Vector2(14, 12)
+	pause_button = Button.new()
+	pause_button.flat = true
+	pause_button.focus_mode = Control.FOCUS_NONE
+	pause_button.icon = UIKit.icon("pause")
+	pause_button.expand_icon = true
+	pause_button.custom_minimum_size = Vector2(64, 64)
+	pause_button.size = Vector2(64, 64)
+	pause_button.position = Vector2(14, 10)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		pause_button.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	pause_button.pressed.connect(func(): game.toggle_pause())
 	add_child(pause_button)
 
@@ -65,9 +74,13 @@ func _ready() -> void:
 	_abilities = AbilityReadout.new()
 	_abilities.game = game
 	_abilities.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	_abilities.custom_minimum_size = Vector2(250, 120)
-	_abilities.position = Vector2(-266, -136)
+	_abilities.custom_minimum_size = Vector2(360, 170)
+	_abilities.position = Vector2(-376, -184)
 	add_child(_abilities)
+
+	_left = UIKit.label("", 38, Color.WHITE, 12)
+	_left.position = Vector2(90, 14)
+	add_child(_left)
 
 	_fps = UIKit.label("", 14, Color(1, 1, 1, 0.6), 4)
 	_fps.position = Vector2(90, 20)
@@ -92,11 +105,15 @@ func add_feed(killer: Brawler, victim: Brawler) -> void:
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.add_theme_constant_override("separation", 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var kc: Color = Config.TEAM_COLORS[killer.team] if killer else Color.WHITE
+	var kc: Color = Config.tc(killer.team) if killer else Color.WHITE
 	var kname := (killer.display_name if killer else "Zone")
 	var k := UIKit.label(kname, 16, kc.lightened(0.3), 5)
-	var mid := UIKit.label(" » ", 18, Color("ffd23a"), 5)
-	var v := UIKit.label(victim.display_name, 16, Config.TEAM_COLORS[victim.team].lightened(0.3), 5)
+	var mid := TextureRect.new()
+	mid.texture = UIKit.icon("ko")
+	mid.custom_minimum_size = Vector2(30, 30)
+	mid.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mid.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var v := UIKit.label(victim.display_name, 16, Config.tc(victim.team).lightened(0.3), 5)
 	row.add_child(k)
 	row.add_child(mid)
 	row.add_child(v)
@@ -124,7 +141,13 @@ func _process(delta: float) -> void:
 	else:
 		_respawn.text = ""
 	_fps.text = ("%d FPS" % Engine.get_frames_per_second()) if Save.setting("show_fps") else ""
-	_board.queue_redraw()
+	var h: Dictionary = game.mode.hud()
+	if h.kind == "showdown":
+		_board.visible = false
+		_left.text = "Brawlers left: %d" % h.left
+	else:
+		_left.text = ""
+		_board.queue_redraw()
 
 
 ## Custom-drawn scoreboard with team colours and the clock.
@@ -141,42 +164,73 @@ class Scoreboard extends Control:
 		var w := size.x
 		var mid := w * 0.5
 		var view: int = game.view_team
-		var my_col: Color = Config.TEAM_COLORS[view]
-		var their_col: Color = Config.TEAM_COLORS[1 - view]
+		var my_col: Color = Config.tc(view)
+		var their_col: Color = Config.tc(1 - view)
 		var mine: int = h.blue if view == 0 else h.red
 		var theirs: int = h.red if view == 0 else h.blue
-		# clock
+		var target: int = h.target
+		# team plates (slanted, gradient)
+		_plate(Rect2(mid - 262, 8, 200, 62), my_col, true)
+		_plate(Rect2(mid + 62, 8, 200, 62), their_col, false)
+		var ic := "crystal" if h.kind == "gem" else "ko"
+		UIKit.draw_icon(self, ic, Vector2(mid - 222, 39), 52.0)
+		UIKit.draw_icon(self, ic, Vector2(mid + 222, 39), 52.0)
+		_text(f, str(mine), Vector2(mid - 132, 58), 44, Color.WHITE)
+		_text(f, str(theirs), Vector2(mid + 132, 58), 44, Color.WHITE)
+		# progress pips
+		_pips(Vector2(mid - 252, 80), mine, target, my_col, false)
+		_pips(Vector2(mid + 72, 80), theirs, target, their_col, true)
+		# clock plate
 		var tl: float = max(0.0, game.time_left)
 		var clock := "%d:%02d" % [int(tl) / 60, int(tl) % 60]
-		var clock_col := Color.WHITE if tl > 10.0 else Color("ff6b6b")
-		_pill(Rect2(mid - 62, 0, 124, 44), Color(0, 0, 0, 0.55))
-		_text(f, clock, Vector2(mid, 32), 28, clock_col)
-		# team panels
-		_pill(Rect2(mid - 210, 6, 140, 54), my_col.darkened(0.25))
-		_pill(Rect2(mid + 70, 6, 140, 54), their_col.darkened(0.25))
-		if h.kind == "gem":
-			Gem.draw_gem_icon(self, Vector2(mid - 175, 33), 13.0, _t)
-			Gem.draw_gem_icon(self, Vector2(mid + 105, 33), 13.0, _t)
-			_text(f, str(mine), Vector2(mid - 118, 46), 34, Color.WHITE)
-			_text(f, str(theirs), Vector2(mid + 160, 46), 34, Color.WHITE)
-			# progress to 10
-			_bar(Rect2(mid - 205, 64, 130, 8), clampf(float(mine) / h.target, 0, 1), my_col)
-			_bar(Rect2(mid + 75, 64, 130, 8), clampf(float(theirs) / h.target, 0, 1), their_col)
-			if h.countdown_team != -1:
-				var cc: Color = Config.TEAM_COLORS[h.countdown_team]
-				var sc := 1.0 + 0.08 * sin(_t * 10.0)
-				_pill(Rect2(mid - 54, 48, 108, 46), cc.darkened(0.2))
-				draw_set_transform(Vector2(mid, 84), 0, Vector2(sc, sc))
-				_text(f, str(int(ceil(h.countdown))), Vector2.ZERO, 34, Color.WHITE)
-				draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-		else:
-			_text(f, str(mine), Vector2(mid - 140, 47), 36, Color.WHITE)
-			_text(f, str(theirs), Vector2(mid + 140, 47), 36, Color.WHITE)
-			_bar(Rect2(mid - 205, 64, 130, 8), clampf(float(mine) / h.target, 0, 1), my_col)
-			_bar(Rect2(mid + 75, 64, 130, 8), clampf(float(theirs) / h.target, 0, 1), their_col)
-			if h.overtime:
-				_pill(Rect2(mid - 80, 48, 160, 34), Color("ffd23a").darkened(0.2))
-				_text(f, "SUDDEN DEATH", Vector2(mid, 72), 16, Color.WHITE)
+		var urgent := tl <= 10.0
+		var cr := Rect2(mid - 56, 4, 112, 54)
+		draw_style_box(_sb(Color("0d1426"), 14), cr.grow(3))
+		draw_style_box(_sb(Color("27334d") if not urgent else Color("7a1525"), 12), cr)
+		var pulse := 1.0 + (0.08 * sin(_t * 12.0) if urgent else 0.0)
+		draw_set_transform(Vector2(mid, 44), 0, Vector2(pulse, pulse))
+		_text(f, clock, Vector2.ZERO, 34, Color.WHITE if not urgent else Color("ffd0d0"))
+		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		if h.kind == "gem" and h.countdown_team != -1:
+			var cc: Color = Config.tc(h.countdown_team)
+			var c := Vector2(mid, 94)
+			draw_circle(c, 30, UIKit.DARK)
+			draw_circle(c, 26, cc.darkened(0.15))
+			draw_arc(c, 26, -PI / 2, -PI / 2 + TAU * (h.countdown / 15.0), 32, Color.WHITE, 4.0, true)
+			var sc := 1.0 + 0.1 * sin(_t * 10.0)
+			draw_set_transform(c + Vector2(0, 11), 0, Vector2(sc, sc))
+			_text(f, str(int(ceil(h.countdown))), Vector2.ZERO, 30, Color.WHITE)
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		elif h.kind == "knockout" and h.overtime:
+			var r := Rect2(mid - 84, 64, 168, 32)
+			draw_style_box(_sb(Color("ffb52e"), 10), r)
+			_text(f, "SUDDEN DEATH", Vector2(mid, 88), 20, Color.WHITE)
+
+	func _sb(col: Color, radius: int) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = col
+		sb.set_corner_radius_all(radius)
+		sb.anti_aliasing = true
+		return sb
+
+	func _plate(r: Rect2, col: Color, left: bool) -> void:
+		var s := 14.0
+		var outer := PackedVector2Array([r.position + Vector2(s if left else 0.0, 0), r.position + Vector2(r.size.x - (0.0 if left else s), 0), r.end - Vector2(s if left else 0.0, 0), Vector2(r.position.x + (0.0 if left else s), r.end.y)])
+		draw_colored_polygon(outer, UIKit.DARK)
+		var inner := PackedVector2Array()
+		for p in outer:
+			inner.append(p + (r.get_center() - p).normalized() * 5.0)
+		draw_colored_polygon(inner, col.darkened(0.15))
+		draw_colored_polygon(PackedVector2Array([inner[0], inner[1], inner[1] + Vector2(-2, 16), inner[0] + Vector2(-2, 16)]), col.lightened(0.25))
+
+	func _pips(at: Vector2, value: int, target: int, col: Color, rtl: bool) -> void:
+		var n := target
+		var pw := 180.0 / n
+		for k in n:
+			var idx := (n - 1 - k) if rtl else k
+			var r := Rect2(at + Vector2(k * pw, 0), Vector2(pw - 3, 10))
+			draw_rect(r.grow(2), UIKit.DARK)
+			draw_rect(r, col.lightened(0.3) if idx < value else Color(0, 0, 0, 0.45))
 
 	func _pill(r: Rect2, col: Color) -> void:
 		var sb := StyleBoxFlat.new()
@@ -216,30 +270,50 @@ class AbilityReadout extends Control:
 		if p == null:
 			return
 		var f := UIKit.bold()
+		# attack + ammo
+		var ac := Vector2(60, 110)
+		UIKit.draw_icon(self, "ab_%s_attack" % p.id, ac, 74.0)
+		for i in p.max_ammo:
+			var a0 := PI * 1.12 + i * 0.36
+			var fillk := clampf(p.ammo - i, 0.0, 1.0)
+			draw_arc(ac, 46, a0, a0 + 0.3, 8, UIKit.DARK, 11.0, true)
+			draw_arc(ac, 46, a0, a0 + 0.3 * fillk, 8, Color("ff9d2e"), 6.0, true)
+		_t2(f, "LMB", ac + Vector2(0, 58), 15)
 		# gadget
-		var gc := Vector2(60, 64)
+		var gc := Vector2(160, 110)
 		var cd := p.gadget_cd / p.gadget_max_cd
 		draw_circle(gc, 40, UIKit.DARK)
-		draw_circle(gc, 36, Color("4fd36a") if cd <= 0.0 else Color(0.2, 0.3, 0.24))
+		UIKit.draw_icon(self, "ab_%s_gadget" % p.id, gc, 76.0, Color.WHITE if cd <= 0.0 else Color(0.45, 0.45, 0.5))
 		if cd > 0.0:
-			draw_arc(gc, 32, -PI / 2, -PI / 2 + TAU * (1.0 - cd), 36, Color("4fd36a"), 6.0, true)
-			_t2(f, str(int(ceil(p.gadget_cd))), gc + Vector2(0, 10), 26)
-		else:
-			_t2(f, "G", gc + Vector2(0, 10), 26)
-		_t2(f, "RMB/Q", gc + Vector2(0, 58), 14)
-		# super
-		var sc := Vector2(170, 56)
+			draw_arc(gc, 38, -PI / 2, -PI / 2 + TAU * (1.0 - cd), 40, Color("4fd36a"), 6.0, true)
+			_t2(f, str(int(ceil(p.gadget_cd))), gc + Vector2(0, 12), 30)
+		_t2(f, "RMB / Q", gc + Vector2(0, 58), 15)
+		# super: blue button, yellow charge ring
+		var sc := Vector2(282, 92)
 		var full := p.super_charge >= 1.0
 		var pulse := 1.0 + (0.06 * sin(_t * 8.0) if full else 0.0)
-		draw_circle(sc, 50 * pulse, UIKit.DARK)
-		draw_circle(sc, 46 * pulse, Color("ffd23a") if full else Color(0.25, 0.18, 0.1))
-		draw_arc(sc, 40, -PI / 2, -PI / 2 + TAU * p.super_charge, 48, Color("ffd23a"), 8.0, true)
-		var bolt := PackedVector2Array([sc + Vector2(5, -24), sc + Vector2(-12, 4), sc + Vector2(-1, 4), sc + Vector2(-6, 24), sc + Vector2(12, -5), sc + Vector2(1, -5)])
-		draw_colored_polygon(bolt, UIKit.DARK if full else Color(1, 0.82, 0.25, 0.6))
-		_t2(f, "SPACE", sc + Vector2(0, 66), 14)
+		SuperButtonArt.draw(self, sc, 56.0 * pulse, p.super_charge, "ab_%s_super" % p.id, _t)
+		_t2(f, "SPACE" if full else "%d%%" % int(p.super_charge * 100), sc + Vector2(0, 76), 16)
 
 	func _t2(f: Font, s: String, cb: Vector2, size: int) -> void:
 		var sz := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size)
 		var p := cb - Vector2(sz.x * 0.5, 0)
 		draw_string_outline(f, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, 6, UIKit.DARK)
 		draw_string(f, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color.WHITE)
+
+
+## Shared look for the super button (PC readout + touch controls).
+class SuperButtonArt:
+	static func draw(ci: CanvasItem, c: Vector2, r: float, charge: float, icon_name: String, t: float) -> void:
+		var full := charge >= 1.0
+		if full:
+			for k in 3:
+				ci.draw_circle(c, r + 8 + k * 6 + sin(t * 6.0) * 3.0, Color(1, 0.85, 0.2, 0.12))
+		ci.draw_circle(c + Vector2(0, 5), r + 4, Color(0, 0, 0, 0.3))
+		ci.draw_circle(c, r + 4, UIKit.DARK)
+		ci.draw_circle(c, r, Color("2b2f4a"))
+		ci.draw_arc(c, r - 4, -PI / 2, -PI / 2 + TAU * charge, 64, Color("ffd23a"), 8.0, true)
+		var inner := r - 12
+		ci.draw_circle(c, inner, Color("3a7be0") if full else Color("4a5570"))
+		ci.draw_circle(c + Vector2(0, -inner * 0.35), inner * 0.62, Color(1, 1, 1, 0.12))
+		UIKit.draw_icon(ci, icon_name, c, inner * 1.55, Color.WHITE if full else Color(0.75, 0.75, 0.8, 0.85))

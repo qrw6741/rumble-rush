@@ -11,6 +11,7 @@ const SCREENS := {
 	"gallery": "res://tests/gallery.gd",
 	"pass": "res://scripts/ui/pass_screen.gd",
 	"road": "res://scripts/ui/road_screen.gd",
+	"events": "res://scripts/ui/events_screen.gd",
 }
 
 var root_container: Node
@@ -38,7 +39,7 @@ func goto(screen: String, params: Dictionary = {}, instant := false) -> void:
 	if not instant and current != null:
 		_fade.mouse_filter = Control.MOUSE_FILTER_STOP
 		var tw := create_tween()
-		tw.tween_property(_fade, "modulate:a", 1.0, 0.22)
+		tw.tween_property(_fade, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		await tw.finished
 	get_tree().paused = false
 	Engine.time_scale = 1.0
@@ -52,6 +53,6 @@ func goto(screen: String, params: Dictionary = {}, instant := false) -> void:
 	root_container.add_child(node)
 	current = node
 	var tw2 := create_tween()
-	tw2.tween_property(_fade, "modulate:a", 0.0, 0.28)
+	tw2.tween_property(_fade, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_busy = false

@@ -42,7 +42,7 @@ func _physics_process(delta: float) -> void:
 
 func _draw() -> void:
 	var k := clampf(_t / flight, 0.0, 1.0)
-	var tc: Color = Config.TEAM_COLORS[owner_b.team]
+	var tc: Color = Config.tc(owner_b.team)
 	# landing marker
 	var m := tc
 	m.a = 0.18 + 0.12 * k

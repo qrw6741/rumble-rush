@@ -12,6 +12,39 @@ const W := 21
 const H := 33
 
 const MAPS := {
+	"bone_desert": {
+		"name": "BONE DESERT",
+		"kind": "quad", # 18x18 quadrant rotated 4 ways -> 35x35 arena
+		"theme": {
+			"floor_a": Color("f0c286"), "floor_b": Color("eabb7d"), "floor_edge": Color("cf9a5e"),
+			"wall_top": Color("d9845a"), "wall_side": Color("9e5236"), "wall_line": Color("f2a678"),
+			"bush": Color("f7c844"), "bush_dark": Color("c98a1a"),
+			"water": Color("3fb6d8"), "water_light": Color("8fe3f5"),
+			"crate": Color("8a6a4a"), "crate_dark": Color("5a4030"),
+			"bg": Color("b97e52"), "decal": Color("d9a46a"),
+			"grass": true, "bones": true,
+		},
+		"rows": [
+			"BBBB..............",
+			"BB.....##.....BBB.",
+			"B......##.....BBB.",
+			"...C..........BB..",
+			"..###.....C.......",
+			"..#...BBBB......#.",
+			"..#...BBBB...C..#.",
+			"......BB..........",
+			".BB.......###.....",
+			".BB..C......#..BB.",
+			".BBB........#..BB.",
+			"......##..........",
+			"..C...##...BBBB...",
+			"...........BBBB.C.",
+			"BBB..#.........#..",
+			"BBB..#...C.....#..",
+			"BB......BB........",
+			"......C.BB......C.",
+		],
+	},
 	"crystal_canyon": {
 		"name": "CRYSTAL CANYON",
 		"theme": {
@@ -76,6 +109,8 @@ const MAPS := {
 
 ## Returns the full 33-row grid (Array of PackedStringArray rows as Arrays of chars).
 static func build_grid(map_id: String) -> Array:
+	if MAPS[map_id].get("kind", "") == "quad":
+		return _build_quad(MAPS[map_id].rows)
 	var top: Array = MAPS[map_id].rows
 	assert(top.size() == 17)
 	var grid: Array = []
@@ -102,4 +137,27 @@ static func build_grid(map_id: String) -> Array:
 		var mc := W - 1 - c
 		if c < mc:
 			grid[16][mc] = grid[16][c]
+	return grid
+
+
+## 4-way rotational symmetry: every player in a free-for-all gets an equal arena.
+static func _build_quad(q: Array) -> Array:
+	var qn: int = q.size()          # 18
+	var n: int = qn * 2 - 1         # 35
+	var grid: Array = []
+	for r in n:
+		var row: Array = []
+		row.resize(n)
+		for c in n:
+			var rr := r
+			var cc := c
+			for _k in 4:
+				if rr < qn and cc < qn:
+					break
+				var t := rr
+				rr = cc
+				cc = n - 1 - t
+			var ch: String = q[rr][cc] if rr < qn and cc < qn else "."
+			row[c] = ch
+		grid.append(row)
 	return grid

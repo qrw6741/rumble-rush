@@ -35,6 +35,9 @@ func _ready() -> void:
 	add_child(root)
 
 	var title_text: String = {"win": "VICTORY!", "loss": "DEFEAT", "draw": "DRAW"}[result]
+	var place: int = data.get("place", 0)
+	if place > 0:
+		title_text = "#1 WINNER!" if place == 1 else "RANK #%d" % place
 	var title_col: Color = {"win": UIKit.YELLOW, "loss": UIKit.RED, "draw": Color.WHITE}[result]
 	var title := UIKit.label(title_text, 72, title_col, 16, HORIZONTAL_ALIGNMENT_CENTER)
 	root.add_child(title)
@@ -46,14 +49,25 @@ func _ready() -> void:
 	title.scale = Vector2(0.4, 0.4)
 	create_tween().tween_property(title, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 
-	# teams
+	# teams (or a top-10 leaderboard in Showdown)
 	var view: int = data.get("view_team", 0)
-	for team in [view, 1 - view]:
+	if place > 0:
+		var sorted: Array = data.players.duplicate()
+		sorted.sort_custom(func(a, b): return int(a.place) < int(b.place))
+		for rowi in 2:
+			var row := HBoxContainer.new()
+			row.alignment = BoxContainer.ALIGNMENT_CENTER
+			row.add_theme_constant_override("separation", 8)
+			root.add_child(row)
+			for k in range(rowi * 5, rowi * 5 + 5):
+				if k < sorted.size():
+					row.add_child(_solo_card(sorted[k]))
+	for team in ([] if place > 0 else [view, 1 - view]):
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 14)
 		root.add_child(row)
-		var tag := UIKit.label("YOUR TEAM" if team == view else "ENEMY", 16, Config.TEAM_COLORS[team].lightened(0.3), 5)
+		var tag := UIKit.label("YOUR TEAM" if team == view else "ENEMY", 16, Config.tc(team).lightened(0.3), 5)
 		tag.custom_minimum_size = Vector2(110, 0)
 		tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(tag)
@@ -113,7 +127,7 @@ func _ready() -> void:
 	h.add_child(menu)
 
 func _player_card(p: Dictionary) -> Control:
-	var col: Color = Config.TEAM_COLORS[p.team]
+	var col: Color = Config.tc(p.team)
 	var panel := PanelContainer.new()
 	var sb := UIKit.box(col.darkened(0.55) if not p.is_player else col.darkened(0.3), 16, 3 if not p.is_player else 5, UIKit.DARK if not p.is_player else Color("4dff7a"), 0)
 	sb.content_margin_top = 4
@@ -174,4 +188,35 @@ func _reward(kind: String, amount: int, col: Color, signed: bool) -> Control:
 
 class TokenIcon extends Control:
 	func _draw() -> void:
-		RewardTile.draw_icon(self, {"type": "tokens"}, size * 0.5, 24.0)
+		UIKit.draw_icon(self, "token", size * 0.5, 64.0)
+
+
+## Compact leaderboard card for Showdown placements.
+func _solo_card(p: Dictionary) -> Control:
+	var top4: bool = int(p.place) <= 4
+	var panel := PanelContainer.new()
+	var col := Color("2f9e4a") if top4 else Color("4a5570")
+	var sb := UIKit.box(col.darkened(0.3), 14, 5 if p.is_player else 3, Color("4dff7a") if p.is_player else UIKit.DARK, 0)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.custom_minimum_size = Vector2(228, 0)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	panel.add_child(h)
+	h.add_child(UIKit.label("#%d" % int(p.place), 26, UIKit.YELLOW if top4 else Color.WHITE, 8))
+	var por := UIKit.BrawlerPortrait.new()
+	por.brawler_id = p.brawler
+	por.art_scale = 0.9
+	por.backdrop = false
+	por.view_kind = "bust"
+	por.custom_minimum_size = Vector2(64, 64)
+	h.add_child(por)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", -4)
+	v.add_child(UIKit.label(p.name, 15, Color.WHITE, 5))
+	v.add_child(UIKit.label("KO %d  ·  DMG %d" % [p.kos, p.damage], 12, Color(1, 1, 1, 0.8), 4))
+	h.add_child(v)
+	return panel

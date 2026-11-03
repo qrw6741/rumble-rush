@@ -38,7 +38,7 @@ func update(delta: float) -> void:
 		_last_beep = 99
 		if leader != -1:
 			var ours: bool = leader == game.view_team
-			game.announce("YOUR TEAM IS WINNING!" if ours else "ENEMY TEAM IS WINNING!", Config.TEAM_COLORS[leader], 1.8)
+			game.announce("YOUR TEAM IS WINNING!" if ours else "ENEMY TEAM IS WINNING!", Config.tc(leader), 1.8)
 			Sfx.play("super_ready" if ours else "ui_error", -2.0, 0.0)
 		elif _announced_lead != -1:
 			game.announce("COUNTDOWN STOPPED!", Color.WHITE, 1.4)

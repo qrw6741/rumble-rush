@@ -44,17 +44,10 @@ func _draw() -> void:
 	Lobby.SlantButton.text_c(self, label, Vector2(w * 0.5, h - 12), 15 if label.length() < 9 else 12, Color.WHITE)
 	if state == "locked":
 		draw_rect(Rect2(4, 4, w - 8, h - 8), Color(0.05, 0.05, 0.1, 0.45))
-		# padlock
-		var lp := Vector2(w - 20, 20)
-		draw_arc(lp + Vector2(0, -4), 6, PI, TAU, 10, ink, 6.0, true)
-		draw_arc(lp + Vector2(0, -4), 6, PI, TAU, 10, Color("c9d0de"), 3.0, true)
-		draw_rect(Rect2(lp + Vector2(-9, -3), Vector2(18, 14)), ink)
-		draw_rect(Rect2(lp + Vector2(-7, -1), Vector2(14, 10)), Color("c9d0de"))
+		UIKit.draw_icon(self, "lock", Vector2(w - 22, 24), 40.0)
 	elif state == "claimed":
 		draw_rect(Rect2(4, 4, w - 8, h - 8), Color(0.05, 0.1, 0.05, 0.35))
-		var ck := PackedVector2Array([Vector2(w * 0.3, h * 0.45), Vector2(w * 0.45, h * 0.6), Vector2(w * 0.72, h * 0.3)])
-		draw_polyline(ck, ink, 14.0, true)
-		draw_polyline(ck, Color("4dff7a"), 8.0, true)
+		UIKit.draw_icon(self, "check", Vector2(w * 0.5, h * 0.42), min(w, h) * 0.55)
 	elif state == "claimable":
 		Lobby.SlantButton.text_c(self, "CLAIM!", Vector2(w * 0.5, 24), 16, Color("ffe14d"))
 
@@ -67,36 +60,20 @@ static func short_text(r: Dictionary) -> String:
 	return ""
 
 static func draw_icon(ci: CanvasItem, r: Dictionary, c: Vector2, s: float) -> void:
-	var ink := UIKit.DARK
 	match r.get("type", ""):
 		"credits":
-			for i in 3:
-				Lobby.SlantButton.coin(ci, c + Vector2(-s * 0.35 + i * s * 0.35, s * 0.15 - i * s * 0.12), s * 0.5)
+			var amt: int = r.get("amount", 0)
+			var n := 1 if amt < 50 else (2 if amt < 150 else 3)
+			for k in n:
+				UIKit.draw_icon(ci, "coin", c + Vector2((k - (n - 1) * 0.5) * s * 0.55, -k * s * 0.12), s * 1.7)
 		"tokens":
-			var pts := PackedVector2Array()
-			for i in 6:
-				var a := -PI / 2 + i * TAU / 6
-				pts.append(c + Vector2(cos(a), sin(a)) * s)
-			ci.draw_colored_polygon(pts, ink)
-			var inner := PackedVector2Array()
-			for i in 6:
-				var a := -PI / 2 + i * TAU / 6
-				inner.append(c + Vector2(cos(a), sin(a)) * s * 0.82)
-			ci.draw_colored_polygon(inner, Color("3ea2ff"))
-			Lobby.SlantButton.star(ci, c, s * 0.5)
+			UIKit.draw_icon(ci, "token", c, s * 2.0)
 		"xp":
-			ci.draw_circle(c, s, ink)
-			ci.draw_circle(c, s * 0.84, Color("4fd36a"))
-			Lobby.SlantButton.text_c(ci, "XP", c + Vector2(0, s * 0.3), int(s * 0.8), Color.WHITE)
+			UIKit.draw_icon(ci, "xp", c, s * 2.0)
 		"skin":
 			var pal := Progression.palette(r.brawler, r.skin)
-			var shirt := PackedVector2Array([c + Vector2(-s * 0.4, -s * 0.8), c + Vector2(-s * 0.15, -s * 0.6), c + Vector2(s * 0.15, -s * 0.6), c + Vector2(s * 0.4, -s * 0.8), c + Vector2(s, -s * 0.35), c + Vector2(s * 0.7, -s * 0.05), c + Vector2(s * 0.55, -s * 0.2), c + Vector2(s * 0.55, s * 0.8), c + Vector2(-s * 0.55, s * 0.8), c + Vector2(-s * 0.55, -s * 0.2), c + Vector2(-s * 0.7, -s * 0.05), c + Vector2(-s, -s * 0.35)])
-			ci.draw_colored_polygon(shirt, pal.primary)
-			var o := shirt.duplicate()
-			o.append(shirt[0])
-			ci.draw_polyline(o, ink, 4.0, true)
-			ci.draw_rect(Rect2(c + Vector2(-s * 0.55, s * 0.1), Vector2(s * 1.1, s * 0.18)), pal.accent)
-			Lobby.SlantButton.text_c(ci, Config.BRAWLERS[r.brawler].name, c + Vector2(0, s * 1.25), int(s * 0.42), Color.WHITE)
+			UIKit.draw_icon(ci, "skin", c, s * 2.0, pal.primary.lerp(Color.WHITE, 0.35))
+			preload("res://scripts/ui/main_menu.gd").SlantButton.text_c(ci, Config.BRAWLERS[r.brawler].name, c + Vector2(0, s * 1.25), int(s * 0.42), Color.WHITE)
 
 
 ## Small red notification bubble with a count.

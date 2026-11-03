@@ -44,6 +44,7 @@ var invis_t := 0.0
 var attack_cd := 0.0
 var busy_t := 0.0
 var gems := 0
+var power_cells := 0
 var spawn_pos := Vector2.ZERO
 
 # movement overrides
@@ -320,6 +321,13 @@ func take_damage(amount: float, source: Brawler) -> float:
 		die(source)
 	return dealt
 
+func add_power_cell(hp_bonus: float, dmg_bonus: float) -> void:
+	power_cells += 1
+	max_hp += hp_bonus
+	hp += hp_bonus
+	dmg_mult *= 1.0 + dmg_bonus
+	FX.number(game.fx_layer, global_position + Vector2(0, -90), "POWER UP!", Color("9dff8a"), true)
+
 func heal(amount: float) -> float:
 	if not alive or hp >= max_hp:
 		return 0.0
@@ -345,7 +353,7 @@ func die(killer: Brawler) -> void:
 	visible = false
 	Sfx.play_at("ko", global_position, 0.0)
 	FX.burst(game.fx_layer, global_position + BODY_OFFSET, d.primary, 26, 380.0, 0.8, 7.0)
-	FX.burst(game.fx_layer, global_position + BODY_OFFSET, Config.TEAM_COLORS[team], 14, 300.0, 0.7, 5.0)
+	FX.burst(game.fx_layer, global_position + BODY_OFFSET, Config.tc(team), 14, 300.0, 0.7, 5.0)
 	FX.shockwave(game.fx_layer, global_position, 90.0, Color.WHITE, 0.4)
 	game.on_brawler_died(self, killer)
 
@@ -367,7 +375,7 @@ func respawn(at: Vector2) -> void:
 	visible = true
 	reset_physics_interpolation()
 	Sfx.play_at("respawn", at, -6.0)
-	FX.shockwave(game.fx_layer, at, 60.0, Config.TEAM_COLORS[team], 0.4)
+	FX.shockwave(game.fx_layer, at, 60.0, Config.tc(team), 0.4)
 
 func start_leap(target: Vector2, duration: float) -> void:
 	leap_from = global_position
@@ -417,7 +425,7 @@ func _draw() -> void:
 		alpha = 0.8 # only drawn at all when revealed
 	if protect_t > 0.0:
 		alpha *= 0.55 + 0.35 * sin(anim_t * 20.0)
-	var tc: Color = Config.TEAM_COLORS[team]
+	var tc: Color = Config.tc(team)
 	# team ring
 	var ring := tc
 	ring.a = 0.85 * alpha
@@ -521,7 +529,7 @@ class BrawlerOverhead extends Node2D:
 		if b.is_player:
 			bar_col = Color("4dff7a")
 		elif b.team == viewer:
-			bar_col = Config.TEAM_COLORS[b.team]
+			bar_col = Config.tc(b.team)
 		else:
 			bar_col = Color("ff4d5e")
 		# name
@@ -556,6 +564,13 @@ class BrawlerOverhead extends Node2D:
 			gc.a = 0.5 + 0.4 * sin(b.anim_t * 8.0)
 			draw_arc(Vector2(-w * 0.5 - 12, y + 6), 7, 0, TAU, 16, gc, 3.0, true)
 			draw_circle(Vector2(-w * 0.5 - 12, y + 6), 4, gc)
+		# power cells (Showdown)
+		if b.power_cells > 0:
+			var pp := Vector2(-14, y - 26)
+			UIKit.draw_icon(self, "power_cell", pp, 26.0)
+			var ps := str(b.power_cells)
+			draw_string_outline(f, pp + Vector2(14, 8), ps, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, 6, Color("1a1028"))
+			draw_string(f, pp + Vector2(14, 8), ps, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color("c8ffb0"))
 		# carried gems
 		if b.gems > 0:
 			var gp := Vector2(0, y - 30)

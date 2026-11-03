@@ -13,18 +13,31 @@ const RED := Color("ff4d5e")
 const PANEL := Color("27334d")
 const PANEL_LIGHT := Color("3a4a70")
 
+static var _icons: Dictionary = {}
 static var _font_bold: Font
 static var _font_med: Font
 static var _theme: Theme
 
+## Original icon art from assets/icons (see gen/make_icons.py).
+static func icon(name: String) -> Texture2D:
+	if not _icons.has(name):
+		var path := "res://assets/icons/%s.png" % name
+		_icons[name] = load(path) if ResourceLoader.exists(path) else null
+	return _icons[name]
+
+static func draw_icon(ci: CanvasItem, name: String, center: Vector2, size: float, tint := Color.WHITE) -> void:
+	var t := icon(name)
+	if t:
+		ci.draw_texture_rect(t, Rect2(center - Vector2(size, size) * 0.5, Vector2(size, size)), false, tint)
+
 static func bold() -> Font:
 	if _font_bold == null:
-		_font_bold = load("res://assets/fonts/Poppins-Bold.ttf")
+		_font_bold = load("res://assets/fonts/LilitaOne-Regular.ttf")
 	return _font_bold
 
 static func medium() -> Font:
 	if _font_med == null:
-		_font_med = load("res://assets/fonts/Poppins-Medium.ttf")
+		_font_med = load("res://assets/fonts/LilitaOne-Regular.ttf")
 	return _font_med
 
 static func theme() -> Theme:
@@ -109,6 +122,26 @@ static func button(text: String, col := ORANGE, font_size := 26, min_size := Vec
 	b.resized.connect(func(): b.pivot_offset = b.size * 0.5)
 	return b
 
+## Smooth entrance: fade + spring scale (optionally slide), after `delay` seconds.
+static func pop_in(c: CanvasItem, delay := 0.0, from_offset := Vector2.ZERO) -> void:
+	if c == null:
+		return
+	c.modulate.a = 0.0
+	var ctl := c as Control
+	var target_pos := Vector2.ZERO
+	if ctl:
+		ctl.scale = Vector2(0.88, 0.88)
+		target_pos = ctl.position
+		ctl.position += from_offset
+		ctl.resized.connect(func(): ctl.pivot_offset = ctl.size * 0.5, CONNECT_ONE_SHOT)
+		ctl.pivot_offset = ctl.size * 0.5
+	var tw := c.create_tween().set_parallel(true)
+	tw.tween_property(c, "modulate:a", 1.0, 0.22).set_delay(delay)
+	if ctl:
+		tw.tween_property(ctl, "scale", Vector2.ONE, 0.38).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if from_offset != Vector2.ZERO:
+			tw.tween_property(ctl, "position", target_pos, 0.35).set_delay(delay).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
 static func _pop(c: Control, s: float) -> void:
 	if not c.is_inside_tree():
 		return
@@ -190,47 +223,8 @@ class IconDraw extends Control:
 			queue_redraw()
 
 	func _draw() -> void:
-		var c := size * 0.5
-		var r: float = min(size.x, size.y) * 0.5
-		match kind:
-			"trophy":
-				var gold := Color("ffd23a")
-				var cup := PackedVector2Array([c + Vector2(-r * 0.7, -r * 0.75), c + Vector2(r * 0.7, -r * 0.75), c + Vector2(r * 0.5, r * 0.05), c + Vector2(r * 0.15, r * 0.3), c + Vector2(-r * 0.15, r * 0.3), c + Vector2(-r * 0.5, r * 0.05)])
-				draw_arc(c + Vector2(-r * 0.62, -r * 0.35), r * 0.3, PI * 0.5, PI * 1.5, 12, UIKit.DARK, 5.0, true)
-				draw_arc(c + Vector2(r * 0.62, -r * 0.35), r * 0.3, -PI * 0.5, PI * 0.5, 12, UIKit.DARK, 5.0, true)
-				draw_arc(c + Vector2(-r * 0.62, -r * 0.35), r * 0.3, PI * 0.5, PI * 1.5, 12, gold, 2.5, true)
-				draw_arc(c + Vector2(r * 0.62, -r * 0.35), r * 0.3, -PI * 0.5, PI * 0.5, 12, gold, 2.5, true)
-				draw_colored_polygon(cup, gold)
-				var o := cup.duplicate()
-				o.append(cup[0])
-				draw_polyline(o, UIKit.DARK, 2.5, true)
-				draw_rect(Rect2(c + Vector2(-r * 0.15, r * 0.3), Vector2(r * 0.3, r * 0.3)), gold.darkened(0.15))
-				draw_rect(Rect2(c + Vector2(-r * 0.5, r * 0.58), Vector2(r, r * 0.3)), gold.darkened(0.25))
-				draw_rect(Rect2(c + Vector2(-r * 0.5, r * 0.58), Vector2(r, r * 0.3)), UIKit.DARK, false, 2.0)
-				draw_circle(c + Vector2(-r * 0.25, -r * 0.45), r * 0.12, Color(1, 1, 1, 0.8))
-			"coin":
-				draw_circle(c, r * 0.9, UIKit.DARK)
-				draw_circle(c, r * 0.78, Color("ffb52e"))
-				draw_circle(c, r * 0.55, Color("ffd23a"))
-				draw_rect(Rect2(c + Vector2(-r * 0.12, -r * 0.35), Vector2(r * 0.24, r * 0.7)), Color("e08a1a"))
-				draw_circle(c + Vector2(-r * 0.3, -r * 0.35), r * 0.12, Color(1, 1, 1, 0.8))
-			"gem":
-				Gem.draw_gem_icon(self, c, r * 0.85, t)
-			"star":
-				var pts := PackedVector2Array()
-				for i in 10:
-					var rr := r * 0.9 if i % 2 == 0 else r * 0.4
-					var a := -PI / 2 + i * PI / 5
-					pts.append(c + Vector2(cos(a), sin(a)) * rr)
-				draw_colored_polygon(pts, Color("ffd23a"))
-				pts.append(pts[0])
-				draw_polyline(pts, UIKit.DARK, 2.5, true)
-			"xp":
-				draw_circle(c, r * 0.9, UIKit.DARK)
-				draw_circle(c, r * 0.76, Color("3ea2ff"))
-				var f := UIKit.bold()
-				var s := f.get_string_size("XP", HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 0.8))
-				draw_string(f, c + Vector2(-s.x * 0.5, r * 0.3), "XP", HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 0.8), Color.WHITE)
+		var names := {"trophy": "trophy", "coin": "coin", "gem": "crystal", "star": "star", "xp": "xp", "token": "token"}
+		UIKit.draw_icon(self, names.get(kind, kind), size * 0.5, min(size.x, size.y) * 1.15)
 
 
 ## Animated menu backdrop: gradient, scrolling diagonal stripes and drifting sparks.
@@ -278,6 +272,7 @@ class BrawlerPortrait extends Control:
 	var team_col := Color("3ea2ff")
 	var locked := false
 	var skin := "auto" # "auto" = the player's selected skin
+	var view_kind := "portrait"
 	var _t := 0.0
 	var _view: BrawlerView
 	var _rect: TextureRect
@@ -287,7 +282,7 @@ class BrawlerPortrait extends Control:
 		var want: Vector2 = custom_minimum_size if custom_minimum_size != Vector2.ZERO else size
 		var px := int(clampf(max(want.x, want.y) * 1.6, 128.0, 640.0))
 		var sk := Save.selected_skin(brawler_id) if skin == "auto" else skin
-		_view = BrawlerView.create(brawler_id, "portrait", px, art_scale >= 2.0, sk)
+		_view = BrawlerView.create(brawler_id, view_kind, px, art_scale >= 2.0, sk)
 		add_child(_view)
 		_rect = TextureRect.new()
 		_rect.texture = _view.get_texture()

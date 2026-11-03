@@ -101,7 +101,7 @@ func _think() -> void:
 	var atk_range := b.attack_range_px()
 	var melee: bool = b.d.attack.kind in ["melee_cone", "twin_slash"]
 	if retreating:
-		goal = b.spawn_pos
+		goal = game.mode.retreat_point(b) if game.mode.has_method("retreat_point") else b.spawn_pos
 	elif target and b.global_position.distance_to(target.global_position) < atk_range + T * 3.5:
 		var pref := atk_range * (0.45 if melee else 0.78)
 		var away := (b.global_position - target.global_position).normalized()

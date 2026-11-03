@@ -1,5 +1,7 @@
 class_name ArenaMap
 extends Node2D
+
+signal crate_broken(pos: Vector2)
 ## Builds a map from MapData: floor art, collision, walls/crates (as y-sorted
 ## entities), bushes, water, spawn points and an AStar grid for bot navigation.
 
@@ -15,6 +17,9 @@ var gem_mine := Vector2.ZERO
 var crates: Dictionary = {} # Vector2i -> Crate
 var bush_cells: Dictionary = {} # Vector2i -> true
 var size_px := Vector2.ZERO
+var w := 21
+var h := 33
+var ffa_spawns: Array[Vector2] = []
 var _decals: Array = []
 var _water_node: Node2D
 
@@ -22,8 +27,10 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	map_id = id
 	theme = MapData.MAPS[id].theme
 	grid = MapData.build_grid(id)
-	size_px = Vector2(MapData.W * T, MapData.H * T)
-	astar.region = Rect2i(0, 0, MapData.W, MapData.H)
+	h = grid.size()
+	w = grid[0].size()
+	size_px = Vector2(w * T, h * T)
+	astar.region = Rect2i(0, 0, w, h)
 	astar.cell_size = Vector2(T, T)
 	astar.offset = Vector2(T * 0.5, T * 0.5)
 	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
@@ -41,9 +48,9 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	water_body.collision_mask = 0
 	add_child(water_body)
 
-	for r in MapData.H:
+	for r in h:
 		var c := 0
-		while c < MapData.W:
+		while c < w:
 			var ch: String = grid[r][c]
 			var cell := Vector2i(c, r)
 			var center := cell_center(cell)
@@ -51,7 +58,7 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 				"#":
 					# merge horizontal wall runs into one collision rectangle
 					var run := 1
-					while c + run < MapData.W and grid[r][c + run] == "#":
+					while c + run < w and grid[r][c + run] == "#":
 						run += 1
 					_add_rect(walls_body, Vector2(c * T, r * T), Vector2(run * T, T))
 					for k in run:
@@ -79,14 +86,17 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 				"G":
 					gem_mine = center
 			if ch == "." and rng.randf() < 0.12:
-				_decals.append([center + Vector2(rng.randf_range(-14, 14), rng.randf_range(-14, 14)), rng.randf_range(3, 7), rng.randi() % 3])
+				var kind := rng.randi() % 3
+				if theme.get("bones", false) and rng.randf() < 0.45:
+					kind = 3
+				_decals.append([center + Vector2(rng.randf_range(-14, 14), rng.randf_range(-14, 14)), rng.randf_range(3, 7), kind, rng.randf() * TAU])
 			c += 1
 	# decorative 3D fence ring around the arena (collision is the boundary below)
-	for bc in range(-1, MapData.W + 1):
-		for br in [-1, MapData.H]:
+	for bc in range(-1, w + 1):
+		for br in [-1, h]:
 			_add_border_block(entity_layer, bc, br)
-	for br in range(0, MapData.H):
-		for bc in [-1, MapData.W]:
+	for br in range(0, h):
+		for bc in [-1, w]:
 			_add_border_block(entity_layer, bc, br)
 	# outer boundary walls
 	_add_rect(walls_body, Vector2(-T * 2, -T * 2), Vector2(size_px.x + T * 4, T * 2))
@@ -95,6 +105,12 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	_add_rect(walls_body, Vector2(size_px.x, 0), Vector2(T * 2, size_px.y))
 	if gem_mine == Vector2.ZERO:
 		gem_mine = size_px * 0.5
+	# free-for-all maps: 10 spawns evenly around a ring
+	if MapData.MAPS[id].get("kind", "") == "quad":
+		for k in 10:
+			var a := -PI / 2 + k * TAU / 10.0
+			var p := size_px * 0.5 + Vector2(cos(a), sin(a)) * size_px.x * 0.4
+			ffa_spawns.append(cell_center(nearest_walkable(p)))
 
 	# sort spawns so index 0 is the middle one (the player's spot)
 	blue_spawns.sort_custom(func(a, b): return absf(a.x - size_px.x * 0.5) < absf(b.x - size_px.x * 0.5))
@@ -112,7 +128,7 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 func _add_border_block(layer: Node2D, c: int, r: int) -> void:
 	var wb := WallBlock.new()
 	wb.setup(Vector2i(c, r), theme, _wall_neighbors(c, r))
-	if r == MapData.H:
+	if r == h:
 		wb.position.y += WallBlock.LIFT # keep the near fence from covering the last row
 	layer.add_child(wb)
 
@@ -123,9 +139,9 @@ func _wall_neighbors(c: int, r: int) -> Dictionary:
 	}
 
 func is_wall_char(c: int, r: int) -> bool:
-	if c < 0 or r < 0 or c >= MapData.W or r >= MapData.H:
+	if c < 0 or r < 0 or c >= w or r >= h:
 		# the decorative border ring counts as wall so edges merge cleanly
-		return c >= -1 and r >= -1 and c <= MapData.W and r <= MapData.H
+		return c >= -1 and r >= -1 and c <= w and r <= h
 	return grid[r][c] == "#"
 
 func _add_rect(body: StaticBody2D, top_left: Vector2, size: Vector2) -> void:
@@ -140,7 +156,7 @@ func cell_center(cell: Vector2i) -> Vector2:
 	return Vector2((cell.x + 0.5) * T, (cell.y + 0.5) * T)
 
 func world_to_cell(p: Vector2) -> Vector2i:
-	return Vector2i(clampi(int(floor(p.x / T)), 0, MapData.W - 1), clampi(int(floor(p.y / T)), 0, MapData.H - 1))
+	return Vector2i(clampi(int(floor(p.x / T)), 0, w - 1), clampi(int(floor(p.y / T)), 0, h - 1))
 
 func in_bounds(p: Vector2) -> bool:
 	return p.x >= 0 and p.y >= 0 and p.x < size_px.x and p.y < size_px.y
@@ -152,6 +168,7 @@ func is_walkable_cell(cell: Vector2i) -> bool:
 	return astar.is_in_boundsv(cell) and not astar.is_point_solid(cell)
 
 func crate_destroyed(cell: Vector2i) -> void:
+	crate_broken.emit(cell_center(cell))
 	crates.erase(cell)
 	grid[cell.y][cell.x] = "."
 	astar.set_point_solid(cell, false)
@@ -183,8 +200,8 @@ func _draw() -> void:
 	# bevelled floor tiles with gentle colour variation
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(map_id) + 99
-	for r in MapData.H:
-		for c in MapData.W:
+	for r in h:
+		for c in w:
 			var base: Color = th.floor_a if (r + c) % 2 == 0 else th.floor_b
 			base = base.lightened(rng.randf_range(-0.02, 0.03))
 			var rect := Rect2(c * T, r * T, T, T)
@@ -204,12 +221,25 @@ func _draw() -> void:
 				draw_circle(p + Vector2(s * 1.4, s * 0.4), s * 0.6, col)
 			1:
 				draw_polyline(PackedVector2Array([p, p + Vector2(s, s * 0.6), p + Vector2(s * 1.6, -s * 0.3), p + Vector2(s * 2.6, s * 0.4)]), col, 2.0, true)
+			3:
+				# a sun-bleached bone
+				var rot: float = d[3]
+				var dir := Vector2(cos(rot), sin(rot)) * s * 1.6
+				var ink := Color("1a1028")
+				draw_line(p - dir, p + dir, ink, 7.0, true)
+				for e in [p - dir, p + dir]:
+					for o in [-1, 1]:
+						draw_circle(e + dir.orthogonal().normalized() * 3.0 * o, 4.5, ink)
+				draw_line(p - dir, p + dir, Color("fff6e0"), 3.5, true)
+				for e in [p - dir, p + dir]:
+					for o in [-1, 1]:
+						draw_circle(e + dir.orthogonal().normalized() * 3.0 * o, 3.0, Color("fff6e0"))
 			_:
 				draw_rect(Rect2(p - Vector2(s, s * 0.4), Vector2(s * 2, s * 0.8)), col)
 	# soft cast shadows (light from the top-left)
 	var sh := Color(0, 0, 0, 0.2)
-	for r in range(-1, MapData.H + 1):
-		for c in range(-1, MapData.W + 1):
+	for r in range(-1, h + 1):
+		for c in range(-1, w + 1):
 			if not is_wall_char(c, r):
 				continue
 			var x := c * T

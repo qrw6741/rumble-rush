@@ -59,6 +59,11 @@ func _build(brawler_id: String, skin := "") -> void:
 		camera.size = 3.4
 		camera.position = Vector3(0, 4.2, 3.4)
 		camera.look_at_from_position(camera.position, Vector3(0, 0.95, 0), Vector3.UP)
+	elif kind == "bust":
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = 24.0
+		camera.position = Vector3(0, 1.45, 2.7)
+		camera.look_at_from_position(camera.position, Vector3(0, 1.12, 0), Vector3.UP)
 	elif kind == "showcase":
 		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
 		camera.fov = 26.0

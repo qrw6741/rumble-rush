@@ -33,6 +33,7 @@ func _default() -> Dictionary:
 		"brawler_levels": levels,
 		"selected_brawler": "bront",
 		"selected_mode": "gem_grab",
+		"selected_map": "",
 		"highest_trophies": 0,
 		"stats": {"matches": 0, "wins": 0, "losses": 0, "draws": 0, "kos": 0, "deaths": 0, "damage": 0, "mvp": 0},
 		"history": [],
@@ -162,7 +163,7 @@ func try_upgrade(id: String) -> bool:
 # ------------------------------------------------------------------ match rewards
 ## result: "win" | "loss" | "draw". Returns the reward breakdown. Rewards are
 ## granted exactly once per match id.
-func grant_match_rewards(match_id: String, brawler_id: String, mode: String, result: String, kos: int, deaths: int, damage: int, mvp: bool) -> Dictionary:
+func grant_match_rewards(match_id: String, brawler_id: String, mode: String, result: String, kos: int, deaths: int, damage: int, mvp: bool, placement := 0) -> Dictionary:
 	if _granted_matches.has(match_id):
 		return {"duplicate": true, "trophies": 0, "credits": 0, "xp": 0}
 	_granted_matches[match_id] = true
@@ -179,6 +180,11 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 			trophy_delta = 0 if bt < 20 else -(3 if bt < 200 else 4)
 		_:
 			trophy_delta = 0
+	if placement > 0:
+		var table := [10, 8, 7, 6, 4, 2, 0, -1, -2, -3]
+		trophy_delta = table[clampi(placement - 1, 0, 9)]
+		if bt < 20:
+			trophy_delta = max(trophy_delta, 0)
 	trophy_delta = max(trophy_delta, -bt)
 	var credits: int = {"win": 30, "loss": 12, "draw": 18}[result] + mini(kos, 10) * 2 + (10 if mvp else 0)
 	var xp: int = {"win": 40, "loss": 20, "draw": 28}[result] + kos * 3
@@ -201,7 +207,7 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	data.history.push_front({
 		"time": Time.get_datetime_string_from_system(false, true),
 		"brawler": brawler_id, "mode": mode, "result": result,
-		"kos": kos, "deaths": deaths, "damage": damage, "trophies": trophy_delta, "mvp": mvp,
+		"kos": kos, "deaths": deaths, "damage": damage, "trophies": trophy_delta, "mvp": mvp, "placement": placement,
 	})
 	if data.history.size() > 25:
 		data.history.resize(25)

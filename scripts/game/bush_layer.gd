@@ -76,6 +76,9 @@ func _draw() -> void:
 		var col := dark
 		col.a = _alpha_for(map.cell_center(c))
 		_blob_raised(c, -8.0, col)
+	if map.theme.get("grass", false):
+		_draw_grass(light, dark)
+		return
 	# leafy clusters on top
 	for c in _cells:
 		var p := map.cell_center(c) + Vector2(0, -14)
@@ -93,3 +96,29 @@ func _draw() -> void:
 		var shade := dark.darkened(0.25)
 		shade.a = a * 0.8
 		draw_circle(p + s + Vector2(6, 12), 5, shade)
+
+
+## Tall dry grass: tufts of swaying blades instead of round leaves.
+func _draw_grass(light: Color, dark: Color) -> void:
+	var ink := Color("1a1028")
+	for c in _cells:
+		var base := map.cell_center(c) + Vector2(0, 8)
+		var a := _alpha_for(base)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = c.x * 913 + c.y * 271
+		for k in 7:
+			var bx := base.x + rng.randf_range(-22, 22)
+			var by := base.y + rng.randf_range(-20, 14)
+			var hgt := rng.randf_range(30, 44)
+			var sway := sin(_t * 1.8 + c.x * 0.6 + c.y * 0.3 + k) * 4.0
+			var tip := Vector2(bx + sway, by - hgt)
+			var blade := PackedVector2Array([Vector2(bx - 6, by), tip, Vector2(bx + 6, by)])
+			var oc := ink
+			oc.a = a
+			draw_polyline(PackedVector2Array([blade[0], blade[1], blade[2]]), oc, 4.0, true)
+			var col := light.lerp(dark, rng.randf_range(0.0, 0.45))
+			col.a = a
+			draw_colored_polygon(blade, col)
+			var hl := light.lightened(0.35)
+			hl.a = a * 0.8
+			draw_line(Vector2(bx - 1, by - 4), tip.lerp(Vector2(bx, by), 0.25), hl, 1.5, true)

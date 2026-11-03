@@ -10,8 +10,8 @@ var _t := 0.0
 
 func setup(m: ArenaMap) -> void:
 	map = m
-	for r in MapData.H:
-		for c in MapData.W:
+	for r in map.h:
+		for c in map.w:
 			if m.grid[r][c] == "W":
 				_cells.append(Vector2i(c, r))
 
@@ -22,7 +22,7 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _is_water(c: Vector2i) -> bool:
-	return c.x >= 0 and c.y >= 0 and c.x < MapData.W and c.y < MapData.H and map.grid[c.y][c.x] == "W"
+	return c.x >= 0 and c.y >= 0 and c.x < map.w and c.y < map.h and map.grid[c.y][c.x] == "W"
 
 func _draw() -> void:
 	var wcol: Color = map.theme.water

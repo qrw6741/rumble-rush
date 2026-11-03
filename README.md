@@ -60,8 +60,10 @@ Ammo with automatic reload, super charge from hits, health regen after 3 s out o
 - **GEM RUSH**: collect 10 crystals from the central mine and hold them for 15 s. KO'd brawlers drop their crystals. When time runs out, the team carrying more crystals wins.
 - **KNOCKOUT RUSH**: first team to 10 KOs. A tie at time-up goes to 30 s of sudden death (next KO wins); if nobody scores, it's a draw.
 
+- **SHOWDOWN**: 10-brawler solo free-for-all on the 35×35 Bone Desert. Smash boxes for power cells (+health, +damage), stay ahead of the closing poison clouds, last one standing wins. Trophies depend on your placement (top 4 gain).
+
 ### Arenas
-**Crystal Canyon** (desert) and **Neon District** (city). Each map is mirrored with 180° symmetry, so both teams get the same layout.
+**Crystal Canyon** (desert), **Neon District** (city) and **Bone Desert** (big Showdown arena with tall grass, 4-way symmetric). Each map is mirrored with 180° symmetry, so both teams get the same layout.
 
 ### AI bots (Easy / Normal / Hard / Expert)
 Bots find paths with A\*, only see what a player on their team could see (no seeing into bushes), react with a human-like delay, aim with error and lead, strafe, dodge shots and lobs, retreat to heal, chase gems, protect a lead, heal allies (Mira), and pick sensible moments for gadgets and supers. Every bot's name ends in **(BOT)**.

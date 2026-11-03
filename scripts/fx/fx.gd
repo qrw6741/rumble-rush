@@ -6,7 +6,7 @@ static var font: Font
 
 static func _font() -> Font:
 	if font == null:
-		font = load("res://assets/fonts/Poppins-Bold.ttf")
+		font = load("res://assets/fonts/LilitaOne-Regular.ttf")
 	return font
 
 static func burst(parent: Node, pos: Vector2, color: Color, amount := 14, speed := 220.0, life := 0.5, size := 5.0, spread := 180.0, dir := Vector2.UP) -> void:

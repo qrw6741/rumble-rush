@@ -24,6 +24,19 @@ func _ready() -> void:
 	_build_level_panel()
 	_build_mode_panel()
 	_build_play()
+	_animate_in()
+
+func _animate_in() -> void:
+	var i := 0
+	for n in ["ProfileTile", "TrophyRoad", "Settings"]:
+		UIKit.pop_in(find_child(n, false, false), 0.03 * i, Vector2(0, -40))
+		i += 1
+	i = 0
+	for n in ["Brawlers", "Profile", "Guide"]:
+		UIKit.pop_in(find_child(n, false, false), 0.08 + 0.06 * i, Vector2(-60, 0))
+		i += 1
+	UIKit.pop_in(find_child("RushPass", false, false), 0.15, Vector2(0, 60))
+	UIKit.pop_in(find_child("Mode", false, false), 0.2, Vector2(0, 60))
 
 # ------------------------------------------------------------------ centre stage
 func _build_stage() -> void:
@@ -94,10 +107,7 @@ func _build_top_bar() -> void:
 	prof.position = Vector2(14, 10)
 	prof.size = Vector2(200, 92)
 	prof.custom_draw = func(ci: Control):
-		var r := Rect2(Vector2(70, 8), Vector2(62, 52))
-		ci.draw_rect(r.grow(3), UIKit.DARK)
-		ci.draw_rect(r, Color("2a8cff"))
-		Gem.draw_gem_icon(ci, r.get_center(), 18.0, Time.get_ticks_msec() / 1000.0)
+		UIKit.draw_icon(ci, "profile", Vector2(100, 36), 62.0)
 		SlantButton.text_c(ci, Save.data.username, Vector2(100, 84), 18, Color.WHITE)
 	prof.name = "ProfileTile"
 	prof.pressed.connect(func(): Router.goto("profile"))
@@ -127,8 +137,8 @@ func _build_top_bar() -> void:
 		var y := PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(424, 88), Vector2(318, 88)])
 		ci.draw_colored_polygon(y, yc)
 		ci.draw_colored_polygon(PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(434, 16), Vector2(328, 16)]), yc.lightened(0.3))
-		SlantButton.trophy(ci, Vector2(377, 42), 18.0)
-		SlantButton.text_c(ci, "ROAD", Vector2(375, 82), 14, Color.WHITE)
+		UIKit.draw_icon(ci, "road", Vector2(377, 40), 56.0)
+		SlantButton.text_c(ci, "ROAD", Vector2(375, 82), 15, Color.WHITE)
 	bar.name = "TrophyRoad"
 	bar.pressed.connect(func(): Router.goto("road"))
 	add_child(bar)
@@ -151,10 +161,7 @@ func _build_top_bar() -> void:
 	menu.position = Vector2(-116, 10)
 	menu.size = Vector2(100, 70)
 	menu.custom_draw = func(ci: Control):
-		for i in 3:
-			var r := Rect2(Vector2(28, 18 + i * 13), Vector2(46, 8))
-			ci.draw_rect(r.grow(2), UIKit.DARK)
-			ci.draw_rect(r, Color.WHITE)
+		UIKit.draw_icon(ci, "settings", Vector2(50, 33), 54.0)
 	menu.name = "Settings"
 	menu.pressed.connect(_open_settings)
 	add_child(menu)
@@ -206,7 +213,7 @@ func _build_level_panel() -> void:
 		ci.draw_rect(br, Color("1d2438"))
 		ci.draw_rect(Rect2(br.position, Vector2(br.size.x * (1.0 if maxed else float(into) / Progression.TOKENS_PER_TIER), br.size.y)), Color("3ea2ff"))
 		SlantButton.text_c(ci, "MAX" if maxed else "%d/%d" % [into, Progression.TOKENS_PER_TIER], br.get_center() + Vector2(0, 10), 22, Color.WHITE)
-		RewardTile.draw_icon(ci, {"type": "tokens"}, Vector2(36, 79), 24.0)
+		UIKit.draw_icon(ci, "token", Vector2(36, 79), 56.0)
 		ci.draw_circle(Vector2(336, 79), 36, UIKit.DARK)
 		ci.draw_circle(Vector2(336, 79), 31, Color("2a8cff"))
 		SlantButton.text_c(ci, str(tier), Vector2(336, 92), 34, Color.WHITE)
@@ -249,26 +256,18 @@ func _build_mode_panel() -> void:
 		var m: Dictionary = Config.MODES[mid]
 		var maps: Array = m.maps
 		# mode icon
-		ci.draw_circle(Vector2(70, 60), 44, UIKit.DARK)
-		ci.draw_circle(Vector2(70, 60), 39, m.color)
-		if mid == "gem_grab":
-			Gem.draw_gem_icon(ci, Vector2(70, 60), 26.0, Time.get_ticks_msec() / 1000.0)
-		else:
-			SlantButton.menu_icon(ci, "swords", Vector2(70, 60))
+		UIKit.draw_icon(ci, m.get("icon", "mode_gem"), Vector2(70, 60), 96.0)
 		SlantButton.text_l(ci, m.name, Vector2(126, 56), 27, Color.WHITE)
-		SlantButton.text_l(ci, "%d arenas  ·  tap to switch" % maps.size(), Vector2(128, 90), 16, Color("9dff8a"))
+		var sel_map: String = Save.data.get("selected_map", "")
+		var map_txt: String = MapData.MAPS[sel_map].name if sel_map in maps else "RANDOM ARENA"
+		SlantButton.text_l(ci, map_txt, Vector2(128, 90), 17, Color("9dff8a"))
 		# cycle arrow
 		var ar := Rect2(Vector2(368, 34), Vector2(40, 50))
 		ci.draw_rect(ar.grow(3), UIKit.DARK)
 		ci.draw_rect(ar, Color.WHITE)
 		ci.draw_colored_polygon(PackedVector2Array([Vector2(380, 47), Vector2(400, 59), Vector2(380, 71)]), UIKit.DARK)
 	_mode_panel.name = "Mode"
-	_mode_panel.pressed.connect(func():
-		var keys := Config.MODES.keys()
-		var i := keys.find(Save.data.selected_mode)
-		Save.data.selected_mode = keys[(i + 1) % keys.size()]
-		Save.save_game()
-		_mode_panel.queue_redraw())
+	_mode_panel.pressed.connect(func(): Router.goto("events"))
 	add_child(_mode_panel)
 
 	var info := SlantButton.new()
@@ -277,8 +276,9 @@ func _build_mode_panel() -> void:
 	info.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	info.position = Vector2(-226, -160)
 	info.size = Vector2(52, 52)
+	info.color = Color(0, 0, 0, 0)
 	info.custom_draw = func(ci: Control):
-		SlantButton.text_c(ci, "i", Vector2(26, 38), 30, Color.WHITE)
+		UIKit.draw_icon(ci, "info", Vector2(26, 26), 60.0)
 	info.pressed.connect(_open_mode_info)
 	add_child(info)
 
@@ -296,8 +296,10 @@ func _build_play() -> void:
 		Sfx.play("ui_confirm")
 		Router.goto("match", {"mode": Save.data.selected_mode, "brawler": Save.data.selected_brawler}))
 	add_child(play)
-	# idle pulse to draw the eye
+	# idle pulse to draw the eye (starts after the entrance animation)
+	UIKit.pop_in(play, 0.25, Vector2(60, 0))
 	var tw := create_tween().set_loops()
+	tw.tween_interval(0.7)
 	tw.tween_property(play, "scale", Vector2(1.03, 1.03), 0.7).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(play, "scale", Vector2.ONE, 0.7).set_trans(Tween.TRANS_SINE)
 	play.pivot_offset = play.size * 0.5
@@ -365,11 +367,7 @@ static func build_header(parent: Control, title: String, on_back: Callable) -> v
 	back.size = Vector2(96, 70)
 	back.name = "Back"
 	back.custom_draw = func(ci: Control):
-		var pts := PackedVector2Array([Vector2(28, 33), Vector2(52, 13), Vector2(52, 25), Vector2(72, 25), Vector2(72, 41), Vector2(52, 41), Vector2(52, 53)])
-		var o := pts.duplicate()
-		o.append(pts[0])
-		ci.draw_polyline(o, UIKit.DARK, 7.0, true)
-		ci.draw_colored_polygon(pts, Color.WHITE)
+		UIKit.draw_icon(ci, "back", Vector2(50, 33), 58.0)
 	back.pressed.connect(on_back)
 	parent.add_child(back)
 	var t := TitleText.new()
@@ -427,7 +425,9 @@ class SlantButton extends Button:
 	func _draw() -> void:
 		var w := size.x
 		var h := size.y
-		if circle:
+		if circle and color.a < 0.05:
+			pass
+		elif circle:
 			draw_circle(Vector2(w, h) * 0.5 + Vector2(0, 3), w * 0.5, Color(0, 0, 0, 0.35))
 			draw_circle(Vector2(w, h) * 0.5, w * 0.5, UIKit.DARK)
 			draw_circle(Vector2(w, h) * 0.5, w * 0.5 - 4, color)
@@ -480,75 +480,17 @@ class SlantButton extends Button:
 		text_c(ci, label, c + Vector2(0, r * 0.32), int(r * 0.85), Color.WHITE)
 
 	static func trophy(ci: CanvasItem, c: Vector2, r: float) -> void:
-		var gold := Color("ffb52e")
-		var cup := PackedVector2Array([c + Vector2(-r, -r * 0.8), c + Vector2(r, -r * 0.8), c + Vector2(r * 0.7, r * 0.2), c + Vector2(-r * 0.7, r * 0.2)])
-		ci.draw_arc(c + Vector2(-r * 0.95, -r * 0.35), r * 0.38, PI * 0.5, PI * 1.5, 10, UIKit.DARK, 6.0, true)
-		ci.draw_arc(c + Vector2(r * 0.95, -r * 0.35), r * 0.38, -PI * 0.5, PI * 0.5, 10, UIKit.DARK, 6.0, true)
-		ci.draw_arc(c + Vector2(-r * 0.95, -r * 0.35), r * 0.38, PI * 0.5, PI * 1.5, 10, gold, 3.0, true)
-		ci.draw_arc(c + Vector2(r * 0.95, -r * 0.35), r * 0.38, -PI * 0.5, PI * 0.5, 10, gold, 3.0, true)
-		ci.draw_colored_polygon(cup, gold)
-		var o := cup.duplicate()
-		o.append(cup[0])
-		ci.draw_polyline(o, UIKit.DARK, 3.0, true)
-		ci.draw_rect(Rect2(c + Vector2(-r * 0.2, r * 0.2), Vector2(r * 0.4, r * 0.4)), gold.darkened(0.2))
-		ci.draw_rect(Rect2(c + Vector2(-r * 0.6, r * 0.55), Vector2(r * 1.2, r * 0.35)), gold.darkened(0.3))
-		ci.draw_rect(Rect2(c + Vector2(-r * 0.6, r * 0.55), Vector2(r * 1.2, r * 0.35)), UIKit.DARK, false, 2.0)
-		ci.draw_circle(c + Vector2(-r * 0.45, -r * 0.45), r * 0.15, Color(1, 1, 1, 0.8))
+		UIKit.draw_icon(ci, "trophy", c, r * 2.9)
 
 	static func coin(ci: CanvasItem, c: Vector2, r: float) -> void:
-		ci.draw_circle(c, r + 3, UIKit.DARK)
-		ci.draw_circle(c, r, Color("ffb52e"))
-		ci.draw_circle(c, r * 0.72, Color("ffd23a"))
-		ci.draw_rect(Rect2(c + Vector2(-r * 0.14, -r * 0.42), Vector2(r * 0.28, r * 0.84)), Color("e08a1a"))
-		ci.draw_circle(c + Vector2(-r * 0.4, -r * 0.42), r * 0.14, Color(1, 1, 1, 0.8))
+		UIKit.draw_icon(ci, "coin", c, r * 2.5)
 
 	static func star(ci: CanvasItem, c: Vector2, r: float) -> void:
-		var pts := PackedVector2Array()
-		for i in 10:
-			var rr := r if i % 2 == 0 else r * 0.45
-			var a := -PI / 2 + i * PI / 5
-			pts.append(c + Vector2(cos(a), sin(a)) * rr)
-		ci.draw_colored_polygon(pts, Color.WHITE)
-		pts.append(pts[0])
-		ci.draw_polyline(pts, UIKit.DARK, 4.0, true)
+		UIKit.draw_icon(ci, "star", c, r * 2.3)
 
 	static func menu_icon(ci: CanvasItem, kind: String, c: Vector2) -> void:
-		match kind:
-			"brawlers":
-				var cols := [Color("8e4dff"), Color("ff7bc2"), Color("e9893a")]
-				for i in 3:
-					var p := c + Vector2(-22 + i * 22, (2 - abs(i - 1) * 6))
-					var r := Rect2(p - Vector2(15, 17), Vector2(30, 34))
-					ci.draw_rect(r.grow(3), UIKit.DARK)
-					ci.draw_rect(r, cols[i])
-					ci.draw_circle(p + Vector2(-6, -3), 4, Color.WHITE)
-					ci.draw_circle(p + Vector2(6, -3), 4, Color.WHITE)
-					ci.draw_circle(p + Vector2(-6, -2), 2, UIKit.DARK)
-					ci.draw_circle(p + Vector2(6, -2), 2, UIKit.DARK)
-					ci.draw_line(p + Vector2(-5, 8), p + Vector2(5, 8), UIKit.DARK, 2.5)
-			"profile":
-				ci.draw_circle(c, 30, UIKit.DARK)
-				ci.draw_circle(c, 26, Color("2a8cff"))
-				ci.draw_circle(c + Vector2(0, -7), 10, Color.WHITE)
-				ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-16, 18), c + Vector2(-12, 5), c + Vector2(12, 5), c + Vector2(16, 18)]), Color.WHITE)
-			"guide":
-				var r := Rect2(c - Vector2(26, 22), Vector2(52, 44))
-				ci.draw_rect(r.grow(3), UIKit.DARK)
-				ci.draw_rect(r, Color("dff4ff"))
-				for i in 3:
-					ci.draw_line(r.position + Vector2(8, 12 + i * 10), r.position + Vector2(44, 12 + i * 10), Color("2a8cff"), 4.0)
-				ci.draw_circle(r.end - Vector2(2, 2), 12, UIKit.DARK)
-				ci.draw_circle(r.end - Vector2(2, 2), 9, Color("4fd36a"))
-				text_c(ci, "?", r.end + Vector2(-2, 5), 16, Color.WHITE)
-			"swords":
-				for sgn in [-1.0, 1.0]:
-					var a := c + Vector2(-18 * sgn, 18)
-					var b := c + Vector2(16 * sgn, -18)
-					ci.draw_line(a, b, UIKit.DARK, 11.0, true)
-					ci.draw_line(a, b, Color.WHITE, 6.0, true)
-					var g := a.lerp(b, 0.25)
-					var perp := (b - a).normalized().orthogonal() * 9.0
-					ci.draw_line(g - perp, g + perp, UIKit.DARK, 6.0, true)
+		var names := {"brawlers": "brawlers", "profile": "profile", "guide": "guide", "swords": "mode_knockout"}
+		UIKit.draw_icon(ci, names.get(kind, kind), c, 72.0)
 
 
 ## Rank shield, brawler trophies and power level, shown above the lobby brawler.
