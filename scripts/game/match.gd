@@ -150,17 +150,29 @@ func _ready() -> void:
 ## Pre-render every brawler in this match into sprite frames (runs during the countdown).
 func _bake_sprites() -> void:
 	# live, fully animated 3D models by default; frame snapshots only on LOW graphics
-	if not SpriteBank.can_bake() or Save.setting("graphics") != "low":
+	if not SpriteBank.can_bake():
 		return
-	var combos: Array = []
+	var g: String = Save.setting("graphics")
+	# Showdown (10 brawlers): bots use pre-rendered frames, your brawler stays live 3D.
+	# LOW graphics: everyone uses frames. HIGH: everyone live.
+	var crowd := brawlers.size() > 6 and g != "high"
+	if g != "low" and not crowd:
+		return
+	var targets: Array = []
 	for b in brawlers:
+		if g == "low" or not b.is_player:
+			targets.append(b)
+	var combos: Array = []
+	for b in targets:
 		var c := [b.id, b.skin]
 		if not c in combos:
 			combos.append(c)
 	await SpriteBank.bake(self, combos, Brawler.VIEW_PX)
 	if not is_inside_tree():
 		return
-	for b in brawlers:
+	for b in targets:
+		if not is_instance_valid(b):
+			continue
 		var set = SpriteBank.get_set(b.id, b.skin)
 		if set != null:
 			b.use_bank(set)

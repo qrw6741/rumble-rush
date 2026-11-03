@@ -24,14 +24,19 @@ func setup(m: ArenaMap) -> void:
 
 var _low := false
 var _last_key := ""
+var _acc := 0.0
 
 func _ready() -> void:
-	_low = Save.low_graphics()
+	_low = Save.low_graphics() or (map.w * map.h > 900 and Save.setting("graphics") != "high")
 
 func _process(delta: float) -> void:
 	if not _low:
+		# gentle sway at ~12 fps: looks the same, costs a fraction of per-frame redraws
 		_t += delta
-		queue_redraw()
+		_acc += delta
+		if _acc >= 0.083:
+			_acc = 0.0
+			queue_redraw()
 		return
 	# static bushes: only redraw when the local player's hiding spot changes
 	var key := ""

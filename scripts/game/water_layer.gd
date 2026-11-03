@@ -15,11 +15,16 @@ func setup(m: ArenaMap) -> void:
 			if m.grid[r][c] == "W":
 				_cells.append(Vector2i(c, r))
 
+var _acc := 0.0
+
 func _process(delta: float) -> void:
 	if _cells.is_empty():
 		return
 	_t += delta
-	queue_redraw()
+	_acc += delta
+	if _acc >= 0.066:
+		_acc = 0.0
+		queue_redraw()
 
 func _is_water(c: Vector2i) -> bool:
 	return c.x >= 0 and c.y >= 0 and c.x < map.w and c.y < map.h and map.grid[c.y][c.x] == "W"
