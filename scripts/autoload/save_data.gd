@@ -10,9 +10,32 @@ const VERSION := 1
 var data: Dictionary = {}
 var _granted_matches: Dictionary = {} # match ids already rewarded (prevents double rewards)
 
+const WEB_KEY := "rumble_rush_save_v1"
+
 func _ready() -> void:
 	load_game()
 	apply_settings()
+
+## Phones close web apps without warning: write the save whenever the game is backgrounded.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if not data.is_empty():
+			save_game()
+
+func _web_store() -> bool:
+	return OS.has_feature("web") and save_path == "user://rumble_rush_save.json"
+
+## Browser localStorage is written instantly (the virtual file system syncs late and
+## loses progress when iOS kills the app), so the web build keeps its save there too.
+func _web_write(text: String) -> void:
+	if _web_store():
+		JavaScriptBridge.eval("try{localStorage.setItem('%s', %s)}catch(e){}" % [WEB_KEY, JSON.stringify(text)], true)
+
+func _web_read() -> String:
+	if not _web_store():
+		return ""
+	var v = JavaScriptBridge.eval("(function(){try{return localStorage.getItem('%s')||''}catch(e){return ''}})()" % WEB_KEY, true)
+	return v if v is String else ""
 
 func _default() -> Dictionary:
 	var trophies := {}
@@ -44,6 +67,9 @@ func _default() -> Dictionary:
 		"road_claimed": [],
 		"rank_claimed": ranks,
 		"skins_owned": [],
+		"gems": 30,
+		"drops": [],
+		"shop": {"day": "", "bought": []},
 		"skin_selected": skins,
 		"settings": {
 			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "normal",
@@ -54,17 +80,25 @@ func _default() -> Dictionary:
 
 func load_game() -> void:
 	data = _default()
-	if FileAccess.file_exists(save_path):
+	var text := _web_read()
+	if text == "" and FileAccess.file_exists(save_path):
 		var f := FileAccess.open(save_path, FileAccess.READ)
 		if f:
-			var parsed = JSON.parse_string(f.get_as_text())
-			if parsed is Dictionary:
-				_merge(data, parsed)
+			text = f.get_as_text()
+	if text != "":
+		var parsed = JSON.parse_string(text)
+		if parsed is Dictionary:
+			_merge(data, parsed)
 	# sanitize: numbers from JSON come back as floats
 	for id in Config.BRAWLER_ORDER:
 		data.brawler_trophies[id] = int(data.brawler_trophies.get(id, 0))
 		data.brawler_levels[id] = clampi(int(data.brawler_levels.get(id, 1)), 1, Config.MAX_LEVEL)
 	data.credits = int(data.credits)
+	data.gems = int(data.get("gems", 0))
+	var dr: Array = []
+	for x in data.get("drops", []):
+		dr.append(int(x))
+	data.drops = dr
 	data.xp = int(data.xp)
 	for k in data.stats.keys():
 		data.stats[k] = int(data.stats[k])
@@ -91,9 +125,12 @@ func _merge(base: Dictionary, incoming: Dictionary) -> void:
 			base[k] = incoming[k]
 
 func save_game() -> void:
+	var text := JSON.stringify(data)
+	_web_write(text)
 	var f := FileAccess.open(save_path, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(data, "\t"))
+		f.store_string(text)
+		f.close()
 	changed.emit()
 
 # ------------------------------------------------------------------ accessors
@@ -118,9 +155,14 @@ func apply_settings() -> void:
 ## FPS limit: 30 / 60 / 90 / 120, or 0 = MAX (no cap, V-Sync off on desktop).
 func apply_fps() -> void:
 	var cap := int(data.settings.get("fps_cap", 60))
+	if OS.has_feature("web"):
+		# Browsers already pace frames to the screen. Godot's own limiter on top of that
+		# drops every other frame (60 -> 30), so only use it for the 30 FPS battery saver.
+		Engine.max_fps = 30 if cap == 30 else 0
+		return
 	Engine.max_fps = cap
-	if DisplayServer.get_name() == "headless" or OS.has_feature("web"):
-		return # browsers always pace frames to the screen's refresh rate
+	if DisplayServer.get_name() == "headless":
+		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED if cap == 0 or cap > 60 else DisplayServer.VSYNC_ENABLED)
 
 ## Phones and browsers default to lighter rendering.
@@ -191,18 +233,7 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 
 	var bt := brawler_trophies(brawler_id)
 	var trophy_delta := 0
-	match result:
-		"win":
-			trophy_delta = 8 if bt < 200 else (7 if bt < 400 else 6)
-		"loss":
-			trophy_delta = 0 if bt < 20 else -(3 if bt < 200 else 4)
-		_:
-			trophy_delta = 0
-	if placement > 0:
-		var table := [10, 8, 7, 6, 4, 2, 0, -1, -2, -3]
-		trophy_delta = table[clampi(placement - 1, 0, 9)]
-		if bt < 20:
-			trophy_delta = max(trophy_delta, 0)
+	trophy_delta = Progression.trophy_change(bt, result, placement)
 	trophy_delta = max(trophy_delta, -bt)
 	var credits: int = {"win": 30, "loss": 12, "draw": 18}[result] + mini(kos, 10) * 2 + (10 if mvp else 0)
 	var xp: int = {"win": 40, "loss": 20, "draw": 28}[result] + kos * 3
@@ -256,6 +287,74 @@ func grant_reward(r: Dictionary) -> void:
 			var key := "%s:%s" % [r.brawler, r.skin]
 			if not key in data.skins_owned:
 				data.skins_owned.append(key)
+			else:
+				data.gems += 25 # duplicate skins turn into gems
+		"gems":
+			data.gems += int(r.amount)
+		"drop":
+			data.drops.append(int(r.get("tier", 0)))
+
+## Opens the next unopened drop (from the pass, road or shop). Returns {} if none.
+func open_next_drop() -> Dictionary:
+	if data.drops.is_empty():
+		return {}
+	var tier: int = data.drops.pop_front()
+	var prize := open_drop(tier)
+	prize["drop_tier"] = tier
+	return prize
+
+func open_drop(tier: int) -> Dictionary:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var prize := Progression.roll_drop(tier, rng, data.skins_owned)
+	grant_reward(prize)
+	save_game()
+	return prize
+
+# ------------------------------------------------------------------ shop
+func today_key() -> String:
+	return Time.get_date_string_from_system()
+
+func _shop_roll() -> void:
+	if data.shop.get("day", "") != today_key():
+		data.shop = {"day": today_key(), "bought": []}
+
+func shop_offers() -> Array:
+	_shop_roll()
+	return Progression.daily_offers(today_key())
+
+func shop_bought(id: String) -> bool:
+	_shop_roll()
+	return id in data.shop.bought
+
+func can_afford(currency: String, cost: int) -> bool:
+	match currency:
+		"free": return true
+		"credits": return int(data.credits) >= cost
+		"gems": return int(data.gems) >= cost
+	return false
+
+func spend(currency: String, cost: int) -> bool:
+	if not can_afford(currency, cost):
+		return false
+	if currency == "credits":
+		data.credits -= cost
+	elif currency == "gems":
+		data.gems -= cost
+	return true
+
+## Buys an offer. once=true offers can only be bought once per day.
+func buy(id: String, reward: Dictionary, currency: String, cost: int, once := true) -> bool:
+	_shop_roll()
+	if once and id in data.shop.bought:
+		return false
+	if not spend(currency, cost):
+		return false
+	if once:
+		data.shop.bought.append(id)
+	grant_reward(reward)
+	save_game()
+	return true
 
 func pass_tier() -> int:
 	return mini(Progression.PASS_TIERS, int(data.pass_tokens) / Progression.TOKENS_PER_TIER)

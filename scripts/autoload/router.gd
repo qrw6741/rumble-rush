@@ -12,6 +12,7 @@ const SCREENS := {
 	"pass": "res://scripts/ui/pass_screen.gd",
 	"road": "res://scripts/ui/road_screen.gd",
 	"events": "res://scripts/ui/events_screen.gd",
+	"shop": "res://scripts/ui/shop_screen.gd",
 }
 
 var root_container: Node

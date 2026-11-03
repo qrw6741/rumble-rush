@@ -63,6 +63,7 @@ func _claim(t: RewardTile) -> void:
 		Sfx.play("gem_pickup", 0.0, 0.0)
 		FX.burst(self, t.global_position + t.size * 0.5, Color("ffd23a"), 24, 380.0, 0.7, 7.0)
 		_refresh()
+		_maybe_open_drops()
 	else:
 		Sfx.play("ui_error")
 
@@ -107,3 +108,8 @@ class RoadTrack extends Control:
 		var m := Vector2(fill_x, y)
 		draw_colored_polygon(PackedVector2Array([m + Vector2(-14, -48), m + Vector2(14, -48), m + Vector2(0, -24)]), UIKit.DARK)
 		draw_colored_polygon(PackedVector2Array([m + Vector2(-9, -45), m + Vector2(9, -45), m + Vector2(0, -30)]), Color("4dff7a"))
+
+func _maybe_open_drops() -> void:
+	if not Save.data.drops.is_empty():
+		var d := DropOpener.new()
+		add_child(d)

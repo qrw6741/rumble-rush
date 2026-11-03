@@ -81,6 +81,7 @@ func _claim(t: RewardTile) -> void:
 		Sfx.play("gem_pickup", 0.0, 0.0)
 		FX.burst(self, t.global_position + t.size * 0.5, Color("ffd23a"), 24, 380.0, 0.7, 7.0)
 		_refresh()
+		_maybe_open_drops()
 	elif track == "gold" and not Save.data.gold_pass:
 		Sfx.play("ui_error")
 		_info.call("flash_hint", "Unlock the GOLD PASS to claim gold rewards")
@@ -95,6 +96,7 @@ func _claim_all() -> void:
 			FX.burst(self, t.global_position + t.size * 0.5, Color("ffd23a"), 12, 300.0, 0.6, 6.0)
 	Sfx.play("victory" if n > 0 else "ui_error", -4.0, 0.0)
 	_refresh()
+	_maybe_open_drops()
 
 func _refresh_gold_button(b: Button) -> void:
 	if Save.data.gold_pass:
@@ -206,3 +208,8 @@ class PassTrack extends Control:
 			draw_circle(c, 26, UIKit.DARK)
 			draw_circle(c, 21, Color("3ea2ff") if reached else Color("4a5570"))
 			S.text_c(self, str(i + 1), c + Vector2(0, 8), 22, Color.WHITE)
+
+func _maybe_open_drops() -> void:
+	if not Save.data.drops.is_empty():
+		var d := DropOpener.new()
+		add_child(d)

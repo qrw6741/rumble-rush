@@ -241,17 +241,21 @@ func _vex() -> void:
 	part(tail, box(0.14, 0.04, 0.4), acc, Vector3(0, 0, -0.18), Vector3.ZERO, Vector3.ONE, 0.6)
 	part(tail, box(0.11, 0.035, 0.3), acc.lightened(0.15), Vector3(0.06, -0.04, -0.46), Vector3(0, 12, 0), Vector3.ONE, 0.6)
 	extra["tail"] = tail
-	arm_l = arm(-1.0, Vector3(0.32, 0.96, 0), prim, sec, 0.07, 0.34, 0.09)
-	arm_r = arm(1.0, Vector3(0.32, 0.96, 0), prim, sec, 0.07, 0.34, 0.09)
+	arm_l = arm(-1.0, Vector3(0.32, 0.96, 0), prim, Color("2b1f3d"), 0.07, 0.34, 0.095)
+	arm_r = arm(1.0, Vector3(0.32, 0.96, 0), prim, Color("2b1f3d"), 0.07, 0.34, 0.095)
 	# hooded head with glowing eyes and face mask
 	head = pivot(body, Vector3(0, 1.36, 0))
 	part(head, sphere(0.4), prim, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 1.05, 1.0))
 	part(head, cyl(0.001, 0.2, 0.46, 20), prim, Vector3(0, 0.3, -0.26), Vector3(-58, 0, 0))
-	part(head, sphere(0.31), sec, Vector3(0, -0.02, 0.15), Vector3.ZERO, Vector3(1.0, 0.92, 0.78))
-	part(head, sphere(0.27), prim.darkened(0.2), Vector3(0, -0.15, 0.2), Vector3.ZERO, Vector3(1.05, 0.55, 0.8))
+	# face opening: skin around the eyes, dark cloth mask over nose and mouth
+	var skin: Color = d.skin
+	head.set_meta("skin", skin)
+	part(head, sphere(0.3), sec, Vector3(0, -0.02, 0.2), Vector3.ZERO, Vector3(1.05, 0.95, 0.8))
+	part(head, sphere(0.27), skin, Vector3(0, 0.05, 0.22), Vector3.ZERO, Vector3(1.12, 0.62, 0.8))
+	part(head, sphere(0.27), sec.lightened(0.12), Vector3(0, -0.12, 0.25), Vector3.ZERO, Vector3(1.05, 0.55, 0.78))
 	for sx in [-1.0, 1.0]:
-		part(head, sphere(0.07), acc, Vector3(0.11 * sx, 0.04, 0.36), Vector3(0, 0, -18 * sx), Vector3(1.5, 0.62, 0.5), 2.8)
-		part(head, sphere(0.03), Color.WHITE, Vector3(0.09 * sx, 0.055, 0.395), Vector3.ZERO, Vector3.ONE, 2.0)
+		eye(head, Vector3(0.105 * sx, 0.06, 0.4), 0.07, Color("1f8f80"), 0.15)
+		brow(head, Vector3(0.11 * sx, 0.16, 0.42), 0.11, -20 * sx, sec, 0.026)
 	part(head, torus(0.37, 0.43), prim.darkened(0.12), Vector3(0, 0.0, 0.08), Vector3(80, 0, 0), Vector3(1.0, 1.0, 1.05))
 	# twin energy blades (curved, glowing)
 	weapon = pivot(arm_r, Vector3(0, -0.34, 0))
@@ -510,6 +514,8 @@ func _merge_parts() -> void:
 
 # ------------------------------------------------------------------ animation
 ## state: t, moving, recoil (1 -> 0), yaw (radians, 0 = facing camera), instant
+var _move_blend := 0.0
+
 func animate(delta: float, state: Dictionary) -> void:
 	_t = state.get("t", _t + delta)
 	var moving: bool = state.get("moving", false)
@@ -521,16 +527,32 @@ func animate(delta: float, state: Dictionary) -> void:
 		_yaw = lerp_angle(_yaw, target_yaw, clampf(delta * 16.0, 0.0, 1.0))
 	rotation.y = _yaw
 
-	var walk := sin(_t * 12.0)
-	var swing := walk * 0.7 if moving else 0.0
+	# chunky, bouncy cartoon run: big leg swing, a hop on every step with
+	# squash on landing and stretch in the air, forward lean, lagging head.
+	var walk := sin(_t * 13.0)
+	var hop := absf(walk)
+	var swing := walk * 0.85 if moving else 0.0
+	_move_blend = move_toward(_move_blend, 1.0 if moving else 0.0, delta * 8.0)
+	var mb := _move_blend
 	leg_l.rotation.x = swing
 	leg_r.rotation.x = -swing
-	body.position.y = absf(walk) * 0.06 if moving else sin(_t * 2.6) * 0.012
-	body.rotation.z = walk * 0.04 if moving else 0.0
-	body.rotation.x = 0.08 if moving else 0.0
-	arm_l.rotation.x = -swing * 0.8
-	arm_l.rotation.z = -0.15
-	head.rotation.z = sin(_t * 1.7) * 0.04
+	var breathe := sin(_t * 2.6)
+	body.position.y = lerpf(breathe * 0.012, hop * 0.11, mb)
+	var stretch := lerpf(breathe * 0.02, (hop - 0.5) * 0.12, mb)
+	body.scale = Vector3(1.0 - stretch * 0.5, 1.0 + stretch, 1.0 - stretch * 0.5)
+	body.rotation.z = walk * 0.07 * mb
+	body.rotation.x = 0.16 * mb
+	body.rotation.y = walk * 0.08 * mb
+	arm_l.rotation.x = -swing * 0.9
+	arm_l.rotation.z = -0.18 - hop * 0.15 * mb
+	head.rotation.z = sin(_t * 1.7) * 0.05 * (1.0 - mb) - walk * 0.05 * mb
+	head.rotation.x = -0.08 * mb + cos(_t * 13.0) * 0.04 * mb
+	# attack lunge: whole body jolts forward and squashes a little
+	if recoil > 0.0:
+		body.position.z = recoil * 0.12
+		body.scale *= Vector3(1.0 + recoil * 0.06, 1.0 - recoil * 0.06, 1.0 + recoil * 0.06)
+	else:
+		body.position.z = 0.0
 
 	# weapon arm: raised to aim forward, with per-brawler recoil
 	match id:

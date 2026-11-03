@@ -155,6 +155,17 @@ func _build_top_bar() -> void:
 		SlantButton.coin(ci, Vector2(34, 29), 20.0)
 		SlantButton.text_l(ci, str(Save.data.credits), Vector2(66, 41), 30, Color.WHITE)
 	add_child(credits)
+	var gems := SlantButton.new()
+	gems.color = Color(0, 0, 0, 0.7)
+	gems.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	gems.position = Vector2(-520, 14)
+	gems.size = Vector2(180, 58)
+	gems.custom_draw = func(ci: Control):
+		UIKit.draw_icon(ci, "gem", Vector2(34, 29), 46.0)
+		SlantButton.text_l(ci, str(Save.data.gems), Vector2(62, 41), 30, Color.WHITE)
+	gems.name = "Gems"
+	gems.pressed.connect(func(): Router.goto("shop"))
+	add_child(gems)
 	var menu := SlantButton.new()
 	menu.color = Color("27334d")
 	menu.set_anchors_preset(Control.PRESET_TOP_RIGHT)
@@ -169,6 +180,7 @@ func _build_top_bar() -> void:
 # ------------------------------------------------------------------ left
 func _build_left_buttons() -> void:
 	var items := [
+		["SHOP", "shop", func(): Router.goto("shop")],
 		["BRAWLERS", "brawlers", func(): Router.goto("select")],
 		["PROFILE", "profile", func(): Router.goto("profile")],
 		["GUIDE", "guide", _open_how_to],
@@ -178,18 +190,21 @@ func _build_left_buttons() -> void:
 		var b := SlantButton.new()
 		b.color = Color("27334d")
 		b.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-		b.position = Vector2(22, -120 + i * 118)
-		b.size = Vector2(160, 104)
+		b.position = Vector2(22, -196 + i * 100)
+		b.size = Vector2(150, 90)
 		var icon_kind: String = it[1]
 		var label: String = it[0]
 		b.custom_draw = func(ci: Control):
-			SlantButton.menu_icon(ci, icon_kind, Vector2(80, 40))
-			SlantButton.text_c(ci, label, Vector2(80, 92), 21, Color.WHITE)
+			SlantButton.menu_icon(ci, icon_kind, Vector2(75, 34) )
+			SlantButton.text_c(ci, label, Vector2(75, 80), 20, Color.WHITE)
 		b.name = label.capitalize()
 		b.pressed.connect(it[2])
 		add_child(b)
 		if icon_kind == "brawlers":
-			_dot(b, Save.ranks_unclaimed_total(), Vector2(136, -10))
+			_dot(b, Save.ranks_unclaimed_total(), Vector2(126, -10))
+		if icon_kind == "shop":
+			var free_gift := 1 if not Save.shop_bought("daily_gift") else 0
+			_dot(b, free_gift + Save.data.drops.size(), Vector2(126, -10))
 
 # ------------------------------------------------------------------ bottom-left Rush Pass panel
 func _build_level_panel() -> void:

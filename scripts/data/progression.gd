@@ -22,32 +22,67 @@ static func pass_reward(tier: int, track: String) -> Dictionary:
 			return {"type": "skin", "brawler": skin_tiers[tier], "skin": "gold"}
 		if tier % 5 == 0:
 			return {"type": "credits", "amount": 150}
+		if tier % 4 == 0:
+			return {"type": "gems", "amount": 15}
+		if tier % 3 == 0:
+			return {"type": "drop", "tier": 1}
 		return {"type": "credits", "amount": 40 + tier * 2}
 	# free track
 	if tier % 10 == 0:
 		return {"type": "skin", "brawler": ["nova", "bront", "mira"][tier / 10 - 1], "skin": "shadow"}
+	if tier % 4 == 0:
+		return {"type": "gems", "amount": 5}
 	if tier % 3 == 0:
-		return {"type": "xp", "amount": 60}
+		return {"type": "drop", "tier": 0}
 	return {"type": "credits", "amount": 20 + tier}
 
 # ------------------------------------------------------------------ Trophy Road
 const ROAD := [
 	{"trophies": 10, "reward": {"type": "credits", "amount": 50}},
-	{"trophies": 25, "reward": {"type": "tokens", "amount": 100}},
+	{"trophies": 25, "reward": {"type": "gems", "amount": 20}},
 	{"trophies": 50, "reward": {"type": "credits", "amount": 100}},
 	{"trophies": 80, "reward": {"type": "skin", "brawler": "sprig", "skin": "shadow"}},
 	{"trophies": 120, "reward": {"type": "credits", "amount": 150}},
-	{"trophies": 160, "reward": {"type": "tokens", "amount": 200}},
+	{"trophies": 160, "reward": {"type": "drop", "tier": 2}},
 	{"trophies": 200, "reward": {"type": "credits", "amount": 200}},
 	{"trophies": 250, "reward": {"type": "skin", "brawler": "vex", "skin": "shadow"}},
 	{"trophies": 300, "reward": {"type": "credits", "amount": 250}},
-	{"trophies": 375, "reward": {"type": "tokens", "amount": 300}},
+	{"trophies": 375, "reward": {"type": "gems", "amount": 40}},
 	{"trophies": 450, "reward": {"type": "credits", "amount": 300}},
 	{"trophies": 550, "reward": {"type": "skin", "brawler": "bront", "skin": "gold"}},
 	{"trophies": 650, "reward": {"type": "credits", "amount": 400}},
-	{"trophies": 800, "reward": {"type": "tokens", "amount": 500}},
+	{"trophies": 800, "reward": {"type": "drop", "tier": 2}},
 	{"trophies": 1000, "reward": {"type": "credits", "amount": 600}},
 ]
+
+# ------------------------------------------------------------------ trophy changes
+## Trophy bands: the more trophies a brawler has, the less a win gives and the
+## more a loss costs. Team modes use [win, loss]; Showdown uses a placement table.
+const TROPHY_BANDS := [
+	# max trophies, win, loss, showdown 1st..10th
+	[49, 8, 0, [10, 8, 7, 6, 4, 2, 2, 1, 0, 0]],
+	[99, 8, -1, [10, 8, 7, 6, 3, 2, 1, 0, -1, -2]],
+	[199, 8, -2, [10, 8, 6, 5, 3, 1, 0, -1, -2, -2]],
+	[299, 8, -3, [10, 8, 6, 5, 3, 1, 0, -2, -2, -3]],
+	[399, 7, -4, [9, 7, 6, 4, 2, 0, -1, -2, -3, -4]],
+	[499, 7, -5, [8, 7, 5, 4, 2, 0, -2, -3, -4, -5]],
+	[599, 6, -6, [7, 6, 5, 3, 1, -1, -2, -3, -5, -6]],
+	[799, 5, -7, [6, 5, 4, 2, 0, -2, -3, -5, -6, -7]],
+	[999999, 4, -8, [5, 4, 3, 1, -1, -3, -4, -6, -7, -8]],
+]
+
+static func trophy_change(trophies: int, result: String, placement := 0) -> int:
+	var band: Array = TROPHY_BANDS[TROPHY_BANDS.size() - 1]
+	for b in TROPHY_BANDS:
+		if trophies <= int(b[0]):
+			band = b
+			break
+	if placement > 0:
+		return int(band[3][clampi(placement - 1, 0, 9)])
+	match result:
+		"win": return int(band[1])
+		"loss": return int(band[2])
+	return 0
 
 # ------------------------------------------------------------------ Brawler ranks
 ## Trophies needed to reach rank i+1 (index 0 = rank 1).
@@ -121,4 +156,78 @@ static func reward_text(r: Dictionary) -> String:
 		"tokens": return "%d PASS TOKENS" % r.amount
 		"xp": return "%d XP" % r.amount
 		"skin": return "%s %s" % [SKINS[r.skin].name, Config.BRAWLERS[r.brawler].name]
+		"gems": return "%d GEMS" % r.amount
+		"drop": return "%s DROP" % DROP_TIERS[int(r.get("tier", 0))].name
 	return ""
+
+# ------------------------------------------------------------------ Rush Drops
+## Reward pods. Opening one rolls a rarity, then a prize from that rarity.
+const DROP_TIERS := [
+	{"name": "RUSH", "color": Color("8e4dff")},
+	{"name": "SUPER", "color": Color("2a8cff")},
+	{"name": "MEGA", "color": Color("ff4d5e")},
+]
+const RARITIES := [
+	{"name": "COMMON", "color": Color("8fd3ff")},
+	{"name": "RARE", "color": Color("4fd36a")},
+	{"name": "EPIC", "color": Color("c25bff")},
+	{"name": "MYTHIC", "color": Color("ff4d5e")},
+	{"name": "LEGENDARY", "color": Color("ffd23a")},
+]
+## Chance weights per drop tier for COMMON..LEGENDARY.
+const DROP_WEIGHTS := [
+	[50, 28, 14, 6, 2],
+	[0, 45, 32, 16, 7],
+	[0, 0, 45, 35, 20],
+]
+
+static func roll_drop(tier: int, rng: RandomNumberGenerator, owned_skins: Array) -> Dictionary:
+	var w: Array = DROP_WEIGHTS[clampi(tier, 0, 2)]
+	var total := 0
+	for x in w:
+		total += int(x)
+	var pick := rng.randi_range(1, total)
+	var rarity := 0
+	for i in w.size():
+		pick -= int(w[i])
+		if pick <= 0:
+			rarity = i
+			break
+	var prize := {}
+	match rarity:
+		0: prize = [{"type": "credits", "amount": 40}, {"type": "tokens", "amount": 40}][rng.randi() % 2]
+		1: prize = [{"type": "credits", "amount": 90}, {"type": "tokens", "amount": 90}, {"type": "gems", "amount": 3}][rng.randi() % 3]
+		2: prize = [{"type": "credits", "amount": 200}, {"type": "gems", "amount": 8}][rng.randi() % 2]
+		3: prize = [{"type": "credits", "amount": 450}, {"type": "gems", "amount": 20}][rng.randi() % 2]
+		4:
+			var free_skins: Array = []
+			for id in Config.BRAWLER_ORDER:
+				for sk in SKINS.keys():
+					if not ("%s:%s" % [id, sk]) in owned_skins:
+						free_skins.append({"type": "skin", "brawler": id, "skin": sk})
+			prize = free_skins[rng.randi() % free_skins.size()] if not free_skins.is_empty() else {"type": "gems", "amount": 60}
+	prize["rarity"] = rarity
+	return prize
+
+# ------------------------------------------------------------------ Shop
+const DROP_PRICES := [{"currency": "credits", "cost": 120}, {"currency": "gems", "cost": 12}, {"currency": "gems", "cost": 35}]
+const SKIN_PRICE := {"gold": 79, "shadow": 49} # gems
+const GEM_TO_CREDITS := [
+	{"id": "cr_s", "credits": 250, "gems": 20},
+	{"id": "cr_m", "credits": 700, "gems": 50},
+	{"id": "cr_l", "credits": 1600, "gems": 100},
+]
+
+## Today's rotating offers (same for the whole day). Every offer has an id, an
+## item reward, a currency and a cost (cost 0 = free gift).
+static func daily_offers(day_key: String) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(day_key)
+	var offers: Array = [{"id": "daily_gift", "title": "DAILY GIFT", "reward": [{"type": "drop", "tier": 0}, {"type": "credits", "amount": 60}, {"type": "gems", "amount": 3}][rng.randi() % 3], "currency": "free", "cost": 0}]
+	offers.append({"id": "deal_drop", "title": "SUPER DEAL", "reward": {"type": "drop", "tier": 1}, "currency": "credits", "cost": 220 + rng.randi_range(0, 4) * 20, "tag": "-30%"})
+	offers.append({"id": "deal_tokens", "title": "PASS BOOST", "reward": {"type": "tokens", "amount": 200}, "currency": "credits", "cost": 150})
+	var ids: Array = Config.BRAWLER_ORDER.duplicate()
+	var sk_id: String = ids[rng.randi() % ids.size()]
+	var sk: String = ["gold", "shadow"][rng.randi() % 2]
+	offers.append({"id": "deal_skin_%s_%s" % [sk_id, sk], "title": "FEATURED SKIN", "reward": {"type": "skin", "brawler": sk_id, "skin": sk}, "currency": "gems", "cost": int(SKIN_PRICE[sk] * 0.7), "tag": "-30%"})
+	return offers

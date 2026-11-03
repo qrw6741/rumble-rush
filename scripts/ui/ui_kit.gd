@@ -224,7 +224,7 @@ class IconDraw extends Control:
 			queue_redraw()
 
 	func _draw() -> void:
-		var names := {"trophy": "trophy", "coin": "coin", "gem": "crystal", "star": "star", "xp": "xp", "token": "token"}
+		var names := {"trophy": "trophy", "coin": "coin", "gem": "crystal", "gems": "gem", "star": "star", "xp": "xp", "token": "token"}
 		UIKit.draw_icon(self, names.get(kind, kind), size * 0.5, min(size.x, size.y) * 1.15)
 
 
