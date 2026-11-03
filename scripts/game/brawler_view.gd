@@ -11,6 +11,7 @@ var camera: Camera3D
 var kind := "battle"
 var animated := true
 var feet_px := Vector2.ZERO    # where the model's feet land in this texture
+var px_scale := 1.0            # actual texture size / requested size (lower on low graphics)
 var state := {"t": 0.0, "moving": false, "recoil": 0.0, "yaw": 0.0}
 var _t := 0.0
 
@@ -18,10 +19,16 @@ static func create(brawler_id: String, view_kind: String, px: int, live := true,
 	var v := BrawlerView.new()
 	v.kind = view_kind
 	v.animated = live
-	v.size = Vector2i(px, px)
+	var low := Save.low_graphics()
+	v.px_scale = 0.62 if low else 1.0
+	var real_px := maxi(64, int(px * v.px_scale))
+	v.size = Vector2i(real_px, real_px)
 	v.transparent_bg = true
 	v.own_world_3d = true
-	v.msaa_3d = Viewport.MSAA_2X if view_kind == "battle" else Viewport.MSAA_4X
+	if low:
+		v.msaa_3d = Viewport.MSAA_DISABLED if view_kind == "battle" else Viewport.MSAA_2X
+	else:
+		v.msaa_3d = Viewport.MSAA_2X if view_kind == "battle" else Viewport.MSAA_4X
 	v.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	v._build(brawler_id, skin)
 	return v

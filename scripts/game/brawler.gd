@@ -117,7 +117,7 @@ func _ready() -> void:
 	sprite = Sprite2D.new()
 	sprite.texture = view.get_texture()
 	sprite.centered = false
-	sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
+	sprite.scale = Vector2.ONE * SPRITE_SCALE / view.px_scale
 	var sm := ShaderMaterial.new()
 	sm.shader = FLASH_SHADER
 	sprite.material = sm
@@ -199,7 +199,7 @@ func _update_sprite(delta: float) -> void:
 	if view.render_target_update_mode != want:
 		view.render_target_update_mode = want
 	view.pose(delta, _moving, recoil, BrawlerView.yaw_from_aim(aim_dir))
-	sprite.position = -view.feet_px * SPRITE_SCALE + Vector2(0, -air_h + 4.0)
+	sprite.position = -view.feet_px * sprite.scale.x + Vector2(0, -air_h + 4.0)
 	var alpha := 1.0
 	var viewer_team: int = game.view_team
 	if team == viewer_team and (in_bush() or invis_t > 0.0):

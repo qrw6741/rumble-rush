@@ -48,7 +48,7 @@ func _default() -> Dictionary:
 		"settings": {
 			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "normal",
 			"touch_controls": "auto", "screen_shake": true, "damage_numbers": true,
-			"aim_assist": true, "fullscreen": false, "show_fps": false,
+			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto",
 		},
 	}
 
@@ -113,6 +113,15 @@ func apply_settings() -> void:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if want_fs else DisplayServer.WINDOW_MODE_WINDOWED)
 	if is_instance_valid(Sfx) and Sfx.is_node_ready():
 		Sfx.apply_volumes()
+
+## Phones and browsers default to lighter rendering.
+func low_graphics() -> bool:
+	var g: String = data.settings.get("graphics", "auto")
+	if g == "low":
+		return true
+	if g == "high":
+		return false
+	return OS.has_feature("web") or OS.has_feature("mobile")
 
 func total_trophies() -> int:
 	var t := 0
