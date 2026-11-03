@@ -269,40 +269,51 @@ class MenuBackground extends Control:
 			draw_circle(Vector2(px, py), s[3], Color(1, 0.85, 0.5, a))
 
 
-## Draws a brawler (idle animation) inside a UI control.
+## Shows a brawler's 3D model inside a UI control, on an optional round backdrop.
+## Big portraits idle-animate; small ones render once to stay cheap.
 class BrawlerPortrait extends Control:
 	var brawler_id := "bront"
-	var art_scale := 2.0
+	var art_scale := 2.0   # >= 2 means "big": animated
 	var backdrop := true
 	var team_col := Color("3ea2ff")
 	var locked := false
 	var _t := 0.0
-	var _blink := 2.0
+	var _view: BrawlerView
+	var _rect: TextureRect
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var want: Vector2 = custom_minimum_size if custom_minimum_size != Vector2.ZERO else size
+		var px := int(clampf(max(want.x, want.y) * 1.6, 128.0, 640.0))
+		_view = BrawlerView.create(brawler_id, "portrait", px, art_scale >= 2.0)
+		add_child(_view)
+		_rect = TextureRect.new()
+		_rect.texture = _view.get_texture()
+		_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if locked:
+			_rect.modulate = Color(0.2, 0.2, 0.25, 0.8)
+		add_child(_rect)
 
 	func _process(delta: float) -> void:
 		_t += delta
-		_blink -= delta
-		if _blink < -0.12:
-			_blink = randf_range(2.0, 4.0)
-		queue_redraw()
+		if backdrop:
+			queue_redraw()
 
 	func _draw() -> void:
+		if not backdrop:
+			return
 		var d: Dictionary = Config.BRAWLERS[brawler_id]
 		var c := Vector2(size.x * 0.5, size.y * 0.5)
-		if backdrop:
-			var r: float = min(size.x, size.y) * 0.46
-			var p: Color = d.primary
-			draw_circle(c, r + 4, UIKit.DARK)
-			draw_circle(c, r, p.darkened(0.55))
-			draw_circle(c + Vector2(0, -r * 0.15), r * 0.82, p.darkened(0.35))
-			for i in 12:
-				var a := i * TAU / 12.0 + _t * 0.2
-				var col := p
-				col.a = 0.12
-				draw_colored_polygon(PackedVector2Array([c, c + Vector2(cos(a), sin(a)) * r, c + Vector2(cos(a + 0.2), sin(a + 0.2)) * r]), col)
-		var feet := c + Vector2(0, art_scale * 30.0)
-		var aim := Vector2(cos(_t * 0.7) * 0.4 + 0.8, sin(_t * 0.9) * 0.3).normalized()
-		BrawlerArt.draw(self, brawler_id, feet, art_scale, {"t": _t, "moving": false, "aim": aim, "blink": _blink < 0.0, "alpha": 0.35 if locked else 1.0})
+		var r: float = min(size.x, size.y) * 0.46
+		var p: Color = d.primary
+		draw_circle(c, r + 4, UIKit.DARK)
+		draw_circle(c, r, p.darkened(0.55))
+		draw_circle(c + Vector2(0, -r * 0.15), r * 0.82, p.darkened(0.35))
+		for i in 12:
+			var a := i * TAU / 12.0 + _t * 0.2
+			var col := p
+			col.a = 0.12
+			draw_colored_polygon(PackedVector2Array([c, c + Vector2(cos(a), sin(a)) * r, c + Vector2(cos(a + 0.2), sin(a + 0.2)) * r]), col)

@@ -11,10 +11,7 @@ var _credits_chip: PanelContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
-	var bg := UIKit.MenuBackground.new()
-	bg.top = Color("1f3a7a")
-	bg.bottom = Color("0d1230")
-	add_child(bg)
+	add_child(preload("res://scripts/ui/main_menu.gd").LobbyBackground.new())
 	_focus = Save.data.selected_brawler
 
 	var top := HBoxContainer.new()

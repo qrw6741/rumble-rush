@@ -4,7 +4,7 @@ extends CharacterBody2D
 ## status effects and movement. A controller (player input or bot brain) feeds it
 ## move/aim intentions; abilities live in Abilities.
 
-const BODY_OFFSET := Vector2(0, -24) # visual centre of the body above the feet
+const BODY_OFFSET := Vector2(0, -32) # visual centre of the body above the feet
 
 var id := ""
 var d: Dictionary
@@ -71,6 +71,11 @@ var blink_t := 2.0
 var _moving := false
 var _ghost_t := 0.0
 var overhead: Node2D
+var view: BrawlerView
+var sprite: Sprite2D
+const VIEW_PX := 256
+const SPRITE_SCALE := 0.6
+const FLASH_SHADER := preload("res://assets/shaders/sprite_flash.gdshader")
 
 var stats := {"kos": 0, "deaths": 0, "damage": 0, "healing": 0, "gems": 0}
 
@@ -105,6 +110,21 @@ func _ready() -> void:
 	shape.radius = radius * 0.72
 	cs.shape = shape
 	add_child(cs)
+	# 3D model rendered into a texture and shown as a sprite
+	view = BrawlerView.create(id, "battle", VIEW_PX)
+	add_child(view)
+	sprite = Sprite2D.new()
+	sprite.texture = view.get_texture()
+	sprite.centered = false
+	sprite.scale = Vector2(SPRITE_SCALE, SPRITE_SCALE)
+	var sm := ShaderMaterial.new()
+	sm.shader = FLASH_SHADER
+	sprite.material = sm
+	add_child(sprite)
+	_update_sprite(0.0)
+	var status := BrawlerStatus.new()
+	status.b = self
+	add_child(status)
 	overhead = BrawlerOverhead.new()
 	overhead.b = self
 	add_child(overhead)
@@ -167,7 +187,27 @@ func _physics_process(delta: float) -> void:
 	_moving = velocity.length() > 30.0 and leap_t <= 0.0
 	if game.ended:
 		move_input = Vector2.ZERO
+	_update_sprite(delta)
 	queue_redraw()
+
+func _update_sprite(delta: float) -> void:
+	if view == null:
+		return
+	# only spend GPU time on brawlers that can actually be seen
+	var want := SubViewport.UPDATE_ALWAYS if (alive and is_visible_in_tree()) else SubViewport.UPDATE_DISABLED
+	if view.render_target_update_mode != want:
+		view.render_target_update_mode = want
+	view.pose(delta, _moving, recoil, BrawlerView.yaw_from_aim(aim_dir))
+	sprite.position = -view.feet_px * SPRITE_SCALE + Vector2(0, -air_h + 4.0)
+	var alpha := 1.0
+	var viewer_team: int = game.view_team
+	if team == viewer_team and (in_bush() or invis_t > 0.0):
+		alpha = 0.5
+	if protect_t > 0.0:
+		alpha *= 0.55 + 0.35 * sin(anim_t * 20.0)
+	var m := sprite.material as ShaderMaterial
+	m.set_shader_parameter("flash", flash)
+	m.set_shader_parameter("alpha", alpha)
 
 func _update_leap(delta: float) -> void:
 	leap_t -= delta
@@ -192,7 +232,7 @@ func _update_dash(delta: float) -> void:
 	Abilities.dash_hits(self, before, global_position)
 	_ghost_t -= delta
 	if _ghost_t <= 0.0:
-		_ghost_t = 0.03
+		_ghost_t = 0.055
 		Ghost.spawn(game.fx_layer, self)
 	if get_slide_collision_count() > 0 and dash_t > 0.02:
 		dash_t = 0.0
@@ -392,35 +432,9 @@ func _draw() -> void:
 			draw_arc(Vector2.ZERO, 33, a0 + i * TAU / 3.0, a0 + i * TAU / 3.0 + 0.6, 6, Color(1, 1, 1, 0.8 * alpha), 3.0, true)
 	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	# leap shadow stays on ground, character goes up
-	var anim := {
-		"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
-		"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0,
-	}
-	if beam_charge_t > 0.0:
-		var k := 1.0 - beam_charge_t / float(d.super.charge)
-		BrawlerArt.glow(self, BODY_OFFSET + aim_dir * 34.0, 10.0 + k * 26.0, Color(d.primary.r, d.primary.g, d.primary.b, 0.9))
-	BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.0, anim)
-	# status effects
-	if shield_t > 0.0:
-		var sc := Color("c9d0de")
-		sc.a = 0.35 + 0.15 * sin(anim_t * 10.0)
-		draw_circle(BODY_OFFSET, 38, Color(sc.r, sc.g, sc.b, sc.a * 0.4))
-		draw_arc(BODY_OFFSET, 38, 0, TAU, 6, Color(1, 1, 1, 0.8), 3.0, true)
-	if stun_t > 0.0:
-		for i in 3:
-			var a := anim_t * 6.0 + i * TAU / 3.0
-			var p := Vector2(0, -74 - air_h) + Vector2(cos(a) * 18, sin(a) * 6)
-			_draw_star(p, 6.0, Color("ffe14d"))
-	if root_t > 0.0:
-		for i in 5:
-			var a := i * TAU / 5.0 + 0.3
-			var base := Vector2(cos(a) * 20, sin(a) * 8 + 2)
-			draw_line(base, base + Vector2(cos(a) * 4, -18 - sin(anim_t * 5 + i) * 3), Color("2f7a35"), 5.0, true)
-			draw_circle(base + Vector2(cos(a) * 4, -18), 4, Color("5fd35a"))
-	if slow_t > 0.0:
-		for i in 3:
-			var p := Vector2(-14 + i * 14, -10 + fmod(anim_t * 40.0 + i * 9, 20.0))
-			draw_circle(p, 3, Color(0.6, 0.3, 0.8, 0.7))
+	# ground shadow (the 3D model itself is a child sprite drawn on top)
+	var sh := 1.0 - clampf(air_h / 160.0, 0.0, 0.6)
+	_draw_ellipse(Vector2(0, 2), 24.0 * sh, 9.0 * sh, Color(0, 0, 0, 0.3 * alpha))
 
 func _draw_ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
 	var pts := PackedVector2Array()
@@ -438,6 +452,52 @@ func _draw_star(c: Vector2, r: float, col: Color) -> void:
 	draw_colored_polygon(pts, col)
 	pts.append(pts[0])
 	draw_polyline(pts, Color("1a1028"), 1.5, true)
+
+
+## Status effects (shield, stun, root, slow, super charge glow) drawn over the model.
+class BrawlerStatus extends Node2D:
+	var b: Brawler
+
+	func _process(_delta: float) -> void:
+		queue_redraw()
+
+	func _draw() -> void:
+		if b == null or not b.alive:
+			return
+		if b.beam_charge_t > 0.0:
+			var k := 1.0 - b.beam_charge_t / float(b.d.super.charge)
+			BrawlerArt.glow(self, Brawler.BODY_OFFSET + b.aim_dir * 34.0, 10.0 + k * 26.0, Color(b.d.primary.r, b.d.primary.g, b.d.primary.b, 0.9))
+		# status effects
+		if b.shield_t > 0.0:
+			var sc := Color("c9d0de")
+			sc.a = 0.35 + 0.15 * sin(b.anim_t * 10.0)
+			draw_circle(Brawler.BODY_OFFSET, 38, Color(sc.r, sc.g, sc.b, sc.a * 0.4))
+			draw_arc(Brawler.BODY_OFFSET, 38, 0, TAU, 6, Color(1, 1, 1, 0.8), 3.0, true)
+		if b.stun_t > 0.0:
+			for i in 3:
+				var a := b.anim_t * 6.0 + i * TAU / 3.0
+				var p := Vector2(0, -74 - b.air_h) + Vector2(cos(a) * 18, sin(a) * 6)
+				_star(p, 6.0, Color("ffe14d"))
+		if b.root_t > 0.0:
+			for i in 5:
+				var a := i * TAU / 5.0 + 0.3
+				var base := Vector2(cos(a) * 20, sin(a) * 8 + 2)
+				draw_line(base, base + Vector2(cos(a) * 4, -18 - sin(b.anim_t * 5 + i) * 3), Color("2f7a35"), 5.0, true)
+				draw_circle(base + Vector2(cos(a) * 4, -18), 4, Color("5fd35a"))
+		if b.slow_t > 0.0:
+			for i in 3:
+				var p := Vector2(-14 + i * 14, -10 + fmod(b.anim_t * 40.0 + i * 9, 20.0))
+				draw_circle(p, 3, Color(0.6, 0.3, 0.8, 0.7))
+
+	func _star(c: Vector2, r: float, col: Color) -> void:
+		var pts := PackedVector2Array()
+		for i in 10:
+			var rr := r if i % 2 == 0 else r * 0.45
+			var a := -PI / 2 + i * PI / 5
+			pts.append(c + Vector2(cos(a), sin(a)) * rr)
+		draw_colored_polygon(pts, col)
+		pts.append(pts[0])
+		draw_polyline(pts, Color("1a1028"), 1.5, true)
 
 
 ## Health bar, name and ammo drawn above everything else.

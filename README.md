@@ -70,7 +70,8 @@ Bots find paths with A\*, only see what a player on their team could see (no see
 Trophies per brawler and in total, credits, XP and account level, power-level upgrades (1–7, +6% health and damage per level, with a confirmation step), lifetime stats, Star Player, the last 25 matches, and settings. Each match's rewards can only be granted once.
 
 ### Polish
-Vector-drawn cartoon characters with walk, idle, blink, recoil and hit-flash animation. Particles, shockwaves, dash after-images, damage numbers, screen shake, aim previews for every attack and super, slow-motion victory, synthesized sound effects plus menu and battle music loops, physics interpolation for smooth motion on high-refresh screens, and menus with animated backgrounds.
+**3D toon brawlers.** Each character is a real 3D model built in-engine, with cel shading and inked outlines. Each has a walk cycle, idle breathing, aiming, weapon recoil and signature swings. In battle they're rendered from an angled arena camera; in menus they're shown close-up (drag your brawler in the lobby to spin them).
+The lobby is laid out in the classic arena-game style: profile and trophy bar along the top, BRAWLERS / PROFILE / GUIDE on the left, the level road bottom-left, the mode panel bottom-centre and a big PLAY button. It has no friends, club or chat features. Particles, shockwaves, dash after-images, damage numbers, screen shake, aim previews for every attack and super, slow-motion victory, synthesized sound effects plus menu and battle music loops, physics interpolation for smooth motion on high-refresh screens, and menus with animated backgrounds.
 
 ---
 

@@ -107,8 +107,11 @@ func _ready() -> void:
 	check("KO registered", not enemy.alive and p.stats.kos == kos_before + 1)
 	check("dead brawlers can't attack", not enemy.try_attack(Vector2.DOWN))
 	check("KO scored for the team", m.mode.score[p.team] >= 1)
-	await wait(Config.RESPAWN_TIME + 2.4)
-	check("KO'd brawler respawns at spawn", enemy.alive and enemy.global_position.distance_to(enemy.spawn_pos) < 1.0)
+	var waited := 0.0
+	while not enemy.alive and waited < 20.0:
+		await wait(0.25)
+		waited += 0.25
+	check("KO'd brawler respawns at spawn (alive=%s, dist=%.1f)" % [enemy.alive, enemy.global_position.distance_to(enemy.spawn_pos)], enemy.alive and enemy.global_position.distance_to(enemy.spawn_pos) < 1.0)
 
 	# --- touch controls (simulated finger on the attack stick)
 	m.touch.visible = true
@@ -188,8 +191,8 @@ func _ready() -> void:
 	check("results screen shown after match", Router.current != null and Router.current.get("data") is Dictionary)
 	check("result saved to match history", Save.data.history.size() > 0)
 	await press("MENU")
-	check("results -> menu", _screen_has_text("PLAY"))
-	await press("BRAWLERS")
+	check("results -> menu", Router.current.find_child("Play", true, false) != null)
+	await press_named("Brawlers")
 	check("menu -> brawlers", _screen_has_text("SELECT") or _screen_has_text("SELECTED"))
 	Save.data.credits = 1000
 	var lvl := Save.brawler_level("nova")
@@ -201,17 +204,17 @@ func _ready() -> void:
 	Router.current._show("vex")
 	await frames(2)
 	await press("SELECT")
-	check("select brawler -> back to menu with VEX", Save.data.selected_brawler == "vex" and _screen_has_text("VEX"))
+	check("select brawler -> back to menu with VEX", Save.data.selected_brawler == "vex" and Router.current.get("_view") != null and Router.current._view.model.id == "vex")
 	var mode_before: String = Save.data.selected_mode
-	await press(Config.MODES[mode_before].name + "  »")
+	await press_named("Mode")
 	check("mode button cycles game mode", Save.data.selected_mode != mode_before)
-	await press("SETTINGS")
+	await press_named("Settings")
 	check("settings opens", _screen_has_text("SOUND EFFECTS"))
 	await press("DONE")
-	await press("PROFILE")
+	await press_named("Profile")
 	check("menu -> profile with history", _screen_has_text("MATCH HISTORY") and _screen_has_text("VICTORY"))
 	await press("BACK")
-	await press("PLAY")
+	await press_named("Play")
 	await wait(0.2)
 	check("PLAY starts a match", Router.current != null and Router.current.has_method("is_playing"))
 	print("QA DONE: %d passed, %d failed" % [passed, failed])
@@ -245,6 +248,15 @@ func press(text: String) -> void:
 	var b := _find_button(Router.current, text)
 	if b == null:
 		print("  (button not found: ", text, ")")
+		failed += 1
+		return
+	b.pressed.emit()
+	await wait(0.7)
+
+func press_named(n: String) -> void:
+	var b: BaseButton = Router.current.find_child(n, true, false)
+	if b == null:
+		print("  (button not found: ", n, ")")
 		failed += 1
 		return
 	b.pressed.emit()

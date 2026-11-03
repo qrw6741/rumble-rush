@@ -8,6 +8,7 @@ const SCREENS := {
 	"match": "res://scripts/game/match.gd",
 	"results": "res://scripts/ui/results_screen.gd",
 	"profile": "res://scripts/ui/profile_screen.gd",
+	"gallery": "res://tests/gallery.gd",
 }
 
 var root_container: Node

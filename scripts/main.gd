@@ -6,6 +6,9 @@ func _ready() -> void:
 	randomize()
 	# Command line: `-- --autotest` runs an automated bot-vs-bot match (used for QA).
 	var args := OS.get_cmdline_user_args()
+	if "--gallery" in args:
+		add_child(load("res://tests/gallery.gd").new())
+		return
 	if "--qa" in args:
 		add_child(load("res://tests/qa_runner.gd").new())
 		return

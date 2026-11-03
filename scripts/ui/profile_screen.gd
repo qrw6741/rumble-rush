@@ -5,10 +5,7 @@ extends Control
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
-	var bg := UIKit.MenuBackground.new()
-	bg.top = Color("2a1d6a")
-	bg.bottom = Color("0f0a26")
-	add_child(bg)
+	add_child(preload("res://scripts/ui/main_menu.gd").LobbyBackground.new())
 
 	var top := HBoxContainer.new()
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
