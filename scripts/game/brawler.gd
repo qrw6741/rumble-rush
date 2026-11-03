@@ -214,9 +214,16 @@ func _update_sprite(delta: float) -> void:
 	if view == null:
 		return
 	# only spend GPU time on brawlers that can actually be seen
-	if not (alive and is_visible_in_tree()):
+	if not (alive and is_visible_in_tree() and _on_screen()):
 		view.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	elif Save.low_graphics():
+		return
+	var crowd: bool = game.brawlers.size() > 6 and not is_player
+	if crowd:
+		# big free-for-all: the player's own brawler renders every frame, others share the load
+		var every := 3 if Save.low_graphics() else 2
+		if (Engine.get_process_frames() + get_instance_id()) % every == 0:
+			view.render_target_update_mode = SubViewport.UPDATE_ONCE
+	elif Save.low_graphics() and not is_player:
 		# phones: each brawler re-renders every other frame (staggered), halving 3D cost
 		if (Engine.get_process_frames() + get_instance_id()) % 2 == 0:
 			view.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -225,6 +232,13 @@ func _update_sprite(delta: float) -> void:
 	view.pose(delta, _moving, recoil, BrawlerView.yaw_from_aim(aim_dir))
 	sprite.position = -view.feet_px * sprite.scale.x + Vector2(0, -air_h + 4.0)
 	_apply_sprite_fx()
+
+func _on_screen() -> bool:
+	var vp := get_viewport()
+	if vp == null:
+		return true
+	var p := get_global_transform_with_canvas().origin
+	return vp.get_visible_rect().grow(140.0).has_point(p)
 
 func _apply_sprite_fx() -> void:
 	var alpha := 1.0

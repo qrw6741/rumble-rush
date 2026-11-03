@@ -19,7 +19,7 @@ var _acc := 0.0
 func _process(delta: float) -> void:
 	_t += delta
 	_acc += delta
-	if not _low or _acc >= 0.05:
+	if _acc >= (0.05 if _low else 0.033):
 		_acc = 0.0
 		queue_redraw()
 
@@ -36,9 +36,15 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(outer.position.x, safe.end.y), Vector2(outer.size.x, outer.end.y - safe.end.y)), tint)
 	draw_rect(Rect2(Vector2(outer.position.x, safe.position.y), Vector2(safe.position.x - outer.position.x, safe.size.y)), tint)
 	draw_rect(Rect2(Vector2(safe.end.x, safe.position.y), Vector2(outer.end.x - safe.end.x, safe.size.y)), tint)
-	# puffy clouds on each poisoned tile
-	for r in range(-2, map.h + 2):
-		for col in range(-2, map.w + 2):
+	# puffy clouds on each poisoned tile — only the ones the camera can see
+	var vis := get_viewport().get_canvas_transform().affine_inverse() * get_viewport_rect()
+	vis = vis.grow(T)
+	var c0 := maxi(-2, int(floor(vis.position.x / T)))
+	var c1 := mini(map.w + 2, int(ceil(vis.end.x / T)))
+	var r0 := maxi(-2, int(floor(vis.position.y / T)))
+	var r1 := mini(map.h + 2, int(ceil(vis.end.y / T)))
+	for r in range(r0, r1):
+		for col in range(c0, c1):
 			var p := Vector2((col + 0.5) * T, (r + 0.5) * T)
 			if safe.has_point(p):
 				continue
