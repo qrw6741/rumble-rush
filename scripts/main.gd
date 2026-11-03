@@ -88,6 +88,12 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			]}
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
+	if "--demo-progress" in args:
+		Save.save_path = "user://demo_save.json"
+		Save.data.pass_tokens = 760
+		Save.data.pass_claimed = {"free": [1, 2, 3], "gold": []}
+		Save.data.brawler_trophies["vex"] = 95
+		Save.data.road_claimed = [0, 1]
 	Router.goto(screen, params, true)
 	if "--demo-aim" in args or "--demo-super" in args:
 		_demo_inputs(args)

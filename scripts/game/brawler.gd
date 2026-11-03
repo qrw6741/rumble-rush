@@ -111,7 +111,7 @@ func _ready() -> void:
 	cs.shape = shape
 	add_child(cs)
 	# 3D model rendered into a texture and shown as a sprite
-	view = BrawlerView.create(id, "battle", VIEW_PX)
+	view = BrawlerView.create(id, "battle", VIEW_PX, true, Save.selected_skin(id) if is_player else "")
 	add_child(view)
 	sprite = Sprite2D.new()
 	sprite.texture = view.get_texture()

@@ -78,6 +78,18 @@ func _ready() -> void:
 	rh.add_child(_reward("trophy", tr, UIKit.YELLOW, true))
 	rh.add_child(_reward("coin", rewards.get("credits", 0), Color("ffe08a"), false))
 	rh.add_child(_reward("xp", rewards.get("xp", 0), Color("8fd0ff"), false))
+	var tok := VBoxContainer.new()
+	tok.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tic := TokenIcon.new()
+	tic.custom_minimum_size = Vector2(56, 56)
+	tic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tok.add_child(tic)
+	tok.add_child(UIKit.label("+%d" % int(rewards.get("tokens", 0)), 30, Color("8fd0ff"), 8, HORIZONTAL_ALIGNMENT_CENTER))
+	rh.add_child(tok)
+	if rewards.get("rank_up", false):
+		var ru := UIKit.label("RANK UP!  %d" % int(rewards.new_rank), 22, Progression.rank_color(int(rewards.new_rank)).lightened(0.3), 6)
+		ru.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		rh.add_child(ru)
 	if rewards.get("level_up", false):
 		var lu := UIKit.label("LEVEL UP!  %d" % rewards.new_level, 22, UIKit.GREEN, 6)
 		lu.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -158,3 +170,8 @@ func _reward(kind: String, amount: int, col: Color, signed: bool) -> Control:
 	tw.tween_method(setter, 0.0, float(amount), 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_callback(func(): if amount != 0: Sfx.play("gem_pickup", -4.0, 0.0))
 	return v
+
+
+class TokenIcon extends Control:
+	func _draw() -> void:
+		RewardTile.draw_icon(self, {"type": "tokens"}, size * 0.5, 24.0)

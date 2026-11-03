@@ -124,6 +124,46 @@ func _show(id: String) -> void:
 	if Save.upgrade_cost(id) >= 0:
 		_detail.add_child(UIKit.body("Each power level adds +%d%% health and damage." % int(Config.UPGRADE_BONUS_PER_LEVEL * 100), 13, Color(1, 1, 1, 0.55)))
 
+	# rank row
+	var rank_row := HBoxContainer.new()
+	rank_row.add_theme_constant_override("separation", 12)
+	_detail.add_child(rank_row)
+	var rb := RankBar.new()
+	rb.brawler_id = id
+	rb.custom_minimum_size = Vector2(300, 64)
+	rank_row.add_child(rb)
+	var pending := Save.rank_unclaimed(id)
+	var rr := UIKit.button("RANK REWARDS", UIKit.YELLOW if pending > 0 else UIKit.PANEL_LIGHT, 17, Vector2(200, 60))
+	rr.name = "RankRewards"
+	rr.pressed.connect(func(): _open_ranks(id))
+	rank_row.add_child(rr)
+	if pending > 0:
+		var dot := RewardTile.Dot.new()
+		dot.count = pending
+		dot.position = Vector2(176, -12)
+		rr.add_child(dot)
+
+	# skins row
+	var skins_row := HBoxContainer.new()
+	skins_row.add_theme_constant_override("separation", 10)
+	_detail.add_child(skins_row)
+	skins_row.add_child(UIKit.label("SKINS", 18, Color.WHITE, 6))
+	for sk in ["", "gold", "shadow"]:
+		var owned: bool = Save.owns_skin(id, sk)
+		var is_sel_skin: bool = Save.selected_skin(id) == sk
+		var nm: String = "DEFAULT" if sk == "" else Progression.SKINS[sk].name
+		var col: Color = Color("2a8cff") if sk == "" else Progression.SKINS[sk].primary.darkened(0.15)
+		var b := UIKit.button(nm if owned else nm + " (LOCKED)", col if owned else Color("4a5570"), 14, Vector2(120 if owned else 150, 44))
+		if is_sel_skin:
+			b.add_theme_stylebox_override("normal", UIKit.box(col, 18, 5, Color("4dff7a")))
+		b.disabled = not owned
+		b.tooltip_text = "" if owned else "Earn it from the Rush Pass or Trophy Road"
+		b.pressed.connect(func():
+			if Save.select_skin(id, sk):
+				Sfx.play("ui_confirm")
+				Router.goto("select"))
+		skins_row.add_child(b)
+
 	_detail.add_child(UIKit.body(d.bio, 15, Color(1, 1, 1, 0.75)))
 
 	# stats
@@ -265,3 +305,100 @@ class BrawlerCard extends Button:
 		Lobby.SlantButton.text_l(self, str(Save.brawler_trophies(brawler_id)), Vector2(w - 48, 34), 20, Color.WHITE)
 		if sel:
 			Lobby.SlantButton.text_c(self, "SELECTED", Vector2(w * 0.5, banner.position.y - 6), 14, Color("4dff7a"))
+
+func _open_ranks(id: String) -> void:
+	var o := Control.new()
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0.03, 0.06, 0.14, 0.85)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(c)
+	var p := UIKit.panel()
+	p.custom_minimum_size = Vector2(1140, 600)
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	var d: Dictionary = Config.BRAWLERS[id]
+	v.add_child(UIKit.label("%s  RANK REWARDS" % d.name, 32, UIKit.YELLOW, 8, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.body("Win matches with %s to earn trophies and climb ranks. Every rank-up gives a reward." % d.name, 15))
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(1090, 430)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.columns = 9
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	scroll.add_child(grid)
+	var tiles: Array = []
+	for r in range(2, Progression.MAX_RANK + 1):
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 2)
+		var hdr := UIKit.label("RANK %d · %d" % [r, Progression.RANK_TROPHIES[r - 1]], 12, Progression.rank_color(r).lightened(0.3), 4, HORIZONTAL_ALIGNMENT_CENTER)
+		cell.add_child(hdr)
+		var t := RewardTile.new()
+		t.reward = Progression.rank_reward(r)
+		t.frame = Progression.rank_color(r).darkened(0.35)
+		t.custom_minimum_size = Vector2(112, 110)
+		t.size = Vector2(112, 110)
+		t.set_meta("rank", r)
+		cell.add_child(t)
+		grid.add_child(cell)
+		tiles.append(t)
+	var refresh := func():
+		for t in tiles:
+			var rk: int = t.get_meta("rank")
+			if rk in Save.data.rank_claimed[id]:
+				t.state = "claimed"
+			elif Save.rank_claimable(id, rk):
+				t.state = "claimable"
+			else:
+				t.state = "locked"
+			t.queue_redraw()
+	for t in tiles:
+		t.pressed.connect(func():
+			if Save.claim_rank(id, t.get_meta("rank")):
+				Sfx.play("gem_pickup", 0.0, 0.0)
+				FX.burst(o, t.global_position + t.size * 0.5, Color("ffd23a"), 20, 340.0, 0.6, 6.0)
+				refresh.call()
+			else:
+				Sfx.play("ui_error"))
+	refresh.call()
+	var close := UIKit.button("DONE", UIKit.GREEN, 22, Vector2(260, 56))
+	close.name = "RanksDone"
+	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close.pressed.connect(func():
+		o.queue_free()
+		Router.goto("select"))
+	v.add_child(close)
+	add_child(o)
+
+
+## Rank shield + trophies-to-next-rank bar.
+class RankBar extends Control:
+	var brawler_id := "bront"
+
+	func _draw() -> void:
+		var S := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var bt := Save.brawler_trophies(brawler_id)
+		var rank := Progression.rank_for(bt)
+		var col := Progression.rank_color(rank)
+		var c := Vector2(32, 32)
+		var sh := PackedVector2Array([c + Vector2(-28, -30), c + Vector2(28, -30), c + Vector2(28, 10), c + Vector2(0, 32), c + Vector2(-28, 10)])
+		draw_colored_polygon(sh, UIKit.DARK)
+		var sh2 := PackedVector2Array([c + Vector2(-23, -25), c + Vector2(23, -25), c + Vector2(23, 7), c + Vector2(0, 26), c + Vector2(-23, 7)])
+		draw_colored_polygon(sh2, col)
+		S.text_c(self, str(rank), c + Vector2(0, 10), 26, Color.WHITE)
+		var prog := Progression.rank_progress(bt)
+		var br := Rect2(Vector2(72, 30), Vector2(220, 24))
+		draw_rect(br.grow(3), UIKit.DARK)
+		draw_rect(br, Color("1d2438"))
+		var frac := 1.0 if prog.y == 0 else float(prog.x) / prog.y
+		draw_rect(Rect2(br.position, Vector2(br.size.x * frac, br.size.y)), Color("ff9d2e"))
+		var txt := "MAX RANK" if prog.y == 0 else "%d / %d" % [bt, Progression.RANK_TROPHIES[rank]]
+		S.text_c(self, txt, br.get_center() + Vector2(0, 7), 16, Color.WHITE)
+		S.text_l(self, "RANK %d" % rank, Vector2(72, 22), 18, col.lightened(0.3))

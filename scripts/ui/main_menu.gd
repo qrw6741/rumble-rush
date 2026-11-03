@@ -40,7 +40,7 @@ func _build_stage() -> void:
 	var floor_shadow := StageShadow.new()
 	floor_shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_stage.add_child(floor_shadow)
-	_view = BrawlerView.create(id, "showcase", 720)
+	_view = BrawlerView.create(id, "showcase", 720, true, Save.selected_skin(id))
 	_view.state = {"yaw": _yaw, "manual": true}
 	_stage.add_child(_view)
 	var tr := TextureRect.new()
@@ -121,13 +121,18 @@ func _build_top_bar() -> void:
 		ci.draw_rect(br, Color("1d2438"))
 		ci.draw_rect(Rect2(br.position, Vector2(br.size.x * float(tt % 100) / 100.0, br.size.y)), Color("ff8a2a"))
 		SlantButton.text_c(ci, "%d / %d" % [tt, goal], br.get_center() + Vector2(0, 6), 13, Color.WHITE)
-		# yellow square
-		var y := PackedVector2Array([Vector2(330, 0), Vector2(440, 0), Vector2(428, 92), Vector2(318, 92)])
-		ci.draw_colored_polygon(y, UIKit.YELLOW)
-		ci.draw_colored_polygon(PackedVector2Array([Vector2(330, 0), Vector2(440, 0), Vector2(438, 14), Vector2(328, 14)]), Color("ffe680"))
-		SlantButton.star(ci, Vector2(379, 44), 24.0)
-	bar.pressed.connect(func(): Router.goto("profile"))
+		# road button: bright yellow only while a Trophy Road reward is waiting
+		var road_ready := Save.road_unclaimed() > 0
+		var yc := UIKit.YELLOW if road_ready else Color("3a4a70")
+		var y := PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(424, 88), Vector2(318, 88)])
+		ci.draw_colored_polygon(y, yc)
+		ci.draw_colored_polygon(PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(434, 16), Vector2(328, 16)]), yc.lightened(0.3))
+		SlantButton.trophy(ci, Vector2(377, 42), 18.0)
+		SlantButton.text_c(ci, "ROAD", Vector2(375, 82), 14, Color.WHITE)
+	bar.name = "TrophyRoad"
+	bar.pressed.connect(func(): Router.goto("road"))
 	add_child(bar)
+	_dot(bar, Save.road_unclaimed(), Vector2(414, -12))
 
 	# credits + menu (settings)
 	var credits := SlantButton.new()
@@ -176,28 +181,46 @@ func _build_left_buttons() -> void:
 		b.name = label.capitalize()
 		b.pressed.connect(it[2])
 		add_child(b)
+		if icon_kind == "brawlers":
+			_dot(b, Save.ranks_unclaimed_total(), Vector2(136, -10))
 
-# ------------------------------------------------------------------ bottom-left level panel
+# ------------------------------------------------------------------ bottom-left Rush Pass panel
 func _build_level_panel() -> void:
+	var pending := Save.pass_unclaimed()
 	var lv := SlantButton.new()
-	lv.color = UIKit.YELLOW
+	# only bright yellow while there's something to claim
+	lv.color = UIKit.YELLOW if pending > 0 else Color("27334d")
 	lv.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	lv.position = Vector2(18, -132)
 	lv.size = Vector2(400, 116)
+	lv.name = "RushPass"
 	lv.custom_draw = func(ci: Control):
-		var prog := Save.level_progress()
-		SlantButton.text_l(ci, "LEVEL ROAD", Vector2(24, 40), 28, Color.WHITE)
+		var tier := Save.pass_tier()
+		var into := int(Save.data.pass_tokens) % Progression.TOKENS_PER_TIER
+		var maxed := tier >= Progression.PASS_TIERS
+		SlantButton.text_l(ci, Progression.PASS_NAME, Vector2(24, 40), 28, Color.WHITE)
+		if Save.data.gold_pass:
+			SlantButton.text_l(ci, "GOLD", Vector2(222, 40), 18, Color("ffe14d"))
 		var br := Rect2(Vector2(60, 62), Vector2(236, 34))
 		ci.draw_rect(br.grow(3), UIKit.DARK)
-		ci.draw_rect(br, Color("6b5a2a"))
-		ci.draw_rect(Rect2(br.position, Vector2(br.size.x * float(prog.x) / prog.y, br.size.y)), Color("ffb02e"))
-		SlantButton.text_c(ci, "%d/%d" % [prog.x, prog.y], br.get_center() + Vector2(0, 10), 22, Color.WHITE)
-		SlantButton.hexagon(ci, Vector2(36, 79), 26.0, Color("27334d"), "XP")
+		ci.draw_rect(br, Color("1d2438"))
+		ci.draw_rect(Rect2(br.position, Vector2(br.size.x * (1.0 if maxed else float(into) / Progression.TOKENS_PER_TIER), br.size.y)), Color("3ea2ff"))
+		SlantButton.text_c(ci, "MAX" if maxed else "%d/%d" % [into, Progression.TOKENS_PER_TIER], br.get_center() + Vector2(0, 10), 22, Color.WHITE)
+		RewardTile.draw_icon(ci, {"type": "tokens"}, Vector2(36, 79), 24.0)
 		ci.draw_circle(Vector2(336, 79), 36, UIKit.DARK)
-		ci.draw_circle(Vector2(336, 79), 31, Color("5a4a1e"))
-		SlantButton.text_c(ci, str(Save.account_level()), Vector2(336, 92), 34, Color.WHITE)
-	lv.pressed.connect(func(): Router.goto("profile"))
+		ci.draw_circle(Vector2(336, 79), 31, Color("2a8cff"))
+		SlantButton.text_c(ci, str(tier), Vector2(336, 92), 34, Color.WHITE)
+	lv.pressed.connect(func(): Router.goto("pass"))
 	add_child(lv)
+	_dot(lv, pending, Vector2(320, -16))
+
+func _dot(parent: Control, count: int, at: Vector2) -> void:
+	if count <= 0:
+		return
+	var d := RewardTile.Dot.new()
+	d.count = count
+	d.position = at
+	parent.add_child(d)
 
 # ------------------------------------------------------------------ bottom-centre mode panel
 func _build_mode_panel() -> void:
@@ -534,13 +557,16 @@ class BrawlerBadge extends Control:
 
 	func _draw() -> void:
 		var bt := Save.brawler_trophies(brawler_id)
-		var rank := 1 + bt / 25
+		var rank := Progression.rank_for(bt)
 		var lvl := Save.brawler_level(brawler_id)
+		var rcol := Progression.rank_color(rank)
 		# trophy ribbon
 		var rib := PackedVector2Array([Vector2(70, 26), Vector2(270, 26), Vector2(262, 68), Vector2(62, 68)])
 		draw_colored_polygon(rib, UIKit.DARK)
 		draw_colored_polygon(PackedVector2Array([Vector2(74, 30), Vector2(266, 30), Vector2(259, 64), Vector2(66, 64)]), Color("6b2a5a"))
-		draw_colored_polygon(PackedVector2Array([Vector2(74, 30), Vector2(150, 30), Vector2(143, 64), Vector2(66, 64)]), Color("ff7a2b"))
+		var prog := Progression.rank_progress(bt)
+		var frac := 1.0 if prog.y == 0 else float(prog.x) / prog.y
+		draw_colored_polygon(PackedVector2Array([Vector2(74, 30), Vector2(74 + 192 * frac, 30), Vector2(67 + 192 * frac, 64), Vector2(66, 64)]), Color("ff7a2b"))
 		SlantButton.trophy(self, Vector2(168, 47), 12.0)
 		SlantButton.text_l(self, str(bt), Vector2(188, 60), 28, Color.WHITE)
 		# rank shield
@@ -548,7 +574,7 @@ class BrawlerBadge extends Control:
 		var sh := PackedVector2Array([c + Vector2(-36, -38), c + Vector2(36, -38), c + Vector2(36, 12), c + Vector2(0, 42), c + Vector2(-36, 12)])
 		draw_colored_polygon(sh, UIKit.DARK)
 		var sh2 := PackedVector2Array([c + Vector2(-30, -32), c + Vector2(30, -32), c + Vector2(30, 9), c + Vector2(0, 35), c + Vector2(-30, 9)])
-		draw_colored_polygon(sh2, Color("5a5f8a"))
+		draw_colored_polygon(sh2, rcol.darkened(0.35))
 		draw_colored_polygon(PackedVector2Array([c + Vector2(-30, -32), c + Vector2(30, -32), c + Vector2(30, -14), c + Vector2(-30, -14)]), Color("e8ecff"))
 		SlantButton.text_c(self, "RANK", c + Vector2(0, -17), 14, UIKit.DARK, 1)
 		SlantButton.text_c(self, str(rank), c + Vector2(0, 22), 30, Color.WHITE)

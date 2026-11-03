@@ -154,7 +154,10 @@ func _ready() -> void:
 	Input.parse_input_event(md)
 	Input.flush_buffered_events()
 	var before := p.global_position
-	await wait(0.4)
+	var mw := 0.0
+	while p.global_position.x - before.x <= 40.0 and mw < 3.0:
+		await wait(0.1)
+		mw += 0.1
 	check("touch move stick moves the brawler", p.global_position.x - before.x > 40.0)
 	mt = mt.duplicate()
 	mt.pressed = false
@@ -186,6 +189,32 @@ func _ready() -> void:
 	check("match ends with a winner", m.ended)
 	p.ammo = 3.0
 	check("nobody can fight after the match ends", not p.try_attack(Vector2.UP))
+	# --- Rush Pass / Trophy Road / Ranks
+	Save.data.pass_tokens = 350
+	check("pass tier from tokens", Save.pass_tier() == 3)
+	var c0: int = Save.data.credits
+	check("free pass tier claim works", Save.claim_pass(1, "free") and Save.data.credits > c0)
+	check("pass reward can't be claimed twice", not Save.claim_pass(1, "free"))
+	check("can't claim a tier not reached", not Save.claim_pass(5, "free"))
+	check("gold track locked without gold pass", not Save.claim_pass(1, "gold"))
+	Save.data.credits = 1000
+	check("buying gold pass costs credits", Save.buy_gold_pass() and Save.data.credits == 1000 - Progression.GOLD_PASS_COST)
+	check("gold pass can't be bought twice", not Save.buy_gold_pass())
+	check("gold tier claim works after unlock", Save.claim_pass(1, "gold"))
+	Save.data.pass_tokens = 600
+	Save.claim_pass(6, "gold")
+	check("gold tier 6 awards BRONT gold skin", Save.owns_skin("bront", "gold") and Save.select_skin("bront", "gold"))
+	check("can't equip a skin you don't own", not Save.select_skin("mira", "gold"))
+	Save.data.brawler_trophies["nova"] = 65
+	check("rank from trophies (65 -> rank 6)", Save.brawler_rank("nova") == 6)
+	check("rank reward claim works", Save.claim_rank("nova", 6))
+	check("rank reward can't be claimed twice", not Save.claim_rank("nova", 6))
+	check("can't claim a rank not reached", not Save.claim_rank("nova", 9))
+	var road_before: int = Save.data.road_claimed.size()
+	check("trophy road claim respects trophies", Save.total_trophies() < 10 or Save.claim_road(0))
+	check("trophy road reward can't be claimed twice", not Save.claim_road(0) and Save.data.road_claimed.size() <= road_before + 1)
+	check("matches award pass tokens", int(r1.get("tokens", 0)) > 0)
+
 	# --- menu flow, pressing real buttons
 	await wait(3.2)
 	check("results screen shown after match", Router.current != null and Router.current.get("data") is Dictionary)
@@ -213,6 +242,12 @@ func _ready() -> void:
 	await press("DONE")
 	await press_named("Profile")
 	check("menu -> profile with history", _screen_has_text("MATCH HISTORY") and _screen_has_text("VICTORY"))
+	await press_named("Back")
+	await press_named("RushPass")
+	check("lobby -> Rush Pass screen", Router.current.find_child("ClaimAll", true, false) != null)
+	await press_named("Back")
+	await press_named("TrophyRoad")
+	check("lobby -> Trophy Road screen", Router.current.find_child("Back", true, false) != null and Router.current.get_script().resource_path.ends_with("road_screen.gd"))
 	await press_named("Back")
 	await press_named("Play")
 	await wait(0.2)

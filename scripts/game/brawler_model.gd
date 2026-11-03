@@ -108,9 +108,9 @@ func eye(parent: Node3D, pos: Vector3, r: float, pupil := INK) -> void:
 	part(parent, sphere(r * 0.2), Color.WHITE, pos + Vector3(-r * 0.22, r * 0.3, r * 0.5), Vector3.ZERO, Vector3.ONE, 1.0)
 
 # ------------------------------------------------------------------ build
-func build(brawler_id: String) -> void:
+func build(brawler_id: String, skin := "") -> void:
 	id = brawler_id
-	d = Config.BRAWLERS[id]
+	d = Progression.palette(id, skin)
 	body = pivot(self, Vector3.ZERO)
 	match id:
 		"bront": _bront()

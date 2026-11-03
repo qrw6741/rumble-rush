@@ -277,6 +277,7 @@ class BrawlerPortrait extends Control:
 	var backdrop := true
 	var team_col := Color("3ea2ff")
 	var locked := false
+	var skin := "auto" # "auto" = the player's selected skin
 	var _t := 0.0
 	var _view: BrawlerView
 	var _rect: TextureRect
@@ -285,7 +286,8 @@ class BrawlerPortrait extends Control:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var want: Vector2 = custom_minimum_size if custom_minimum_size != Vector2.ZERO else size
 		var px := int(clampf(max(want.x, want.y) * 1.6, 128.0, 640.0))
-		_view = BrawlerView.create(brawler_id, "portrait", px, art_scale >= 2.0)
+		var sk := Save.selected_skin(brawler_id) if skin == "auto" else skin
+		_view = BrawlerView.create(brawler_id, "portrait", px, art_scale >= 2.0, sk)
 		add_child(_view)
 		_rect = TextureRect.new()
 		_rect.texture = _view.get_texture()

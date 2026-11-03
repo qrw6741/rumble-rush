@@ -14,7 +14,7 @@ var feet_px := Vector2.ZERO    # where the model's feet land in this texture
 var state := {"t": 0.0, "moving": false, "recoil": 0.0, "yaw": 0.0}
 var _t := 0.0
 
-static func create(brawler_id: String, view_kind: String, px: int, live := true) -> BrawlerView:
+static func create(brawler_id: String, view_kind: String, px: int, live := true, skin := "") -> BrawlerView:
 	var v := BrawlerView.new()
 	v.kind = view_kind
 	v.animated = live
@@ -23,10 +23,10 @@ static func create(brawler_id: String, view_kind: String, px: int, live := true)
 	v.own_world_3d = true
 	v.msaa_3d = Viewport.MSAA_2X if view_kind == "battle" else Viewport.MSAA_4X
 	v.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	v._build(brawler_id)
+	v._build(brawler_id, skin)
 	return v
 
-func _build(brawler_id: String) -> void:
+func _build(brawler_id: String, skin := "") -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -50,7 +50,7 @@ func _build(brawler_id: String) -> void:
 
 	model = BrawlerModel.new()
 	model.outline_width = 0.04 if kind == "battle" else 0.02
-	model.build(brawler_id)
+	model.build(brawler_id, skin)
 	add_child(model)
 
 	camera = Camera3D.new()

@@ -17,9 +17,13 @@ func _ready() -> void:
 func _default() -> Dictionary:
 	var trophies := {}
 	var levels := {}
+	var ranks := {}
+	var skins := {}
 	for id in Config.BRAWLER_ORDER:
 		trophies[id] = 0
 		levels[id] = 1
+		ranks[id] = []
+		skins[id] = ""
 	return {
 		"version": VERSION,
 		"username": "Player",
@@ -33,6 +37,13 @@ func _default() -> Dictionary:
 		"stats": {"matches": 0, "wins": 0, "losses": 0, "draws": 0, "kos": 0, "deaths": 0, "damage": 0, "mvp": 0},
 		"history": [],
 		"granted": [],
+		"pass_tokens": 0,
+		"gold_pass": false,
+		"pass_claimed": {"free": [], "gold": []},
+		"road_claimed": [],
+		"rank_claimed": ranks,
+		"skins_owned": [],
+		"skin_selected": skins,
 		"settings": {
 			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "normal",
 			"touch_controls": "auto", "screen_shake": true, "damage_numbers": true,
@@ -56,6 +67,14 @@ func load_game() -> void:
 	data.xp = int(data.xp)
 	for k in data.stats.keys():
 		data.stats[k] = int(data.stats[k])
+	data.pass_tokens = int(data.pass_tokens)
+	for track in ["free", "gold"]:
+		data.pass_claimed[track] = data.pass_claimed.get(track, []).map(func(x): return int(x))
+	data.road_claimed = data.road_claimed.map(func(x): return int(x))
+	for id in Config.BRAWLER_ORDER:
+		data.rank_claimed[id] = data.rank_claimed.get(id, []).map(func(x): return int(x))
+		if not data.skin_selected.has(id):
+			data.skin_selected[id] = ""
 	if not Config.BRAWLERS.has(data.selected_brawler):
 		data.selected_brawler = "bront"
 	if not Config.MODES.has(data.selected_mode):
@@ -164,6 +183,8 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	var credits: int = {"win": 30, "loss": 12, "draw": 18}[result] + mini(kos, 10) * 2 + (10 if mvp else 0)
 	var xp: int = {"win": 40, "loss": 20, "draw": 28}[result] + kos * 3
 
+	var tokens := Progression.match_tokens(result, kos)
+	data.pass_tokens += tokens
 	var old_level := account_level()
 	data.brawler_trophies[brawler_id] = bt + trophy_delta
 	data.credits += credits
@@ -185,7 +206,8 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	if data.history.size() > 25:
 		data.history.resize(25)
 	save_game()
-	return {"duplicate": false, "trophies": trophy_delta, "credits": credits, "xp": xp,
+	return {"duplicate": false, "trophies": trophy_delta, "credits": credits, "xp": xp, "tokens": tokens,
+		"rank_up": Progression.rank_for(bt + trophy_delta) > Progression.rank_for(bt), "new_rank": Progression.rank_for(bt + trophy_delta),
 		"level_up": account_level() > old_level, "new_level": account_level()}
 
 func reset_progress() -> void:
@@ -196,3 +218,111 @@ func reset_progress() -> void:
 	data.username = keep_name
 	_granted_matches.clear()
 	save_game()
+
+# ------------------------------------------------------------------ rewards / pass / road / ranks
+func grant_reward(r: Dictionary) -> void:
+	match r.get("type", ""):
+		"credits":
+			data.credits += int(r.amount)
+		"tokens":
+			data.pass_tokens += int(r.amount)
+		"xp":
+			data.xp += int(r.amount)
+		"skin":
+			var key := "%s:%s" % [r.brawler, r.skin]
+			if not key in data.skins_owned:
+				data.skins_owned.append(key)
+
+func pass_tier() -> int:
+	return mini(Progression.PASS_TIERS, int(data.pass_tokens) / Progression.TOKENS_PER_TIER)
+
+func pass_claimable(tier: int, track: String) -> bool:
+	if tier < 1 or tier > pass_tier():
+		return false
+	if track == "gold" and not data.gold_pass:
+		return false
+	return not tier in data.pass_claimed[track]
+
+func claim_pass(tier: int, track: String) -> bool:
+	if not pass_claimable(tier, track):
+		return false
+	data.pass_claimed[track].append(tier)
+	grant_reward(Progression.pass_reward(tier, track))
+	save_game()
+	return true
+
+func pass_unclaimed() -> int:
+	var n := 0
+	for t in range(1, pass_tier() + 1):
+		if pass_claimable(t, "free"):
+			n += 1
+		if pass_claimable(t, "gold"):
+			n += 1
+	return n
+
+func buy_gold_pass() -> bool:
+	if data.gold_pass or data.credits < Progression.GOLD_PASS_COST:
+		return false
+	data.credits -= Progression.GOLD_PASS_COST
+	data.gold_pass = true
+	save_game()
+	return true
+
+func road_claimable(i: int) -> bool:
+	return i >= 0 and i < Progression.ROAD.size() and total_trophies() >= int(Progression.ROAD[i].trophies) and not i in data.road_claimed
+
+func claim_road(i: int) -> bool:
+	if not road_claimable(i):
+		return false
+	data.road_claimed.append(i)
+	grant_reward(Progression.ROAD[i].reward)
+	save_game()
+	return true
+
+func road_unclaimed() -> int:
+	var n := 0
+	for i in Progression.ROAD.size():
+		if road_claimable(i):
+			n += 1
+	return n
+
+func brawler_rank(id: String) -> int:
+	return Progression.rank_for(brawler_trophies(id))
+
+func rank_claimable(id: String, rank: int) -> bool:
+	return rank >= 2 and rank <= brawler_rank(id) and not rank in data.rank_claimed[id]
+
+func claim_rank(id: String, rank: int) -> bool:
+	if not rank_claimable(id, rank):
+		return false
+	data.rank_claimed[id].append(rank)
+	grant_reward(Progression.rank_reward(rank))
+	save_game()
+	return true
+
+func rank_unclaimed(id: String) -> int:
+	var n := 0
+	for r in range(2, brawler_rank(id) + 1):
+		if rank_claimable(id, r):
+			n += 1
+	return n
+
+func ranks_unclaimed_total() -> int:
+	var n := 0
+	for id in Config.BRAWLER_ORDER:
+		n += rank_unclaimed(id)
+	return n
+
+func owns_skin(id: String, skin: String) -> bool:
+	return skin == "" or ("%s:%s" % [id, skin]) in data.skins_owned
+
+func selected_skin(id: String) -> String:
+	var s: String = data.skin_selected.get(id, "")
+	return s if owns_skin(id, s) else ""
+
+func select_skin(id: String, skin: String) -> bool:
+	if not owns_skin(id, skin):
+		return false
+	data.skin_selected[id] = skin
+	save_game()
+	return true
