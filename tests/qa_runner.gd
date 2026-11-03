@@ -213,7 +213,7 @@ func _ready() -> void:
 	await press("DONE")
 	await press_named("Profile")
 	check("menu -> profile with history", _screen_has_text("MATCH HISTORY") and _screen_has_text("VICTORY"))
-	await press("BACK")
+	await press_named("Back")
 	await press_named("Play")
 	await wait(0.2)
 	check("PLAY starts a match", Router.current != null and Router.current.has_method("is_playing"))

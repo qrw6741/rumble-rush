@@ -333,6 +333,39 @@ func _open_how_to() -> void:
 	_close_button(v)
 
 
+# ====================================================================== shared header
+## Back arrow + big title used by the secondary screens.
+static func build_header(parent: Control, title: String, on_back: Callable) -> void:
+	var back := SlantButton.new()
+	back.color = Color("2a8cff")
+	back.position = Vector2(14, 12)
+	back.size = Vector2(96, 70)
+	back.name = "Back"
+	back.custom_draw = func(ci: Control):
+		var pts := PackedVector2Array([Vector2(28, 33), Vector2(52, 13), Vector2(52, 25), Vector2(72, 25), Vector2(72, 41), Vector2(52, 41), Vector2(52, 53)])
+		var o := pts.duplicate()
+		o.append(pts[0])
+		ci.draw_polyline(o, UIKit.DARK, 7.0, true)
+		ci.draw_colored_polygon(pts, Color.WHITE)
+	back.pressed.connect(on_back)
+	parent.add_child(back)
+	var t := TitleText.new()
+	t.text = title
+	t.position = Vector2(126, 10)
+	t.size = Vector2(600, 76)
+	parent.add_child(t)
+
+
+class TitleText extends Control:
+	var text := ""
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		SlantButton.text_l(self, text, Vector2(0, 58), 46, Color.WHITE)
+
+
 # ====================================================================== widgets
 ## Chunky slanted lobby button with bevel, ink outline and press bounce.
 class SlantButton extends Button:

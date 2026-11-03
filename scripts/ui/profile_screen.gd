@@ -7,17 +7,7 @@ func _ready() -> void:
 	theme = UIKit.theme()
 	add_child(preload("res://scripts/ui/main_menu.gd").LobbyBackground.new())
 
-	var top := HBoxContainer.new()
-	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top.offset_left = 18
-	top.offset_right = -18
-	top.offset_top = 14
-	top.add_theme_constant_override("separation", 14)
-	add_child(top)
-	var back := UIKit.button("BACK", UIKit.PANEL_LIGHT, 20, Vector2(120, 54))
-	back.pressed.connect(func(): Router.goto("menu"))
-	top.add_child(back)
-	top.add_child(UIKit.label("PROFILE", 40, Color.WHITE, 10))
+	preload("res://scripts/ui/main_menu.gd").build_header(self, "PROFILE", func(): Router.goto("menu"))
 
 	var cols := HBoxContainer.new()
 	cols.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -29,7 +19,7 @@ func _ready() -> void:
 	add_child(cols)
 
 	# ---------------- left: identity + stats
-	var left := UIKit.panel(Color(0.1, 0.07, 0.25, 0.85))
+	var left := UIKit.panel(UIKit.PANEL)
 	left.custom_minimum_size = Vector2(560, 0)
 	cols.add_child(left)
 	var lv := VBoxContainer.new()
@@ -93,7 +83,7 @@ func _ready() -> void:
 	lv.add_child(reset)
 
 	# ---------------- right: match history
-	var right := UIKit.panel(Color(0.1, 0.07, 0.25, 0.85))
+	var right := UIKit.panel(UIKit.PANEL)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cols.add_child(right)
 	var rv := VBoxContainer.new()

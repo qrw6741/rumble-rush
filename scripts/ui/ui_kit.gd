@@ -10,8 +10,8 @@ const GREEN := Color("4fd36a")
 const BLUE := Color("3ea2ff")
 const PURPLE := Color("8e4dff")
 const RED := Color("ff4d5e")
-const PANEL := Color("2a1d52")
-const PANEL_LIGHT := Color("3b2a72")
+const PANEL := Color("27334d")
+const PANEL_LIGHT := Color("3a4a70")
 
 static var _font_bold: Font
 static var _font_med: Font

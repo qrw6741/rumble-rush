@@ -30,8 +30,15 @@ func _draw() -> void:
 	var outline := Color("1a1028")
 	for c in _cells:
 		var r := Rect2(c.x * T, c.y * T, T, T)
-		draw_rect(r, wcol.darkened(0.15))
-		draw_rect(Rect2(r.position + Vector2(0, 6), r.size - Vector2(0, 6)), wcol)
+		draw_rect(r, wcol)
+		if not _is_water(c + Vector2i(0, -1)):
+			# visible inner pool wall + rim
+			draw_rect(Rect2(r.position, Vector2(T, 14)), wcol.darkened(0.45))
+			draw_rect(Rect2(r.position + Vector2(0, 14), Vector2(T, 4)), wcol.darkened(0.2))
+		if not _is_water(c + Vector2i(-1, 0)):
+			draw_rect(Rect2(r.position, Vector2(6, T)), wcol.darkened(0.25))
+		if not _is_water(c + Vector2i(0, 1)):
+			draw_rect(Rect2(r.position + Vector2(0, T - 5), Vector2(T, 5)), light)
 		for i in 2:
 			var y := r.position.y + 14 + i * 18 + sin(_t * 2.0 + c.x + i) * 3.0
 			var x := r.position.x + 8 + fmod(_t * 10.0 + c.y * 7 + i * 13, 20.0)

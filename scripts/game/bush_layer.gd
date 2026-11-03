@@ -48,6 +48,17 @@ func _blob(c: Vector2i, grow: float, col: Color) -> void:
 	if map.bush_cells.has(c + Vector2i(1, 1)) and map.bush_cells.has(c + Vector2i(1, 0)) and map.bush_cells.has(c + Vector2i(0, 1)):
 		draw_rect(Rect2(p + s, Vector2(T, T)), col)
 
+func _blob_raised(c: Vector2i, dy: float, col: Color) -> void:
+	var p := map.cell_center(c) + Vector2(0, -6 + dy)
+	var s := _sway(c)
+	draw_circle(p + s, 23.0, col)
+	if map.bush_cells.has(c + Vector2i(1, 0)):
+		draw_rect(Rect2(p + s + Vector2(0, -18), Vector2(T, 36)), col)
+	if map.bush_cells.has(c + Vector2i(0, 1)):
+		draw_rect(Rect2(p + s + Vector2(-20, 0), Vector2(40, T)), col)
+	if map.bush_cells.has(c + Vector2i(1, 1)) and map.bush_cells.has(c + Vector2i(1, 0)) and map.bush_cells.has(c + Vector2i(0, 1)):
+		draw_rect(Rect2(p + s, Vector2(T, T)), col)
+
 func _draw() -> void:
 	var dark: Color = map.theme.bush_dark
 	var light: Color = map.theme.bush
@@ -56,13 +67,18 @@ func _draw() -> void:
 		var o := outline
 		o.a = _alpha_for(map.cell_center(c))
 		_blob(c, 4.0, o)
+	# side band (the bush's lower "wall"), then the raised top
+	for c in _cells:
+		var side := dark.darkened(0.3)
+		side.a = _alpha_for(map.cell_center(c))
+		_blob(c, 0.0, side)
 	for c in _cells:
 		var col := dark
 		col.a = _alpha_for(map.cell_center(c))
-		_blob(c, 0.0, col)
+		_blob_raised(c, -8.0, col)
 	# leafy clusters on top
 	for c in _cells:
-		var p := map.cell_center(c) + Vector2(0, -6)
+		var p := map.cell_center(c) + Vector2(0, -14)
 		var a := _alpha_for(p)
 		var s := _sway(c, 2.2)
 		for lf in _leaves[c]:

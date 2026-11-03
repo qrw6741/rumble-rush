@@ -81,6 +81,13 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 			if ch == "." and rng.randf() < 0.12:
 				_decals.append([center + Vector2(rng.randf_range(-14, 14), rng.randf_range(-14, 14)), rng.randf_range(3, 7), rng.randi() % 3])
 			c += 1
+	# decorative 3D fence ring around the arena (collision is the boundary below)
+	for bc in range(-1, MapData.W + 1):
+		for br in [-1, MapData.H]:
+			_add_border_block(entity_layer, bc, br)
+	for br in range(0, MapData.H):
+		for bc in [-1, MapData.W]:
+			_add_border_block(entity_layer, bc, br)
 	# outer boundary walls
 	_add_rect(walls_body, Vector2(-T * 2, -T * 2), Vector2(size_px.x + T * 4, T * 2))
 	_add_rect(walls_body, Vector2(-T * 2, size_px.y), Vector2(size_px.x + T * 4, T * 2))
@@ -102,6 +109,13 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	bush_layer.add_child(bushes)
 	queue_redraw()
 
+func _add_border_block(layer: Node2D, c: int, r: int) -> void:
+	var wb := WallBlock.new()
+	wb.setup(Vector2i(c, r), theme, _wall_neighbors(c, r))
+	if r == MapData.H:
+		wb.position.y += WallBlock.LIFT # keep the near fence from covering the last row
+	layer.add_child(wb)
+
 func _wall_neighbors(c: int, r: int) -> Dictionary:
 	return {
 		"up": is_wall_char(c, r - 1), "down": is_wall_char(c, r + 1),
@@ -110,7 +124,8 @@ func _wall_neighbors(c: int, r: int) -> Dictionary:
 
 func is_wall_char(c: int, r: int) -> bool:
 	if c < 0 or r < 0 or c >= MapData.W or r >= MapData.H:
-		return false
+		# the decorative border ring counts as wall so edges merge cleanly
+		return c >= -1 and r >= -1 and c <= MapData.W and r <= MapData.H
 	return grid[r][c] == "#"
 
 func _add_rect(body: StaticBody2D, top_left: Vector2, size: Vector2) -> void:
@@ -164,19 +179,20 @@ func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 func _draw() -> void:
 	var th := theme
 	# outside the arena
-	draw_rect(Rect2(-T * 8, -T * 8, size_px.x + T * 16, size_px.y + T * 16), th.bg)
-	# floor checker
+	draw_rect(Rect2(-T * 12, -T * 12, size_px.x + T * 24, size_px.y + T * 24), th.bg)
+	# bevelled floor tiles with gentle colour variation
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(map_id) + 99
 	for r in MapData.H:
 		for c in MapData.W:
-			var col: Color = th.floor_a if (r + c) % 2 == 0 else th.floor_b
-			draw_rect(Rect2(c * T, r * T, T, T), col)
-	# subtle tile grid
-	var grid_col: Color = th.floor_edge
-	grid_col.a = 0.25
-	for c in MapData.W + 1:
-		draw_line(Vector2(c * T, 0), Vector2(c * T, size_px.y), grid_col, 1.0)
-	for r in MapData.H + 1:
-		draw_line(Vector2(0, r * T), Vector2(size_px.x, r * T), grid_col, 1.0)
+			var base: Color = th.floor_a if (r + c) % 2 == 0 else th.floor_b
+			base = base.lightened(rng.randf_range(-0.02, 0.03))
+			var rect := Rect2(c * T, r * T, T, T)
+			draw_rect(rect, base)
+			draw_rect(Rect2(rect.position, Vector2(T, 3)), base.lightened(0.12))
+			draw_rect(Rect2(rect.position, Vector2(3, T)), base.lightened(0.07))
+			draw_rect(Rect2(rect.position + Vector2(0, T - 3), Vector2(T, 3)), base.darkened(0.1))
+			draw_rect(Rect2(rect.position + Vector2(T - 3, 0), Vector2(3, T)), base.darkened(0.07))
 	# decals (pebbles / cracks / city bolts)
 	for d in _decals:
 		var p: Vector2 = d[0]
@@ -190,13 +206,30 @@ func _draw() -> void:
 				draw_polyline(PackedVector2Array([p, p + Vector2(s, s * 0.6), p + Vector2(s * 1.6, -s * 0.3), p + Vector2(s * 2.6, s * 0.4)]), col, 2.0, true)
 			_:
 				draw_rect(Rect2(p - Vector2(s, s * 0.4), Vector2(s * 2, s * 0.8)), col)
+	# soft cast shadows (light from the top-left)
+	var sh := Color(0, 0, 0, 0.2)
+	for r in range(-1, MapData.H + 1):
+		for c in range(-1, MapData.W + 1):
+			if not is_wall_char(c, r):
+				continue
+			var x := c * T
+			var y := r * T
+			if not is_wall_char(c + 1, r):
+				draw_colored_polygon(PackedVector2Array([Vector2(x + T, y - 4), Vector2(x + T + 16, y + 10), Vector2(x + T + 16, y + T + 12), Vector2(x + T, y + T)]), sh)
+			if not is_wall_char(c, r + 1):
+				draw_colored_polygon(PackedVector2Array([Vector2(x, y + T), Vector2(x + T, y + T), Vector2(x + T + 16, y + T + 12), Vector2(x + 12, y + T + 12)]), sh)
+	for bc in bush_cells.keys():
+		var bp := cell_center(bc) + Vector2(8, 14)
+		var pts := PackedVector2Array()
+		for i in 20:
+			var ang := TAU * i / 20.0
+			pts.append(bp + Vector2(cos(ang) * 26, sin(ang) * 16))
+		draw_colored_polygon(pts, Color(0, 0, 0, 0.16))
 	# team spawn pads
 	for sp in blue_spawns:
 		_spawn_pad(sp, Config.TEAM_COLORS[0])
 	for sp in red_spawns:
 		_spawn_pad(sp, Config.TEAM_COLORS[1])
-	# arena border
-	draw_rect(Rect2(Vector2.ZERO, size_px), th.wall_side, false, 6.0)
 	# half line
 	var hl: Color = th.floor_edge
 	hl.a = 0.5

@@ -1,4 +1,6 @@
 extends Control
+
+const Lobby := preload("res://scripts/ui/main_menu.gd")
 ## Brawler collection: browse all brawlers, read their kits and stats, upgrade
 ## them with credits, and pick who you take into battle.
 
@@ -14,22 +16,11 @@ func _ready() -> void:
 	add_child(preload("res://scripts/ui/main_menu.gd").LobbyBackground.new())
 	_focus = Save.data.selected_brawler
 
-	var top := HBoxContainer.new()
-	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top.offset_left = 18
-	top.offset_right = -18
-	top.offset_top = 14
-	top.add_theme_constant_override("separation", 14)
-	add_child(top)
-	var back := UIKit.button("BACK", UIKit.PANEL_LIGHT, 20, Vector2(120, 54))
-	back.pressed.connect(func(): Router.goto("menu"))
-	top.add_child(back)
-	top.add_child(UIKit.label("BRAWLERS", 40, Color.WHITE, 10))
-	var sp := Control.new()
-	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(sp)
+	Lobby.build_header(self, "BRAWLERS", func(): Router.goto("menu"))
 	_credits_chip = UIKit.currency_chip("coin", str(Save.data.credits), Color("ffe08a"))
-	top.add_child(_credits_chip)
+	_credits_chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_credits_chip.position = Vector2(-200, 18)
+	add_child(_credits_chip)
 
 	# card grid (left)
 	var grid := GridContainer.new()
@@ -44,7 +35,7 @@ func _ready() -> void:
 		grid.add_child(card)
 
 	# detail panel (right)
-	var panel := UIKit.panel(Color(0.1, 0.07, 0.25, 0.85))
+	var panel := UIKit.panel(UIKit.PANEL)
 	panel.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
 	panel.offset_left = -600
 	panel.offset_right = -20
@@ -61,45 +52,25 @@ func _ready() -> void:
 	_show(_focus)
 
 func _make_card(id: String) -> Control:
-	var d: Dictionary = Config.BRAWLERS[id]
-	var b := Button.new()
-	b.custom_minimum_size = Vector2(196, 238)
-	b.focus_mode = Control.FOCUS_NONE
-	var rc: Color = Config.RARITY_COLORS[d.rarity]
-	b.add_theme_stylebox_override("normal", UIKit.box(rc.darkened(0.45), 18, 4))
-	b.add_theme_stylebox_override("hover", UIKit.box(rc.darkened(0.3), 18, 4))
-	b.add_theme_stylebox_override("pressed", UIKit.box(rc.darkened(0.2), 18, 4, UIKit.DARK, 2))
-	b.pressed.connect(func():
+	var card := BrawlerCard.new()
+	card.brawler_id = id
+	card.custom_minimum_size = Vector2(196, 238)
+	card.pressed.connect(func():
 		Sfx.play("ui_click")
 		_show(id))
-	b.mouse_entered.connect(func(): UIKit._pop(b, 1.04))
-	b.mouse_exited.connect(func(): UIKit._pop(b, 1.0))
 	var por := UIKit.BrawlerPortrait.new()
 	por.brawler_id = id
 	por.art_scale = 1.75
-	por.position = Vector2(8, 6)
-	por.size = Vector2(180, 160)
-	b.add_child(por)
-	var nm := UIKit.label(d.name, 24, Color.WHITE, 7, HORIZONTAL_ALIGNMENT_CENTER)
-	nm.position = Vector2(0, 160)
-	nm.size = Vector2(196, 34)
-	b.add_child(nm)
-	var info := UIKit.label("LVL %d  ·  %d" % [Save.brawler_level(id), Save.brawler_trophies(id)], 15, UIKit.YELLOW, 5, HORIZONTAL_ALIGNMENT_CENTER)
+	por.backdrop = false
+	por.position = Vector2(10, 22)
+	por.size = Vector2(176, 160)
+	por.custom_minimum_size = Vector2(176, 160)
+	card.add_child(por)
+	var info := Label.new()
 	info.name = "Info"
-	info.position = Vector2(0, 194)
-	info.size = Vector2(196, 24)
-	b.add_child(info)
-	var role := UIKit.label(d.role, 12, rc.lightened(0.4), 4, HORIZONTAL_ALIGNMENT_CENTER)
-	role.position = Vector2(0, 8)
-	role.size = Vector2(196, 20)
-	b.add_child(role)
-	if id == Save.data.selected_brawler:
-		var tag := UIKit.label("SELECTED", 13, UIKit.GREEN, 5, HORIZONTAL_ALIGNMENT_CENTER)
-		tag.name = "Tag"
-		tag.position = Vector2(0, 216)
-		tag.size = Vector2(196, 20)
-		b.add_child(tag)
-	return b
+	info.visible = false
+	card.add_child(info)
+	return card
 
 func _clear_detail() -> void:
 	for c in _detail.get_children():
@@ -135,7 +106,7 @@ func _show(id: String) -> void:
 	actions.add_theme_constant_override("separation", 12)
 	_detail.add_child(actions)
 	var cost := Save.upgrade_cost(id)
-	var up := UIKit.button("MAX LEVEL" if cost < 0 else "UPGRADE  %d" % cost, UIKit.BLUE, 20, Vector2(250, 62))
+	var up := UIKit.button("MAX LEVEL" if cost < 0 else "UPGRADE  %d" % cost, UIKit.YELLOW, 20, Vector2(250, 62))
 	up.disabled = cost < 0 or Save.data.credits < cost
 	if cost >= 0 and Save.data.credits < cost:
 		up.text = "NEED %d CREDITS" % cost
@@ -244,7 +215,53 @@ func _refresh_after_upgrade(id: String) -> void:
 	if lbl:
 		lbl.text = str(Save.data.credits)
 	for bid in _cards.keys():
-		var info: Label = _cards[bid].get_node("Info")
-		info.text = "LVL %d  ·  %d" % [Save.brawler_level(bid), Save.brawler_trophies(bid)]
+		_cards[bid].queue_redraw()
 	_show(id)
 	FX.burst(self, Vector2(size.x - 310, 200), UIKit.YELLOW, 30, 400.0, 0.8, 8.0)
+
+
+## Collection card: rarity-coloured tile, power hex, trophy count, name banner.
+class BrawlerCard extends Button:
+	var brawler_id := "bront"
+
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		for st in ["normal", "hover", "pressed", "focus"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		mouse_entered.connect(func(): UIKit._pop(self, 1.04))
+		mouse_exited.connect(func(): UIKit._pop(self, 1.0))
+		button_down.connect(func(): UIKit._pop(self, 0.95))
+		button_up.connect(func(): UIKit._pop(self, 1.0))
+
+	func _draw() -> void:
+		var d: Dictionary = Config.BRAWLERS[brawler_id]
+		var rc: Color = Config.RARITY_COLORS[d.rarity]
+		var w := size.x
+		var h := size.y
+		var ink := UIKit.DARK
+		var sel: bool = Save.data.selected_brawler == brawler_id
+		draw_rect(Rect2(4, 8, w, h), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(0, 0, w, h), Color("ffd23a") if sel else ink)
+		var inner := Rect2(4, 4, w - 8, h - 8)
+		# rarity gradient background
+		for i in 8:
+			var k := float(i) / 8.0
+			draw_rect(Rect2(inner.position.x, inner.position.y + inner.size.y * k, inner.size.x, inner.size.y / 8.0 + 1), rc.lightened(0.15).lerp(rc.darkened(0.35), k))
+		# light rays
+		var c := inner.get_center() + Vector2(0, -20)
+		for i in 8:
+			var a := i * TAU / 8.0
+			draw_colored_polygon(PackedVector2Array([c, c + Vector2(cos(a), sin(a)) * 150, c + Vector2(cos(a + 0.25), sin(a + 0.25)) * 150]), Color(1, 1, 1, 0.07))
+		# name banner
+		var banner := Rect2(inner.position.x, inner.end.y - 48, inner.size.x, 48)
+		draw_rect(banner, Color("1d2438"))
+		draw_rect(Rect2(banner.position, Vector2(banner.size.x, 3)), ink)
+		Lobby.SlantButton.text_c(self, d.name, Vector2(w * 0.5, banner.end.y - 15), 24, Color.WHITE)
+		# power hex
+		Lobby.SlantButton.hexagon(self, Vector2(26, 28), 20.0, Color("ffb52e").darkened(0.1), str(Save.brawler_level(brawler_id)))
+		# trophies
+		Lobby.SlantButton.trophy(self, Vector2(w - 62, 24), 9.0)
+		Lobby.SlantButton.text_l(self, str(Save.brawler_trophies(brawler_id)), Vector2(w - 48, 34), 20, Color.WHITE)
+		if sel:
+			Lobby.SlantButton.text_c(self, "SELECTED", Vector2(w * 0.5, banner.position.y - 6), 14, Color("4dff7a"))
