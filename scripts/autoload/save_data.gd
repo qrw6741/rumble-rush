@@ -48,7 +48,7 @@ func _default() -> Dictionary:
 		"settings": {
 			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "normal",
 			"touch_controls": "auto", "screen_shake": true, "damage_numbers": true,
-			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto",
+			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto", "fps_cap": 60,
 		},
 	}
 
@@ -111,8 +111,17 @@ func apply_settings() -> void:
 		var is_fs := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 		if want_fs != is_fs:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if want_fs else DisplayServer.WINDOW_MODE_WINDOWED)
+	apply_fps()
 	if is_instance_valid(Sfx) and Sfx.is_node_ready():
 		Sfx.apply_volumes()
+
+## FPS limit: 30 / 60 / 90 / 120, or 0 = MAX (no cap, V-Sync off on desktop).
+func apply_fps() -> void:
+	var cap := int(data.settings.get("fps_cap", 60))
+	Engine.max_fps = cap
+	if DisplayServer.get_name() == "headless" or OS.has_feature("web"):
+		return # browsers always pace frames to the screen's refresh rate
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED if cap == 0 or cap > 60 else DisplayServer.VSYNC_ENABLED)
 
 ## Phones and browsers default to lighter rendering.
 func low_graphics() -> bool:

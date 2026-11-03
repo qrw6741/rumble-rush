@@ -18,9 +18,9 @@ func _ready() -> void:
 	p.custom_minimum_size = Vector2(620, 0)
 	center.add_child(p)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 4)
 	p.add_child(v)
-	v.add_child(UIKit.label("SETTINGS", 40, UIKit.YELLOW, 10, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("SETTINGS", 34, UIKit.YELLOW, 10, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(slider_row("MUSIC", "music_volume"))
 	v.add_child(slider_row("SOUND EFFECTS", "sfx_volume"))
 	v.add_child(choice_row("BOT DIFFICULTY", "difficulty", Config.DIFFICULTY_ORDER, ["EASY", "NORMAL", "HARD", "EXPERT"]))
@@ -29,10 +29,11 @@ func _ready() -> void:
 	v.add_child(toggle_row("AIM ASSIST", "aim_assist"))
 	v.add_child(toggle_row("SCREEN SHAKE", "screen_shake"))
 	v.add_child(toggle_row("DAMAGE NUMBERS", "damage_numbers"))
+	v.add_child(choice_row("FPS LIMIT", "fps_cap", [30, 60, 90, 120, 0], ["30", "60", "90", "120", "MAX"], 62))
 	v.add_child(toggle_row("SHOW FPS", "show_fps"))
 	if not OS.has_feature("mobile") and not OS.has_feature("web"):
 		v.add_child(toggle_row("FULLSCREEN", "fullscreen"))
-	var close := UIKit.button("DONE", UIKit.GREEN, 26, Vector2(560, 62))
+	var close := UIKit.button("DONE", UIKit.GREEN, 24, Vector2(560, 52))
 	close.pressed.connect(func():
 		closed.emit()
 		queue_free())
@@ -60,9 +61,19 @@ static func slider_row(title: String, key: String) -> HBoxContainer:
 	s.max_value = 1.0
 	s.step = 0.05
 	s.value = float(Save.setting(key))
-	s.custom_minimum_size = Vector2(240, 36)
+	s.custom_minimum_size = Vector2(240, 30)
 	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var track := StyleBoxFlat.new()
+	track.bg_color = Color("15102a")
+	track.set_corner_radius_all(6)
+	track.content_margin_top = 5
+	track.content_margin_bottom = 5
+	var fill := track.duplicate() as StyleBoxFlat
+	fill.bg_color = UIKit.YELLOW
+	s.add_theme_stylebox_override("slider", track)
+	s.add_theme_stylebox_override("grabber_area", fill)
+	s.add_theme_stylebox_override("grabber_area_highlight", fill)
 	var pct := UIKit.label("%d%%" % int(s.value * 100), 18, UIKit.YELLOW, 5)
 	pct.custom_minimum_size = Vector2(60, 0)
 	s.value_changed.connect(func(val: float):
@@ -77,7 +88,7 @@ static func slider_row(title: String, key: String) -> HBoxContainer:
 static func toggle_row(title: String, key: String) -> HBoxContainer:
 	var h := _row(title)
 	var on: bool = Save.setting(key)
-	var b := UIKit.button("ON" if on else "OFF", UIKit.GREEN if on else Color("6b5f86"), 20, Vector2(130, 48))
+	var b := UIKit.button("ON" if on else "OFF", UIKit.GREEN if on else Color("6b5f86"), 18, Vector2(130, 40))
 	b.pressed.connect(func():
 		var nv: bool = not Save.setting(key)
 		Save.set_setting(key, nv)
@@ -88,13 +99,13 @@ static func toggle_row(title: String, key: String) -> HBoxContainer:
 	h.add_child(b)
 	return h
 
-static func choice_row(title: String, key: String, values: Array, labels: Array) -> HBoxContainer:
+static func choice_row(title: String, key: String, values: Array, labels: Array, bw := 84) -> HBoxContainer:
 	var h := _row(title)
 	var buttons: Array[Button] = []
 	for i in values.size():
 		var val = values[i]
 		var sel: bool = Save.setting(key) == val
-		var b := UIKit.button(labels[i], UIKit.ORANGE if sel else Color("6b5f86"), 16, Vector2(84, 44))
+		var b := UIKit.button(labels[i], UIKit.ORANGE if sel else Color("6b5f86"), 16, Vector2(bw, 40))
 		buttons.append(b)
 		b.pressed.connect(func():
 			Save.set_setting(key, val)

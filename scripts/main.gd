@@ -13,7 +13,7 @@ func _ready() -> void:
 		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
 		if Save.setting("graphics") == "low":
 			get_tree().root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-		Engine.max_fps = 0
+		Save.apply_fps()
 		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
 		_apply_orientation()
 	# Command line: `-- --autotest` runs an automated bot-vs-bot match (used for QA).
@@ -109,6 +109,10 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	Router.goto(screen, params, true)
 	if "--demo-aim" in args or "--demo-super" in args:
 		_demo_inputs(args)
+	if "--settings" in args:
+		var sp := SettingsPanel.new()
+		sp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		add_child(sp)
 	var elapsed := 0.0
 	for i in times.size():
 		var wait: float = times[i] - elapsed
