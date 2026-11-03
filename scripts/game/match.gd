@@ -149,7 +149,8 @@ func _ready() -> void:
 
 ## Pre-render every brawler in this match into sprite frames (runs during the countdown).
 func _bake_sprites() -> void:
-	if not SpriteBank.can_bake():
+	# live, fully animated 3D models by default; frame snapshots only on LOW graphics
+	if not SpriteBank.can_bake() or Save.setting("graphics") != "low":
 		return
 	var combos: Array = []
 	for b in brawlers:

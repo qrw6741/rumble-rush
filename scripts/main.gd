@@ -152,6 +152,8 @@ func _apply_orientation() -> void:
 		if portrait:
 			_wrap = SubViewportContainer.new()
 			_wrap.stretch = false
+			# must keep forwarding taps while the game is paused (pause menu buttons)
+			_wrap.process_mode = Node.PROCESS_MODE_ALWAYS
 			_wrap.mouse_filter = Control.MOUSE_FILTER_STOP
 			add_child(_wrap)
 			_sub = SubViewport.new()

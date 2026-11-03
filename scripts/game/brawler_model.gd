@@ -7,10 +7,12 @@ extends Node3D
 
 const TOON := preload("res://assets/shaders/toon.gdshader")
 const OUTLINE := preload("res://assets/shaders/outline.gdshader")
+const TOON_VC := preload("res://assets/shaders/toon_vc.gdshader")
 const INK := Color("1a1028")
 
 static var _mat_cache: Dictionary = {}
 static var _outline_mats: Dictionary = {}
+static var _vc_mats: Dictionary = {}
 
 var id := ""
 var outline_width := 0.022
@@ -89,6 +91,8 @@ func part(parent: Node3D, mesh: Mesh, col: Color, pos := Vector3.ZERO, rot_deg :
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat(col, glow, 0.18, outline_width)
+	mi.set_meta("col", col)
+	mi.set_meta("glow", glow)
 	mi.position = pos
 	mi.rotation_degrees = rot_deg
 	mi.scale = scl
@@ -118,6 +122,7 @@ func build(brawler_id: String, skin := "") -> void:
 		"nova": _nova()
 		"mira": _mira()
 		"sprig": _sprig()
+	_merge_parts()
 
 func _legs(col: Color, shoe: Color, spread: float, hip_y: float, r: float, len: float) -> void:
 	leg_l = pivot(self, Vector3(-spread, hip_y, 0))
@@ -307,6 +312,76 @@ func _sprig() -> void:
 	part(weapon, sphere(0.12), acc, Vector3(0, 0, 0.08))
 	part(weapon, cyl(0.015, 0.015, 0.1), sec, Vector3(0, 0.13, 0.08))
 	part(weapon, sphere(0.06), prim, Vector3(0.05, 0.18, 0.08), Vector3(0, 0, -30), Vector3(1.4, 0.5, 0.8))
+
+# ------------------------------------------------------------------ draw-call merging
+static func _vc_mat(ow: float) -> ShaderMaterial:
+	if _vc_mats.has(ow):
+		return _vc_mats[ow]
+	var m := ShaderMaterial.new()
+	m.shader = TOON_VC
+	mat(Color.WHITE, 0.0, 0.18, ow) # makes sure the outline material for this width exists
+	m.next_pass = _outline_mats[ow]
+	_vc_mats[ow] = m
+	return m
+
+## Welds all the static pieces of each body part into one mesh with vertex colours,
+## so each limb is a single draw call instead of one per piece.
+func _merge_parts() -> void:
+	var keep: Array = extra.values()
+	var pivots: Array = [self]
+	for n in find_children("*", "Node3D", true, false):
+		if not (n is MeshInstance3D):
+			pivots.append(n)
+	for pv in pivots:
+		var parts: Array = []
+		for c in pv.get_children():
+			if c is MeshInstance3D and not (c in keep) and c.has_meta("col"):
+				parts.append(c)
+		if parts.size() < 2:
+			continue
+		var verts := PackedVector3Array()
+		var normals := PackedVector3Array()
+		var colors := PackedColorArray()
+		var uv2 := PackedVector2Array()
+		var idx := PackedInt32Array()
+		for mi: MeshInstance3D in parts:
+			var arr: Array = (mi.mesh as PrimitiveMesh).get_mesh_arrays()
+			var xf: Transform3D = mi.transform
+			var nb: Basis = xf.basis.inverse().transposed()
+			var base := verts.size()
+			var col: Color = mi.get_meta("col")
+			var glow: float = mi.get_meta("glow")
+			var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var ns: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+			for k in vs.size():
+				verts.append(xf * vs[k])
+				normals.append((nb * ns[k]).normalized())
+				colors.append(col)
+				uv2.append(Vector2(glow, 0.0))
+			var ind = arr[Mesh.ARRAY_INDEX]
+			if ind == null or (ind as PackedInt32Array).is_empty():
+				for k in vs.size():
+					idx.append(base + k)
+			else:
+				for i in (ind as PackedInt32Array):
+					idx.append(base + i)
+			pv.remove_child(mi)
+			mi.free()
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = verts
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_COLOR] = colors
+		arrays[Mesh.ARRAY_TEX_UV2] = uv2
+		arrays[Mesh.ARRAY_INDEX] = idx
+		var am := ArrayMesh.new()
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		var merged := MeshInstance3D.new()
+		merged.mesh = am
+		merged.material_override = _vc_mat(outline_width)
+		merged.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pv.add_child(merged)
+		pv.move_child(merged, 0)
 
 # ------------------------------------------------------------------ animation
 ## state: t, moving, recoil (1 -> 0), yaw (radians, 0 = facing camera), instant
