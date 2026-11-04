@@ -130,6 +130,22 @@ static func trophy_change(trophies: int, result: String, placement := 0) -> int:
 		"loss": return int(band[2])
 	return 0
 
+# ------------------------------------------------------------------ Win streak
+## Streak bonus starts at 2 wins in a row and grows with every extra win.
+const STREAK_MAX_BONUS := 10
+
+static func streak_bonus(streak: int) -> Dictionary:
+	if streak < 2:
+		return {"trophies": 0, "credits": 0}
+	var step := mini(streak - 1, STREAK_MAX_BONUS)
+	return {"trophies": mini(step, 6), "credits": 10 * step + (5 * maxi(0, streak - 5))}
+
+static func streak_color(streak: int) -> Color:
+	if streak >= 10: return Color("c45cff")
+	if streak >= 6: return Color("ff4a2a")
+	if streak >= 4: return Color("ff8a1f")
+	return Color("ffc12e")
+
 # ------------------------------------------------------------------ Brawler ranks
 ## Trophies needed to reach rank i+1 (index 0 = rank 1).
 const RANK_TROPHIES := [0, 10, 20, 30, 40, 60, 80, 100, 120, 140,

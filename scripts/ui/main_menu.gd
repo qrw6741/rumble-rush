@@ -130,6 +130,13 @@ func _build_top_bar() -> void:
 	prof.add_child(pic)
 	prof.pressed.connect(func(): Router.goto("profile"))
 	add_child(prof)
+	var streak := int(Save.data.get("win_streak", 0))
+	if streak >= 2:
+		var sb := UIKit.StreakBadge.new()
+		sb.streak = streak
+		sb.position = Vector2(20, 106)
+		sb.size = Vector2(250, 54)
+		add_child(sb)
 
 	# trophy / level bar with the yellow profile button
 	var bar := SlantButton.new()

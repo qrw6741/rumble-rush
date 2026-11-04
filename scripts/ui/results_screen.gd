@@ -120,6 +120,7 @@ func _ready() -> void:
 		var mlb := UIKit.label(mtxt, 20, Progression.MASTERY_COLORS[ml].lightened(0.2), 6)
 		mlb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		rh.add_child(mlb)
+	_streak_banner(rewards, Vector2(40, 140))
 	if rewards.get("rank_up", false):
 		var ru := UIKit.label("RANK UP!  %d" % int(rewards.new_rank), 22, Progression.rank_color(int(rewards.new_rank)).lightened(0.3), 6)
 		ru.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -356,6 +357,7 @@ func _team_layout(result: String) -> void:
 	rr.position = Vector2(66, 118)
 	rr.size = Vector2(620, 50)
 	add_child(rr)
+	_streak_banner(rewards, Vector2(70, 176))
 
 	# HAVE FUN? + PROCEED
 	var fun := UIKit.label("HAVE FUN?", 22, Color.WHITE, 6, HORIZONTAL_ALIGNMENT_CENTER)
@@ -389,6 +391,28 @@ func _team_layout(result: String) -> void:
 	else:
 		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
 	add_child(again)
+
+func _streak_banner(rewards: Dictionary, pos: Vector2) -> void:
+	var st := int(rewards.get("streak", 0))
+	if st >= 2:
+		var sb := UIKit.StreakBadge.new()
+		sb.streak = st
+		sb.show_label = false
+		sb.position = pos
+		sb.size = Vector2(56, 56)
+		add_child(sb)
+		var txt := "%d WIN STREAK!" % st
+		var bonus := "BONUS  +%d TROPHIES   +%d COINS" % [int(rewards.get("streak_trophies", 0)), int(rewards.get("streak_credits", 0))]
+		var l1 := UIKit.label(txt, 26, Progression.streak_color(st).lightened(0.25), 6)
+		l1.position = pos + Vector2(64, -2)
+		add_child(l1)
+		var l2 := UIKit.label(bonus, 16, Color.WHITE, 5)
+		l2.position = pos + Vector2(66, 30)
+		add_child(l2)
+	elif rewards.get("streak_broken", false):
+		var l := UIKit.label("STREAK ENDED  (%d WINS)" % int(rewards.get("streak_before", 0)), 18, Color("ff9a8a"), 5)
+		l.position = pos + Vector2(0, 8)
+		add_child(l)
 
 func _stat_card(p: Dictionary, big: bool, best_ko: Dictionary, best_dmg: Dictionary) -> Control:
 	var c := StatCard.new()

@@ -88,7 +88,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		params["autoplay"] = true
 	if screen == "results":
 		params = {"result": "win", "mode": "gem_grab", "map": "crystal_canyon", "brawler": "nova", "view_team": 0,
-			"rewards": {"trophies": 8, "credits": 42, "xp": 61, "level_up": true, "new_level": 3},
+			"rewards": {"trophies": 11, "credits": 72, "streak": 4, "streak_trophies": 3, "streak_credits": 30, "xp": 61, "level_up": true, "new_level": 3},
 			"players": [
 				{"name": "Player", "brawler": "nova", "team": 0, "is_player": true, "kos": 6, "deaths": 1, "damage": 18450, "healing": 0, "gems": 7, "mvp": true, "level": 3},
 				{"name": "Juno (BOT)", "brawler": "mira", "team": 0, "is_player": false, "kos": 1, "deaths": 2, "damage": 6100, "healing": 9800, "gems": 2, "mvp": false, "level": 2},
@@ -97,6 +97,10 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 				{"name": "Echo (BOT)", "brawler": "sprig", "team": 1, "is_player": false, "kos": 2, "deaths": 5, "damage": 11800, "healing": 0, "gems": 1, "mvp": false, "level": 3},
 				{"name": "Fuse (BOT)", "brawler": "nova", "team": 1, "is_player": false, "kos": 1, "deaths": 4, "damage": 9300, "healing": 0, "gems": 0, "mvp": false, "level": 2},
 			]}
+	if screen == "results" and "--sd" in args:
+		params.mode = "showdown"
+		params.place = 2
+		params.brawler = "vex"
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
 	if "--demo-champs" in args:
@@ -110,6 +114,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		Save.data.settings.map_view = "2d"
 	if "--demo-progress" in args:
 		Save.save_path = "user://demo_save.json"
+		Save.data.win_streak = 4
 		Save.data.pass_tokens = 760
 		Save.data.pass_claimed = {"free": [1, 2, 3], "gold": []}
 		Save.data.brawler_trophies["vex"] = 95

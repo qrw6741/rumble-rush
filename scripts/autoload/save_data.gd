@@ -69,6 +69,8 @@ func _default() -> Dictionary:
 		"rank_claimed": ranks,
 		"skins_owned": [],
 		"gems": 30,
+		"win_streak": 0,
+		"best_streak": 0,
 		"mastery": {},
 		"profile_icon": "",
 		"profile_title": "rookie",
@@ -289,6 +291,19 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	var credits: int = {"win": 30, "loss": 12, "draw": 18}[result] + mini(kos, 10) * 2 + (10 if mvp else 0)
 	var xp: int = {"win": 40, "loss": 20, "draw": 28}[result] + kos * 3
 
+	# win streak: showdown top 3 counts as a win, draws keep the streak
+	var streak_before := int(data.get("win_streak", 0))
+	var won := result == "win" if placement <= 0 else placement <= 3
+	var streak_bonus := {"trophies": 0, "credits": 0}
+	if won:
+		data.win_streak = streak_before + 1
+		data.best_streak = maxi(int(data.get("best_streak", 0)), int(data.win_streak))
+		streak_bonus = Progression.streak_bonus(int(data.win_streak))
+		trophy_delta += int(streak_bonus.trophies)
+		credits += int(streak_bonus.credits)
+	elif placement > 0 or result == "loss":
+		data.win_streak = 0
+
 	var tokens := Progression.match_tokens(result, kos)
 	data.pass_tokens += tokens
 	var old_level := account_level()
@@ -315,6 +330,8 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	return {"duplicate": false, "trophies": trophy_delta, "credits": credits, "xp": xp, "tokens": tokens,
 		"rank_up": Progression.rank_for(bt + trophy_delta) > Progression.rank_for(bt), "new_rank": Progression.rank_for(bt + trophy_delta),
 		"level_up": account_level() > old_level, "new_level": account_level(),
+		"streak": int(data.win_streak), "streak_before": streak_before, "streak_broken": streak_before >= 2 and int(data.win_streak) == 0,
+		"streak_trophies": int(streak_bonus.trophies), "streak_credits": int(streak_bonus.credits),
 		"mastery_gain": m_gain, "mastery_points": m_before + m_gain, "mastery_level_up": lv_after > lv_before, "mastery_level": lv_after}
 
 func reset_progress() -> void:

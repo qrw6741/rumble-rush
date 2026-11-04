@@ -439,3 +439,57 @@ class ProfileIcon extends Control:
 		var rc: Color = Config.RARITY_COLORS[Config.BRAWLERS[id].rarity]
 		draw_rect(Rect2(Vector2.ZERO, size), rc.lerp(Color("bfe4ff"), 0.3))
 		draw_rect(Rect2(Vector2.ZERO, size), UIKit.DARK, false, 4.0)
+
+
+## Flame badge with the current win streak number.
+class StreakBadge extends Control:
+	var streak := 0
+	var t := 0.0
+	var show_label := true
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _process(d: float) -> void:
+		t += d
+		queue_redraw()
+	static func flame(ci: CanvasItem, c: Vector2, h: float, col: Color, tt: float) -> void:
+		var pts := PackedVector2Array()
+		var n := 28
+		for i in n:
+			var a := TAU * float(i) / n
+			var y := -cos(a)
+			var x := sin(a)
+			var w := 0.62 * (1.0 - 0.55 * maxf(0.0, -y))  # narrow at the top
+			var wob := 0.06 * sin(tt * 9.0 + a * 3.0) * maxf(0.0, -y)
+			var py := y * 0.5 if y > 0.0 else y * (0.95 + 0.08 * sin(tt * 7.0))
+			pts.append(c + Vector2((x * w + wob) * h * 0.55, py * h * 0.6))
+		var outline := PackedVector2Array()
+		for p in pts:
+			outline.append(c + (p - c) * 1.14 + Vector2(0, 1))
+		ci.draw_colored_polygon(outline, Color("1a1020"))
+		ci.draw_colored_polygon(pts, col)
+		var inner := PackedVector2Array()
+		for p in pts:
+			inner.append(c + Vector2(0, h * 0.12) + (p - c) * 0.55)
+		ci.draw_colored_polygon(inner, col.lightened(0.55))
+	func _draw() -> void:
+		var col := Progression.streak_color(streak)
+		var h := size.y
+		var c := Vector2(h * 0.5, h * 0.55)
+		flame(self, c, h, col, t)
+		var f: Font = UIKit.bold()
+		var fs := int(h * 0.42)
+		var txt := str(streak)
+		var tw := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var tp := c + Vector2(-tw * 0.5, h * 0.22)
+		draw_string_outline(f, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, Color("1a1020"))
+		draw_string(f, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+		if show_label and size.x > h * 1.4:
+			var ls := int(h * 0.26)
+			var lp := Vector2(h * 1.02, h * 0.42)
+			draw_string_outline(f, lp, "WIN STREAK", HORIZONTAL_ALIGNMENT_LEFT, -1, ls, 5, Color("1a1020"))
+			draw_string(f, lp, "WIN STREAK", HORIZONTAL_ALIGNMENT_LEFT, -1, ls, col.lightened(0.3))
+			var b := Progression.streak_bonus(streak + 1)
+			var sub := "NEXT WIN +%d  +%d COINS" % [int(b.trophies), int(b.credits)] if streak + 1 >= 2 else "WIN AGAIN FOR BONUS"
+			var lp2 := Vector2(h * 1.02, h * 0.78)
+			draw_string_outline(f, lp2, sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(ls * 0.75), 4, Color("1a1020"))
+			draw_string(f, lp2, sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(ls * 0.75), Color.WHITE)
