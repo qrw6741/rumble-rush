@@ -367,8 +367,8 @@ class BrawlerPortrait extends Control:
 				s = size.y / 34.0
 				feet = Vector2(size.x * 0.5, size.y * 0.42 + 46.0 * s)
 			else:
-				s = minf(size.y / 78.0, size.x / 60.0)
-				feet = Vector2(size.x * 0.5, size.y * 0.93)
+				s = minf(size.y / 96.0, size.x / 78.0)
+				feet = Vector2(size.x * 0.5, size.y * 0.95)
 			BrawlerArt.draw(self, brawler_id, feet, s, {"t": _t, "aim": Vector2(1, 0.25), "skin": sk})
 
 	func _draw_backdrop() -> void:

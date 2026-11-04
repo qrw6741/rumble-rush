@@ -135,8 +135,11 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 ## and only a single quad to draw every frame afterwards.
 func _bake_flat() -> void:
 	var pad := T * 3.0
+	var full := size_px + Vector2(pad, pad) * 2.0
+	var k := clampf(4000.0 / maxf(full.x, full.y), 1.0, 2.0) # extra resolution so the map stays crisp when zoomed on phones
 	var vp := SubViewport.new()
-	vp.size = Vector2i(int(size_px.x + pad * 2), int(size_px.y + pad * 2))
+	vp.size = Vector2i(int(full.x * k), int(full.y * k))
+	vp.canvas_transform = Transform2D.IDENTITY.scaled(Vector2(k, k))
 	vp.transparent_bg = false
 	vp.msaa_2d = Viewport.MSAA_4X
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
@@ -150,6 +153,7 @@ func _bake_flat() -> void:
 	spr.texture = vp.get_texture()
 	spr.centered = false
 	spr.position = Vector2(-pad, -pad)
+	spr.scale = Vector2.ONE / k
 	spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(spr)
 	move_child(spr, 0)

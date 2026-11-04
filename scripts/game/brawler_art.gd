@@ -38,8 +38,8 @@ static func poly(ci: CanvasItem, pts: PackedVector2Array, fill: Color, outline :
 	if outline and shading and pts.size() >= 4:
 		_shade(ci, pts, fill)
 	if outline:
-		ci.draw_polyline(_closed(pts), _c(OUTLINE), w / sqrt(_s), shading)
-	elif shading:
+		ci.draw_polyline(_closed(pts), _c(OUTLINE), w / sqrt(_s), true)
+	else:
 		ci.draw_polyline(_closed(pts), _c(fill), 1.0, true) # anti-alias the fill edge
 
 ## Painterly volume: darker underside, soft highlight up-left, warm bounce light.
@@ -187,7 +187,7 @@ static func spline(ctrl: Array, closed := true, per := 6) -> PackedVector2Array:
 
 ## An organic shape: smooth curve through the given points, shaded and inked.
 static func blob(ci: CanvasItem, ctrl: Array, fill: Color, outline := true, w := OW) -> void:
-	poly(ci, spline(ctrl, true, 6 if shading else 3), fill, outline, w)
+	poly(ci, spline(ctrl, true, 6 if shading else 4), fill, outline, w)
 
 ## Offset a list of points.
 static func _o(pts: Array, off: Vector2, sx := 1.0) -> Array:

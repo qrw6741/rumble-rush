@@ -77,8 +77,8 @@ var sprite: Sprite2D
 var bank = null        # baked sprite frames (SpriteBank) once ready
 var skin := ""
 var _yaw := 0.0
-const VIEW_PX := 256
-const SPRITE_SCALE := 0.6
+const VIEW_PX := 320
+const SPRITE_SCALE := 0.48 # world px per texture px at VIEW_PX
 var flat := false
 var _walk_vel := Vector2.ZERO
 const FLASH_SHADER := preload("res://assets/shaders/sprite_flash.gdshader")
@@ -134,13 +134,13 @@ func _ready() -> void:
 		return
 	# 3D model rendered into a texture and shown as a sprite
 	# bots render slightly smaller on phones so every brawler can animate every frame
-	var vpx := VIEW_PX if (is_player or not Save.low_graphics()) else int(VIEW_PX * 0.82)
+	var vpx := VIEW_PX if (is_player or not Save.low_graphics()) else int(VIEW_PX * 0.9)
 	view = BrawlerView.create(id, "battle", vpx, true, skin)
 	add_child(view)
 	sprite = Sprite2D.new()
 	sprite.texture = view.get_texture()
 	sprite.centered = false
-	sprite.scale = Vector2.ONE * SPRITE_SCALE / view.px_scale
+	sprite.scale = Vector2.ONE * SPRITE_SCALE * VIEW_PX / float(view.size.x)
 	var sm := ShaderMaterial.new()
 	sm.shader = FLASH_SHADER
 	sprite.material = sm
@@ -589,7 +589,7 @@ class BrawlerOverhead extends Node2D:
 		if b == null or not b.alive:
 			return
 		var f := FX._font()
-		var y := -96.0 - b.air_h
+		var y := (-122.0 if b.flat else -108.0) - b.air_h
 		var w := 64.0
 		var viewer: int = b.game.view_team
 		var bar_col: Color

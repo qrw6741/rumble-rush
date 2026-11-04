@@ -292,7 +292,7 @@ class AbilityReadout extends Control:
 		var sc := Vector2(282, 92)
 		var full := p.super_charge >= 1.0
 		var pulse := 1.0 + (0.06 * sin(_t * 8.0) if full else 0.0)
-		SuperButtonArt.draw(self, sc, 56.0 * pulse, p.super_charge, "ab_%s_super" % p.id, _t)
+		SuperButtonArt.draw(self, sc, 56.0 * pulse, p.super_charge, "super", _t)
 		_t2(f, "SPACE" if full else "%d%%" % int(p.super_charge * 100), sc + Vector2(0, 76), 16)
 
 	func _t2(f: Font, s: String, cb: Vector2, size: int) -> void:

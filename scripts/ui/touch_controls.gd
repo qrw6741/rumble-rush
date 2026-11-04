@@ -183,11 +183,11 @@ func _draw() -> void:
 		for k in 3:
 			draw_circle(sc, 50 + k * 7 + sin(_t * 6.0) * 3.0, Color(1, 0.85, 0.2, 0.12))
 		_coin(sc, 46, Color("ffd93a"), Color("f2a01a"), Color("b8560e"))
-		UIKit.draw_icon(self, "ab_%s_super" % b.id, sc + Vector2(0, -2), 62.0)
+		UIKit.draw_icon(self, "super", sc + Vector2(0, -2), 64.0)
 	else:
 		_coin(sc, 46, Color("5a6078"), Color("454b62"), Color("262a3c"), 0.92)
 		draw_arc(sc, 40, -PI / 2, -PI / 2 + TAU * b.super_charge, 56, Color("ffd23a"), 7.0, true)
-		UIKit.draw_icon(self, "ab_%s_super" % b.id, sc, 52.0, Color(0.6, 0.6, 0.66, 0.8))
+		UIKit.draw_icon(self, "super", sc, 54.0, Color(0.6, 0.6, 0.66, 0.8))
 	# ---------- GADGET
 	var gc := gadget_center()
 	var cd := b.gadget_cd / b.gadget_max_cd

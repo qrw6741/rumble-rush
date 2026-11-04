@@ -61,8 +61,8 @@ func _build_stage() -> void:
 		pt.backdrop = false
 		pt.view_kind = "showcase"
 		pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		pt.offset_top = 120
-		pt.offset_bottom = -50
+		pt.offset_top = 96
+		pt.offset_bottom = -118
 		tr = pt
 	else:
 		_view = BrawlerView.create(id, "showcase", 720, true, Save.selected_skin(id))
