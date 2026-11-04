@@ -122,7 +122,8 @@ class RankTrack extends Control:
 		var tiers: Array = Progression.CHAMPS_TIERS.duplicate()
 		tiers.reverse() # X ... I, left to right
 		var y := 56.0
-		draw_line(Vector2(80, y), Vector2(size.x - 20, y), Color(0.9, 0.6, 0.3, 0.35), 4.0)
+		draw_line(Vector2(80, y), Vector2(size.x - 20, y), Color("140405"), 8.0)
+		draw_line(Vector2(80, y), Vector2(size.x - 20, y), Color("6a1418"), 4.0)
 		# our crest on the left
 		var cc := Vector2(40, y)
 		var cp := PackedVector2Array()
@@ -132,7 +133,7 @@ class RankTrack extends Control:
 		var cp2 := PackedVector2Array()
 		for i in 6:
 			cp2.append(cc + Vector2.from_angle(-PI / 2 + i * TAU / 6.0) * 32.0)
-		draw_colored_polygon(cp2, Color("c8642a"))
+		draw_colored_polygon(cp2, Color("c4202a"))
 		UIKit.draw_icon(self, "trophy", cc, 44.0)
 		var cur := Progression.champs_tier(int(c.f_w))
 		var step := (size.x - 150.0) / tiers.size()
@@ -142,26 +143,41 @@ class RankTrack extends Control:
 			var reached: bool = c.stage != "qualifier" and int(c.f_w) >= int(t.wins)
 			var is_cur: bool = c.stage != "qualifier" and t.rank == cur.rank
 			var roman: String = String(t.rank).replace("RANK ", "")
-			ChampsShield.draw_shield(self, p, 56.0 if is_cur else 46.0, t.color, roman, reached)
+			var heat := float(i) / float(tiers.size() - 1)
+			ChampsShield.draw_shield(self, p, 64.0 if is_cur else 54.0, t.color, roman, reached or c.stage == "qualifier", heat)
 			if is_cur:
-				draw_colored_polygon(PackedVector2Array([p + Vector2(-9, -50), p + Vector2(9, -50), p + Vector2(0, -38)]), Color("4fd3a0"))
+				draw_colored_polygon(PackedVector2Array([p + Vector2(-10, -56), p + Vector2(10, -56), p + Vector2(0, -43)]), Color("4fd3a0"))
 
 
 ## Small static helper so inner classes can draw shields.
 class ChampsShield:
-	static func draw_shield(ci: CanvasItem, c: Vector2, h: float, col: Color, label: String, lit: bool) -> void:
+	## Red bevelled shield with a Roman numeral. `heat` 0..1 runs from deep
+	## maroon (Rank X) to bright crimson (Rank I).
+	static func draw_shield(ci: CanvasItem, c: Vector2, h: float, _col: Color, label: String, lit: bool, heat := 0.5) -> void:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
 		var u := h / 60.0
-		var pts := [Vector2(-20, -28), Vector2(20, -28), Vector2(22, 4), Vector2(0, 30), Vector2(-22, 4)]
-		var outer := PackedVector2Array()
-		var inner := PackedVector2Array()
-		for p: Vector2 in pts:
-			outer.append(c + p * u * 1.12)
-			inner.append(c + p * u)
-		ci.draw_colored_polygon(outer, Color("120806"))
-		ci.draw_colored_polygon(inner, col if lit else col.darkened(0.6))
-		ci.draw_colored_polygon(PackedVector2Array([inner[0], inner[1], c + Vector2(20, -18) * u, c + Vector2(-20, -18) * u]), Color(1, 1, 1, 0.2 if lit else 0.06))
-		S2.text_c(ci, label, c + Vector2(0, 8 * u), int(18 * u), Color.WHITE if lit else Color(1, 1, 1, 0.5), maxi(3, int(5 * u)))
+		var shape: Array[Vector2] = [Vector2(-21, -26), Vector2(-12, -30), Vector2(12, -30), Vector2(21, -26), Vector2(21, 6), Vector2(0, 30), Vector2(-21, 6)]
+		var frame := PackedVector2Array()
+		var rim := PackedVector2Array()
+		var face := PackedVector2Array()
+		for p: Vector2 in shape:
+			frame.append(c + p * u * 1.16)
+			rim.append(c + p * u)
+			face.append(c + p * u * 0.78 + Vector2(0, -1.5 * u))
+		var red := Color("5a0f12").lerp(Color("e8262c"), heat)
+		if not lit:
+			red = red.darkened(0.55)
+		ci.draw_colored_polygon(frame, Color("140405"))
+		# bevelled rim: lighter top-left edges, darker bottom-right
+		for i in shape.size():
+			var j := (i + 1) % shape.size()
+			var mid: Vector2 = (shape[i] + shape[j]) * 0.5
+			var light := clampf(0.55 - (mid.x * 0.5 + mid.y) / 60.0, 0.0, 1.0)
+			ci.draw_colored_polygon(PackedVector2Array([rim[i], rim[j], face[j], face[i]]), red.darkened(0.4).lerp(red.lightened(0.35), light))
+		ci.draw_colored_polygon(face, red)
+		# soft sheen across the top of the face
+		ci.draw_colored_polygon(PackedVector2Array([face[0], face[1], face[2], face[3], c + Vector2(16, -10) * u, c + Vector2(-16, -10) * u]), Color(1, 1, 1, 0.14 if lit else 0.05))
+		S2.text_c(ci, label, c + Vector2(0, 6 * u), int(17 * u), Color.WHITE if lit else Color(1, 1, 1, 0.55), maxi(3, int(5 * u)))
 
 
 ## Card shell shared by the panels.
@@ -207,8 +223,10 @@ class RewardsCard extends Card:
 				target = t
 		if c.stage == "rewards":
 			target = Progression.champs_tier(wins)
-		ChampsShield.draw_shield(self, Vector2(70, 150), 72.0, target.color, String(target.rank).replace("RANK ", ""), true)
-		S2.text_l(self, target.rank, Vector2(130, 120), 24, target.color.lightened(0.3))
+		var ti := Progression.CHAMPS_TIERS.find(target)
+		var heat := 1.0 - float(ti) / float(Progression.CHAMPS_TIERS.size() - 1)
+		ChampsShield.draw_shield(self, Vector2(70, 150), 78.0, target.color, String(target.rank).replace("RANK ", ""), true, heat)
+		S2.text_l(self, "RED " + String(target.rank).replace("RANK ", ""), Vector2(130, 120), 24, Color("ff6a6a"))
 		S2.text_l(self, "%d / %d wins" % [mini(wins, int(target.wins)), int(target.wins)], Vector2(130, 152), 22, Color("6ad0ff"))
 		var x := 140.0
 		for rw: Dictionary in target.rewards:
