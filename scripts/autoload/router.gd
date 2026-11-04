@@ -17,6 +17,7 @@ const SCREENS := {
 	"road": "res://scripts/ui/road_screen.gd",
 	"events": "res://scripts/ui/events_screen.gd",
 	"shop": "res://scripts/ui/shop_screen.gd",
+	"champs": "res://scripts/ui/champs_screen.gd",
 }
 
 var root_container: Node

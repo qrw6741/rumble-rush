@@ -98,6 +98,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			]}
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
+	if "--demo-champs" in args:
+		Save.save_path = "user://demo_save.json"
+		Save.data.champs = {"stage": "finals", "q_w": 5, "q_l": 1, "f_w": 9, "f_l": 3, "best": "RANK IV", "runs": 2}
 	if "--view2d" in args:
 		Save.data.settings.view_mode = "2d"
 		Save.data.settings.map_view = "2d"

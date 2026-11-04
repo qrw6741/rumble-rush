@@ -321,3 +321,31 @@ static func daily_offers(day_key: String) -> Array:
 	var sk: String = opts[rng.randi() % opts.size()]
 	offers.append({"id": "deal_skin_%s_%s" % [sk_id, sk], "title": "FEATURED SKIN", "reward": {"type": "skin", "brawler": sk_id, "skin": sk}, "currency": "gems", "cost": int(skin_price(sk) * 0.7), "tag": "-30%"})
 	return offers
+
+
+# ------------------------------------------------------------------ CHAMPS (competitive)
+## Qualifier: reach CHAMPS_Q_WINS wins before CHAMPS_Q_LOSSES losses.
+## Finals: CHAMPS_F_MATCHES matches; final win count decides the Champs rank.
+const CHAMPS_Q_WINS := 5
+const CHAMPS_Q_LOSSES := 3
+const CHAMPS_F_MATCHES := 15
+const CHAMPS_MODES := ["gem_grab", "knockout"]
+## min wins -> rank and rewards (best first)
+const CHAMPS_TIERS := [
+	{"wins": 14, "rank": "RANK I", "color": Color("ffd23a"), "rewards": [{"type": "gems", "amount": 60}, {"type": "credits", "amount": 1500}, {"type": "drop", "tier": 2}, {"type": "drop", "tier": 2}]},
+	{"wins": 12, "rank": "RANK II", "color": Color("ff9d2e"), "rewards": [{"type": "gems", "amount": 40}, {"type": "credits", "amount": 1100}, {"type": "drop", "tier": 2}]},
+	{"wins": 10, "rank": "RANK III", "color": Color("c25bff"), "rewards": [{"type": "gems", "amount": 30}, {"type": "credits", "amount": 800}, {"type": "drop", "tier": 1}]},
+	{"wins": 8, "rank": "RANK IV", "color": Color("4fe3d0"), "rewards": [{"type": "gems", "amount": 20}, {"type": "credits", "amount": 600}, {"type": "drop", "tier": 1}]},
+	{"wins": 7, "rank": "RANK V", "color": Color("3ea2ff"), "rewards": [{"type": "gems", "amount": 15}, {"type": "credits", "amount": 450}]},
+	{"wins": 6, "rank": "RANK VI", "color": Color("4fd36a"), "rewards": [{"type": "gems", "amount": 10}, {"type": "credits", "amount": 350}]},
+	{"wins": 5, "rank": "RANK VII", "color": Color("c9d0de"), "rewards": [{"type": "credits", "amount": 300}, {"type": "drop", "tier": 0}]},
+	{"wins": 4, "rank": "RANK VIII", "color": Color("d98a4a"), "rewards": [{"type": "credits", "amount": 220}]},
+	{"wins": 2, "rank": "RANK IX", "color": Color("8a6a5a"), "rewards": [{"type": "credits", "amount": 150}]},
+	{"wins": 0, "rank": "RANK X", "color": Color("6b5f86"), "rewards": [{"type": "credits", "amount": 80}]},
+]
+
+static func champs_tier(wins: int) -> Dictionary:
+	for t in CHAMPS_TIERS:
+		if wins >= int(t.wins):
+			return t
+	return CHAMPS_TIERS[CHAMPS_TIERS.size() - 1]

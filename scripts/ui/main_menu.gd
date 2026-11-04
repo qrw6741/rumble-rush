@@ -194,6 +194,7 @@ func _build_top_bar() -> void:
 func _build_left_buttons() -> void:
 	var items := [
 		["SHOP", "shop", func(): Router.goto("shop")],
+		["CHAMPS", "trophy", func(): Router.goto("champs")],
 		["BRAWLERS", "brawlers", func(): Router.goto("select")],
 		["PROFILE", "profile", func(): Router.goto("profile")],
 		["GUIDE", "guide", _open_how_to],
@@ -203,13 +204,13 @@ func _build_left_buttons() -> void:
 		var b := SlantButton.new()
 		b.color = Color("27334d")
 		b.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-		b.position = Vector2(22, -196 + i * 100)
-		b.size = Vector2(150, 90)
+		b.position = Vector2(22, -238 + i * 86)
+		b.size = Vector2(150, 78)
 		var icon_kind: String = it[1]
 		var label: String = it[0]
 		b.custom_draw = func(ci: Control):
-			SlantButton.menu_icon(ci, icon_kind, Vector2(75, 34) )
-			SlantButton.text_c(ci, label, Vector2(75, 80), 20, Color.WHITE)
+			SlantButton.menu_icon(ci, icon_kind, Vector2(75, 28))
+			SlantButton.text_c(ci, label, Vector2(75, 70), 19, Color.WHITE)
 		b.name = label.capitalize()
 		b.pressed.connect(it[2])
 		add_child(b)

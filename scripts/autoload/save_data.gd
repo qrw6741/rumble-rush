@@ -68,6 +68,7 @@ func _default() -> Dictionary:
 		"rank_claimed": ranks,
 		"skins_owned": [],
 		"gems": 30,
+		"champs": {"stage": "qualifier", "q_w": 0, "q_l": 0, "f_w": 0, "f_l": 0, "best": "", "runs": 0},
 		"unlocked": Config.STARTER_BRAWLERS.duplicate(),
 		"challenge_kos": {},
 		"quests": {"day": "", "progress": {}, "claimed": []},
@@ -404,6 +405,71 @@ func unlock_brawler(id: String) -> bool:
 	data.unlocked.append(id)
 	save_game()
 	return true
+
+# ------------------------------------------------------------------ CHAMPS
+func champs() -> Dictionary:
+	return data.champs
+
+## Bots get tougher the further you go: hard in qualifying, extreme from 4 Finals wins.
+func champs_difficulty() -> String:
+	var c := champs()
+	if c.stage == "finals" and int(c.f_w) >= 4:
+		return "extreme"
+	return "hard"
+
+## Records one Champs match. Returns a summary for the results screen.
+func champs_record(result: String) -> Dictionary:
+	var c := champs()
+	var won := result == "win"
+	var out := {"stage": c.stage, "won": won}
+	if c.stage == "qualifier":
+		if won:
+			c.q_w = int(c.q_w) + 1
+		else:
+			c.q_l = int(c.q_l) + 1
+		if int(c.q_w) >= Progression.CHAMPS_Q_WINS:
+			c.stage = "finals"
+			c.f_w = 0
+			c.f_l = 0
+			out["qualified"] = true
+		elif int(c.q_l) >= Progression.CHAMPS_Q_LOSSES:
+			c.q_w = 0
+			c.q_l = 0
+			out["failed"] = true
+	elif c.stage == "finals":
+		if won:
+			c.f_w = int(c.f_w) + 1
+		else:
+			c.f_l = int(c.f_l) + 1
+		if int(c.f_w) + int(c.f_l) >= Progression.CHAMPS_F_MATCHES:
+			c.stage = "rewards"
+			out["finished"] = true
+	save_game()
+	return out
+
+## Collect the Finals rewards and start a new Champs run.
+func champs_claim() -> Dictionary:
+	var c := champs()
+	if c.stage != "rewards":
+		return {}
+	var tier := Progression.champs_tier(int(c.f_w))
+	for r in tier.rewards:
+		grant_reward(r)
+	c.best = tier.rank if c.best == "" or Progression.CHAMPS_TIERS.find(Progression.champs_tier(int(c.f_w))) < _rank_index(c.best) else c.best
+	c.runs = int(c.runs) + 1
+	c.stage = "qualifier"
+	c.q_w = 0
+	c.q_l = 0
+	c.f_w = 0
+	c.f_l = 0
+	save_game()
+	return tier
+
+func _rank_index(rank: String) -> int:
+	for i in Progression.CHAMPS_TIERS.size():
+		if Progression.CHAMPS_TIERS[i].rank == rank:
+			return i
+	return 99
 
 func _quest_roll() -> void:
 	if data.quests.get("day", "") != today_key():

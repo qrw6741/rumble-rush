@@ -114,7 +114,23 @@ func _ready() -> void:
 	btns.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	bottom.add_child(btns)
 	var again := UIKit.button("PLAY AGAIN", UIKit.YELLOW, 28, Vector2(280, 72))
-	again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
+	if data.get("champs", false):
+		again.text = "BACK TO CHAMPS"
+		again.pressed.connect(func(): Router.goto("champs"))
+		var ci: Dictionary = data.get("champs_info", {})
+		var msg := ""
+		if ci.get("qualified", false):
+			msg = "QUALIFIED FOR CHAMPS FINALS!"
+		elif ci.get("failed", false):
+			msg = "QUALIFIER OVER - TRY AGAIN"
+		elif ci.get("finished", false):
+			msg = "FINALS COMPLETE! CLAIM YOUR REWARDS"
+		else:
+			var c := Save.champs()
+			msg = ("QUALIFIER  %d W - %d L" % [int(c.q_w), int(c.q_l)]) if c.stage == "qualifier" else ("FINALS  %d W - %d L" % [int(c.f_w), int(c.f_l)])
+		btns.add_child(UIKit.label("CHAMPS: " + msg, 18, UIKit.YELLOW, 6, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
 	btns.add_child(again)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
