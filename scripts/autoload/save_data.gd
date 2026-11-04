@@ -68,6 +68,8 @@ func _default() -> Dictionary:
 		"rank_claimed": ranks,
 		"skins_owned": [],
 		"gems": 30,
+		"challenge_kos": {},
+		"quests": {"day": "", "progress": {}, "claimed": []},
 		"drops": [],
 		"shop": {"day": "", "bought": []},
 		"skin_selected": skins,
@@ -237,6 +239,18 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	if data.granted.size() > 60:
 		data.granted = data.granted.slice(data.granted.size() - 60)
 
+	# pass challenges + daily quests
+	data.challenge_kos[brawler_id] = int(data.challenge_kos.get(brawler_id, 0)) + kos
+	_quest_roll()
+	for q in Progression.daily_quests(today_key()):
+		var add := 0
+		match q.kind:
+			"win": add = 1 if result == "win" or (placement > 0 and placement <= 4) else 0
+			"kos": add = kos if q.brawler == brawler_id else 0
+			"mode": add = 1 if q.mode == mode else 0
+		if add > 0:
+			data.quests.progress[q.id] = mini(int(q.goal), int(data.quests.progress.get(q.id, 0)) + add)
+
 	var bt := brawler_trophies(brawler_id)
 	var trophy_delta := 0
 	trophy_delta = Progression.trophy_change(bt, result, placement)
@@ -365,6 +379,36 @@ func buy(id: String, reward: Dictionary, currency: String, cost: int, once := tr
 	save_game()
 	return true
 
+func _quest_roll() -> void:
+	if data.quests.get("day", "") != today_key():
+		data.quests = {"day": today_key(), "progress": {}, "claimed": []}
+
+func quest_progress(q: Dictionary) -> int:
+	_quest_roll()
+	return int(data.quests.progress.get(q.id, 0))
+
+func quest_claimed(q: Dictionary) -> bool:
+	_quest_roll()
+	return q.id in data.quests.claimed
+
+func claim_quest(q: Dictionary) -> bool:
+	if quest_claimed(q) or quest_progress(q) < int(q.goal):
+		return false
+	data.quests.claimed.append(q.id)
+	data.pass_tokens += int(q.tokens)
+	save_game()
+	return true
+
+func quests_ready() -> int:
+	var n := 0
+	for q in Progression.daily_quests(today_key()):
+		if not quest_claimed(q) and quest_progress(q) >= int(q.goal):
+			n += 1
+	return n
+
+func challenge_done(c: Dictionary) -> bool:
+	return int(data.challenge_kos.get(c.brawler, 0)) >= int(c.kos)
+
 func pass_tier() -> int:
 	return mini(Progression.PASS_TIERS, int(data.pass_tokens) / Progression.TOKENS_PER_TIER)
 
@@ -372,6 +416,9 @@ func pass_claimable(tier: int, track: String) -> bool:
 	if tier < 1 or tier > pass_tier():
 		return false
 	if track == "gold" and not data.gold_pass:
+		return false
+	var rw := Progression.pass_reward(tier, track)
+	if rw.has("challenge") and not challenge_done(rw.challenge):
 		return false
 	return not tier in data.pass_claimed[track]
 

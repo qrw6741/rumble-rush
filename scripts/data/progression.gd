@@ -14,8 +14,21 @@ const GOLD_PASS_COST := 600 # credits (no real money)
 static func match_tokens(result: String, kos: int) -> int:
 	return {"win": 40, "loss": 20, "draw": 28}[result] + mini(kos, 8) * 3
 
+## Brawler challenges on the gold track: reach the tier AND finish the challenge.
+const PASS_CHALLENGES := {
+	7: {"brawler": "rio", "kos": 12},
+	14: {"brawler": "vex", "kos": 15},
+	21: {"brawler": "mira", "kos": 20},
+	27: {"brawler": "bront", "kos": 25},
+}
+
+static func challenge_text(c: Dictionary) -> String:
+	return "Defeat %d enemies with %s" % [int(c.kos), Config.BRAWLERS[c.brawler].name]
+
 ## Reward for a tier on a track ("free" or "gold"). Tier is 1-based.
 static func pass_reward(tier: int, track: String) -> Dictionary:
+	if track == "gold" and PASS_CHALLENGES.has(tier):
+		return {"type": "credits", "amount": 350, "challenge": PASS_CHALLENGES[tier]}
 	if track == "gold":
 		var skin_tiers := {6: "bront", 12: "vex", 18: "nova", 24: "mira", 30: "sprig"}
 		if skin_tiers.has(tier):
@@ -35,6 +48,32 @@ static func pass_reward(tier: int, track: String) -> Dictionary:
 	if tier % 3 == 0:
 		return {"type": "drop", "tier": 0}
 	return {"type": "credits", "amount": 20 + tier}
+
+## Season end: the last day of the current month.
+static func season_time_left() -> String:
+	var now := Time.get_datetime_dict_from_system()
+	var mdays := [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+	var y := int(now.year)
+	var m := int(now.month)
+	var dim: int = mdays[m - 1] + (1 if m == 2 and y % 4 == 0 else 0)
+	var days := dim - int(now.day)
+	var hours := 23 - int(now.hour)
+	return "%dd %dh" % [days, hours]
+
+# ------------------------------------------------------------------ daily quests
+## Three quests a day (same for the whole day). Finishing one pays pass tokens.
+static func daily_quests(day_key: String) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(day_key + "quests")
+	var ids: Array = Config.BRAWLER_ORDER
+	var modes: Array = Config.MODES.keys()
+	var bid: String = ids[rng.randi() % ids.size()]
+	var mid: String = modes[rng.randi() % modes.size()]
+	return [
+		{"id": "q_win", "kind": "win", "goal": 2 + rng.randi() % 2, "tokens": 150, "text": "Win %d matches"},
+		{"id": "q_kos", "kind": "kos", "brawler": bid, "goal": 6 + rng.randi() % 5, "tokens": 200, "text": "Defeat %d enemies with " + Config.BRAWLERS[bid].name},
+		{"id": "q_mode", "kind": "mode", "mode": mid, "goal": 2 + rng.randi() % 2, "tokens": 120, "text": "Play %d matches of " + Config.MODES[mid].name},
+	]
 
 # ------------------------------------------------------------------ Trophy Road
 const ROAD := [
