@@ -53,6 +53,17 @@ const MODES := {
 		"maps": ["neon_district", "crystal_canyon"],
 		"icon": "mode_knockout",
 	},
+	"duel": {
+		"name": "DUEL RUSH",
+		"short": "1v1, best of 3 rounds.",
+		"rules": "One on one. The first knockout wins the round, and the first to 2 rounds wins the duel. There are no respawns inside a round. After 60 seconds the arena starts closing in, so nobody can hide for long.",
+		"time_limit": 240.0,
+		"target": 2,
+		"color": Color("e8262c"),
+		"maps": ["duel_den"],
+		"icon": "mode_knockout",
+		"team_size": 1,
+	},
 }
 
 const DIFFICULTY := {

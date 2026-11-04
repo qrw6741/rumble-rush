@@ -4,7 +4,7 @@ extends Node2D
 
 const T := 48.0
 
-var mode: ModeShowdown
+var mode # ModeShowdown or ModeDuel (anything with safe_half)
 var map: ArenaMap
 var _t := 0.0
 
@@ -27,7 +27,7 @@ func _draw() -> void:
 	if mode.safe_half > 900.0:
 		return
 	var c := map.size_px * 0.5
-	var sh := mode.safe_half * T
+	var sh: float = float(mode.safe_half) * T
 	var safe := Rect2(c - Vector2(sh, sh), Vector2(sh, sh) * 2.0)
 	# soft tint over the whole poisoned area
 	var tint := Color(0.25, 0.75, 0.2, 0.22)

@@ -462,8 +462,20 @@ func champs_claim() -> Dictionary:
 	c.q_l = 0
 	c.f_w = 0
 	c.f_l = 0
+	c.brawler = ""
 	save_game()
 	return tier
+
+## The brawler you play Champs with. In the Finals it is locked to whoever you
+## started the Finals with.
+func champs_brawler() -> String:
+	var c := champs()
+	if c.stage == "finals":
+		if String(c.get("brawler", "")) == "":
+			c.brawler = data.selected_brawler
+			save_game()
+		return c.brawler
+	return data.selected_brawler
 
 func _rank_index(rank: String) -> int:
 	for i in Progression.CHAMPS_TIERS.size():

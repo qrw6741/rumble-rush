@@ -85,6 +85,7 @@ func _ready() -> void:
 	match mode_id:
 		"gem_grab": mode = ModeGem.new()
 		"showdown": mode = ModeShowdown.new()
+		"duel": mode = ModeDuel.new()
 		_: mode = ModeKnockout.new()
 	mode.setup(self, mode_id)
 	if mode is ModeGem:
@@ -101,6 +102,11 @@ func _ready() -> void:
 		world.add_child(pl)
 	else:
 		_spawn_teams()
+		if mode is ModeDuel:
+			var dl := PoisonLayer.new()
+			dl.mode = mode
+			dl.map = map
+			world.add_child(dl)
 	map.crate_broken.connect(func(pos: Vector2):
 		if mode.has_method("on_crate_broken") and not ended:
 			mode.on_crate_broken(pos))
@@ -270,7 +276,7 @@ func _spawn_teams() -> void:
 		if team == 0:
 			picks.erase(player_brawler)
 			picks.insert(0, player_brawler)
-		for i in 3:
+		for i in int(Config.MODES[mode_id].get("team_size", 3)):
 			var bid: String = picks[i]
 			var b := Brawler.new()
 			var is_player := team == 0 and i == 0

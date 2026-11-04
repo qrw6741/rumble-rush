@@ -55,6 +55,11 @@ func _ready() -> void:
 		btn.pressed.connect(_play)
 	btn.position = Vector2(40, 580)
 	add_child(btn)
+	if c.stage != "rewards":
+		var bid: String = Save.champs_brawler() if c.stage == "finals" else Save.data.selected_brawler
+		var note := UIKit.label(("LOCKED: " if c.stage == "finals" else "PLAYING AS: ") + Config.BRAWLERS[bid].name, 16, Color("ffd98a"), 5)
+		note.position = Vector2(44, 650)
+		add_child(note)
 	for n in [head, track, req, rw, perf, btn]:
 		UIKit.pop_in(n, 0.04 * [head, track, req, rw, perf, btn].find(n))
 
@@ -62,7 +67,7 @@ func _play() -> void:
 	var c := Save.champs()
 	var mid: String = Progression.CHAMPS_MODES[(int(c.q_w) + int(c.q_l) + int(c.f_w) + int(c.f_l)) % Progression.CHAMPS_MODES.size()]
 	Sfx.play("ui_confirm")
-	Router.goto("match", {"mode": mid, "brawler": Save.data.selected_brawler, "champs": true, "difficulty": Save.champs_difficulty()})
+	Router.goto("match", {"mode": mid, "brawler": Save.champs_brawler(), "champs": true, "difficulty": Save.champs_difficulty()})
 
 func _claim() -> void:
 	var tier := Save.champs_claim()
@@ -112,7 +117,7 @@ class Header extends Control:
 		S2.text_l(self, "CHAMPS", Vector2(0, 46), 52, Color.WHITE)
 		UIKit.draw_icon(self, "clock", Vector2(14, 78), 24.0)
 		S2.text_l(self, "Event ends in  " + Progression.season_time_left(), Vector2(32, 86), 18, Color("e0c27a"))
-		S2.text_l(self, "Qualify, then play the Finals: every win climbs you toward a higher rank and better rewards.", Vector2(0, 114), 16, Color(1, 1, 1, 0.8))
+		S2.text_l(self, "DUEL RUSH 1v1, best of 3 rounds. Qualify, then climb the ranks in the Finals.", Vector2(0, 114), 16, Color(1, 1, 1, 0.8))
 
 
 ## Crest + the row of rank shields from X to I; a marker sits over your rank.

@@ -329,7 +329,7 @@ static func daily_offers(day_key: String) -> Array:
 const CHAMPS_Q_WINS := 5
 const CHAMPS_Q_LOSSES := 3
 const CHAMPS_F_MATCHES := 15
-const CHAMPS_MODES := ["gem_grab", "knockout"]
+const CHAMPS_MODES := ["duel"]
 ## min wins -> rank and rewards (best first)
 const CHAMPS_TIERS := [
 	{"wins": 14, "rank": "RANK I", "color": Color("ffd23a"), "rewards": [{"type": "gems", "amount": 60}, {"type": "credits", "amount": 1500}, {"type": "drop", "tier": 2}, {"type": "drop", "tier": 2}]},

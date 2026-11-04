@@ -45,6 +45,39 @@ const MAPS := {
 			"......C.BB......C.",
 		],
 	},
+	"duel_den": {
+		"name": "DUEL DEN",
+		"kind": "full",
+		"theme": {
+			"floor_a": Color("d9b98a"), "floor_b": Color("cfae7e"), "floor_edge": Color("b08a5a"),
+			"wall_top": Color("8a4a3a"), "wall_side": Color("5a2a22"), "wall_line": Color("b86a52"),
+			"bush": Color("4fae4a"), "bush_dark": Color("2f7a35"),
+			"water": Color("3fb6d8"), "water_light": Color("8fe3f5"),
+			"crate": Color("b9824e"), "crate_dark": Color("7a5030"),
+			"bg": Color("3a1a14"), "decal": Color("c0a070"),
+		},
+		"rows": [
+			".......R.......",
+			"...............",
+			"BB....#.#....BB",
+			"BB...........BB",
+			"...##.....##...",
+			"...#.......#...",
+			"......CCC......",
+			"BB...........BB",
+			"BBB..##.##..BBB",
+			"...............",
+			"BBB..##.##..BBB",
+			"BB...........BB",
+			"......CCC......",
+			"...#.......#...",
+			"...##.....##...",
+			"BB...........BB",
+			"BB....#.#....BB",
+			"...............",
+			".......A.......",
+		],
+	},
 	"crystal_canyon": {
 		"name": "CRYSTAL CANYON",
 		"theme": {
@@ -111,6 +144,14 @@ const MAPS := {
 static func build_grid(map_id: String) -> Array:
 	if MAPS[map_id].get("kind", "") == "quad":
 		return _build_quad(MAPS[map_id].rows)
+	if MAPS[map_id].get("kind", "") == "full":
+		var g: Array = []
+		for row: String in MAPS[map_id].rows:
+			var r: Array = []
+			for ch in row:
+				r.append(ch)
+			g.append(r)
+		return g
 	var top: Array = MAPS[map_id].rows
 	assert(top.size() == 17)
 	var grid: Array = []

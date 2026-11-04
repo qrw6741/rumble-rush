@@ -30,7 +30,7 @@ func _ready() -> void:
 			_screenshot_mode(args, a.substr(9))
 			return
 	if "--autotest" in args:
-		var mode := "knockout" if "--knockout" in args else ("showdown" if "--showdown" in args else "gem_grab")
+		var mode := "knockout" if "--knockout" in args else ("showdown" if "--showdown" in args else ("duel" if "--duel" in args else "gem_grab"))
 		var ts := 1.0
 		var diff := "normal"
 		for a in args:
