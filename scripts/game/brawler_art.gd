@@ -42,7 +42,8 @@ static func poly(ci: CanvasItem, pts: PackedVector2Array, fill: Color, outline :
 	else:
 		ci.draw_polyline(_closed(pts), _c(fill), 1.0, true) # anti-alias the fill edge
 
-## Painterly volume: darker underside, soft highlight up-left, warm bounce light.
+## Clean cel shading: one crisp shadow band on the lower-right of each shape.
+## (No soft highlights or dots: those turn to mush at small sizes on phones.)
 static func _shade(ci: CanvasItem, pts: PackedVector2Array, fill: Color) -> void:
 	var lo := pts[0]
 	var hi := pts[0]
@@ -50,31 +51,13 @@ static func _shade(ci: CanvasItem, pts: PackedVector2Array, fill: Color) -> void
 		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.y))
 		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
 	var sz := hi - lo
-	if sz.x < 7.0 or sz.y < 7.0:
+	if sz.x < 9.0 or sz.y < 9.0:
 		return
-	# underside shadow: bottom 38%, slightly curved
-	var cut := lo.y + sz.y * 0.62
-	var band := PackedVector2Array([Vector2(lo.x - 2, cut + sz.y * 0.06), Vector2(lo.x + sz.x * 0.5, cut - sz.y * 0.04), Vector2(hi.x + 2, cut + sz.y * 0.06), Vector2(hi.x + 2, hi.y + 2), Vector2(lo.x - 2, hi.y + 2)])
-	var dark := fill.darkened(0.2).lerp(Color("3a2a8a"), 0.12)
+	var cut := lo.y + sz.y * 0.6
+	var band := PackedVector2Array([Vector2(lo.x - 2, cut + sz.y * 0.12), Vector2(hi.x + 2, cut - sz.y * 0.1), Vector2(hi.x + 2, hi.y + 2), Vector2(lo.x - 2, hi.y + 2)])
+	var dark := fill.darkened(0.16).lerp(Color("2a1a6a"), 0.08)
 	for part in Geometry2D.intersect_polygons(pts, band):
 		ci.draw_colored_polygon(part, _c(dark))
-	# highlight: shrunken copy nudged up-left, clipped to the top part
-	var c := (lo + hi) * 0.5
-	var inset := PackedVector2Array()
-	for p in pts:
-		inset.append(c + (p - c) * 0.72 + Vector2(-sz.x * 0.08, -sz.y * 0.1))
-	var top := PackedVector2Array([Vector2(lo.x - 2, lo.y - 2), Vector2(hi.x + 2, lo.y - 2), Vector2(hi.x + 2, lo.y + sz.y * 0.42), Vector2(lo.x - 2, lo.y + sz.y * 0.5)])
-	var light := fill.lightened(0.28)
-	light.a = fill.a * 0.75
-	for a in Geometry2D.intersect_polygons(inset, pts):
-		for part in Geometry2D.intersect_polygons(a, top):
-			ci.draw_colored_polygon(part, _c(light))
-	# tiny specular dot on bigger forms
-	if sz.x > 16.0 and sz.y > 14.0:
-		var sp := lo + Vector2(sz.x * 0.3, sz.y * 0.24)
-		if Geometry2D.is_point_in_polygon(sp, pts):
-			var w := Color(1, 1, 1, 0.45)
-			ci.draw_circle(sp, minf(sz.x, sz.y) * 0.07, _c(w))
 
 static func ell(ci: CanvasItem, c: Vector2, rx: float, ry: float, fill: Color, outline := true, w := OW, rot := 0.0) -> void:
 	poly(ci, _ellipse_pts(c, rx, ry, 28, rot), fill, outline, w)
@@ -146,8 +129,9 @@ static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dicti
 
 	# shadow (unflipped, unscaled by bob)
 	ci.draw_set_transform(pos, 0.0, Vector2(s, s))
-	var sh := Color(0, 0, 0, 0.32 * _alpha)
-	ci.draw_colored_polygon(_ellipse_pts(Vector2(0, 1), 24, 8.5), sh)
+	if not anim.get("no_shadow", false):
+		var sh := Color(0, 0, 0, 0.32 * _alpha)
+		ci.draw_colored_polygon(_ellipse_pts(Vector2(0, 1), 24, 8.5), sh)
 
 	ci.draw_set_transform(pos + Vector2(0, bob * s), 0.0, Vector2(s * facing / squash, s * squash))
 	var blink: bool = anim.get("blink", false)

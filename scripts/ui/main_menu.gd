@@ -274,6 +274,7 @@ func _build_mode_panel() -> void:
 		var i := order.find(Save.setting("difficulty"))
 		Save.set_setting("difficulty", order[(i + 1) % order.size()])
 		_bots_btn.queue_redraw())
+	_bots_btn.visible = false # bots scale with brawler rank automatically (Settings can override)
 	add_child(_bots_btn)
 
 	_mode_panel = SlantButton.new()

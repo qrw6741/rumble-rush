@@ -503,9 +503,9 @@ func _draw() -> void:
 	_draw_ellipse(Vector2(0, 2), 24.0 * sh, 9.0 * sh, Color(0, 0, 0, 0.3 * alpha))
 	if flat:
 		var anim := {"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
-			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin,
+			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin, "no_shadow": true,
 			"cheap": not is_player and game.brawlers.size() > 6}
-		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.35, anim)
+		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.6, anim)
 
 func _draw_ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
 	var pts := PackedVector2Array()
@@ -589,7 +589,7 @@ class BrawlerOverhead extends Node2D:
 		if b == null or not b.alive:
 			return
 		var f := FX._font()
-		var y := (-122.0 if b.flat else -108.0) - b.air_h
+		var y := (-140.0 if b.flat else -108.0) - b.air_h
 		var w := 64.0
 		var viewer: int = b.game.view_team
 		var bar_col: Color

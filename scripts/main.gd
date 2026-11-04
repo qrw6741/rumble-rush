@@ -11,8 +11,6 @@ func _ready() -> void:
 	randomize()
 	if OS.has_feature("web") or OS.has_feature("mobile"):
 		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
-		if Save.setting("graphics") == "low":
-			get_tree().root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		Save.apply_fps()
 		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
 		_apply_orientation()
@@ -152,10 +150,8 @@ func _apply_orientation() -> void:
 	if portrait != _portrait:
 		_portrait = portrait
 		root.content_scale_size = Vector2i(720, 1280) if portrait else Vector2i(1280, 720)
-		if Save.setting("graphics") == "low":
-			root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-		else:
-			root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		# always render the 2D at the screen's full resolution (never a blurry upscale)
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		if portrait:
 			_wrap = SubViewportContainer.new()
 			_wrap.stretch = false
