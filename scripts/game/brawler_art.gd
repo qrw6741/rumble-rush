@@ -198,7 +198,8 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 					frame = "back"
 	var f: Array = SPRITES[id][frame]
 	var k_px: float = SPRITE_UNITS / float(f[4]) * s * pop  # screen px per texture px
-	var lo: bool = float(f[1]) * k_px < 230.0
+	var screen_k: float = Config.render_scale(ci) * ci.get_global_transform_with_canvas().get_scale().y
+	var lo: bool = float(f[1]) * k_px * screen_k < 230.0
 	var tex := _sprite_tex(id, frame, lo)
 	var tw := float(tex.get_width())
 	var th := float(tex.get_height())

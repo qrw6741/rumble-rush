@@ -329,3 +329,22 @@ func brawler(id: String) -> Dictionary:
 
 func level_mult(level: int) -> float:
 	return 1.0 + UPGRADE_BONUS_PER_LEVEL * float(level - 1)
+
+
+## 4K rendering is offered on computers only (phones run out of memory).
+static func can_4k() -> bool:
+	if OS.has_feature("mobile"):
+		return false
+	if OS.has_feature("web") and DisplayServer.is_touchscreen_available():
+		return false
+	return true
+
+## True when the game is set to render at 4K.
+static func is_4k() -> bool:
+	return can_4k() and str(Save.setting("resolution")) == "4k"
+
+## Real rendered pixels per canvas unit (before camera zoom); set by main.gd.
+static var render_px := 1.0
+
+static func render_scale(_ci: CanvasItem) -> float:
+	return render_px

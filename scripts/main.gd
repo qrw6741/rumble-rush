@@ -5,6 +5,9 @@ var _wrap: SubViewportContainer
 var _sub: SubViewport
 var _inner: Control
 var _portrait := false
+var _rwrap: SubViewportContainer  # fixed-resolution wrapper (720p / 1080p / 4K)
+var _rsub: SubViewport
+var _rinner: Control
 
 func _ready() -> void:
 	Router.root_container = self
@@ -14,6 +17,8 @@ func _ready() -> void:
 		Save.apply_fps()
 		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
 		_apply_orientation()
+	else:
+		get_tree().root.size_changed.connect(func(): apply_resolution.call_deferred())
 	apply_resolution()
 	# Command line: `-- --autotest` runs an automated bot-vs-bot match (used for QA).
 	var args := OS.get_cmdline_user_args()
@@ -114,6 +119,12 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	if "--demo-champs" in args:
 		Save.save_path = "user://demo_save.json"
 		Save.data.champs = {"stage": "finals", "q_w": 5, "q_l": 1, "f_w": 9, "f_l": 3, "best": "RANK IV", "runs": 2}
+	if "--res720" in args:
+		Save.data.settings.resolution = "720p"
+		apply_resolution()
+	if "--res4k" in args:
+		Save.data.settings.resolution = "4k"
+		apply_resolution()
 	if "--res1080" in args:
 		Save.data.settings.resolution = "1080p"
 		apply_resolution()
@@ -133,6 +144,18 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	if "--debugmenu" in args:
 		var dp: Control = preload("res://scripts/ui/debug_panel.gd").new()
 		add_child(dp)
+	if "--clicktest" in args:
+		await get_tree().create_timer(1.0).timeout
+		var ws := Vector2(get_tree().root.size)
+		var at := Vector2(1215, 45) * ws.x / 1280.0
+		for pressed in [true, false]:
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = pressed
+			ev.position = at
+			ev.global_position = at
+			Input.parse_input_event(ev)
+			await get_tree().process_frame
 	if "--settings" in args:
 		var sp := SettingsPanel.new()
 		sp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -145,7 +168,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("%s_%d.png" % [out, i])
-		print("saved ", "%s_%d.png" % [out, i], "  fps=", Engine.get_frames_per_second())
+		print("saved ", "%s_%d.png" % [out, i], "  fps=", Engine.get_frames_per_second(), " img=", img.get_size(), " win=", get_tree().root.size, " cs=", get_tree().root.content_scale_size, " mode=", get_tree().root.content_scale_mode)
 	get_tree().quit()
 
 func _demo_inputs(args: PackedStringArray) -> void:
@@ -171,21 +194,60 @@ func _demo_inputs(args: PackedStringArray) -> void:
 func apply_resolution() -> void:
 	var root := get_tree().root
 	if _portrait:
+		_res_unwrap()
 		return # the upright-phone wrapper manages its own rendering size
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_size = Vector2i(1280, 720)
+	root.content_scale_factor = 1.0
 	var res: String = Save.setting("resolution")
+	if res == "4k" and not Config.can_4k():
+		res = "1080p"
+	var f := 0.0
 	match res:
-		"720p":
-			root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-			root.content_scale_size = Vector2i(1280, 720)
-			root.content_scale_factor = 1.0
-		"1080p":
-			root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
-			root.content_scale_size = Vector2i(1920, 1080)
-			root.content_scale_factor = 1.5
-		_:
-			root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
-			root.content_scale_size = Vector2i(1280, 720)
-			root.content_scale_factor = 1.0
+		"720p": f = 1.0
+		"1080p": f = 1.5
+		"4k": f = 3.0
+	if f <= 0.0:
+		_res_unwrap()
+		Config.render_px = maxf(1.0, float(root.size.y) / 720.0)
+		return
+	# render the whole game into an offscreen buffer of exactly this resolution,
+	# laid out at the usual 1280x720 units, then scale it to the window
+	if _rwrap == null:
+		_rwrap = SubViewportContainer.new()
+		_rwrap.stretch = false
+		_rwrap.process_mode = Node.PROCESS_MODE_ALWAYS
+		_rwrap.mouse_filter = Control.MOUSE_FILTER_STOP
+		_rwrap.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		add_child(_rwrap)
+		_rsub = SubViewport.new()
+		_rsub.handle_input_locally = false
+		_rsub.physics_object_picking = false
+		_rwrap.add_child(_rsub)
+		_rinner = Control.new()
+		_rinner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rsub.add_child(_rinner)
+		_move_screens(self, _rinner)
+	var ls := root.get_visible_rect().size
+	_rsub.size = Vector2i(int(ls.x * f), int(ls.y * f))
+	_rsub.size_2d_override = Vector2i(int(ls.x), int(ls.y))
+	_rsub.size_2d_override_stretch = true
+	_rwrap.size = Vector2(_rsub.size)
+	_rwrap.scale = Vector2.ONE / f
+	_rwrap.position = Vector2.ZERO
+	_rinner.size = ls
+	Config.render_px = f
+	if Router.current is Control:
+		(Router.current as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+func _res_unwrap() -> void:
+	if _rwrap == null:
+		return
+	_move_screens(_rinner, self)
+	_rwrap.queue_free()
+	_rwrap = null
+	_rsub = null
+	_rinner = null
 
 # ------------------------------------------------------------------ always-landscape
 ## iPhone browsers can't lock orientation, so when the screen is held upright we
@@ -202,6 +264,7 @@ func _apply_orientation() -> void:
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		apply_resolution.call_deferred()
 		if portrait:
+			_res_unwrap()
 			_wrap = SubViewportContainer.new()
 			_wrap.stretch = false
 			# must keep forwarding taps while the game is paused (pause menu buttons)
@@ -233,6 +296,7 @@ func _apply_orientation() -> void:
 		_sub.size_2d_override = Vector2i(int(ls.y), int(ls.x))
 		_sub.size_2d_override_stretch = true
 		_wrap.scale = Vector2.ONE / dpi
+		Config.render_px = dpi
 		_wrap.size = Vector2(ls.y, ls.x)
 		_inner.size = Vector2(ls.y, ls.x)
 		_wrap.rotation = PI / 2.0
@@ -243,7 +307,7 @@ func _apply_orientation() -> void:
 func _move_screens(from: Node, to: Node) -> void:
 	Router.root_container = to
 	for c in from.get_children():
-		if c == _wrap:
+		if c is SubViewportContainer:
 			continue
 		c.reparent(to, false)
 		_finish_entrance(c)
