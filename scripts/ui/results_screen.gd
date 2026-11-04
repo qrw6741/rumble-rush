@@ -24,6 +24,9 @@ func _ready() -> void:
 			bg.bottom = Color("141428")
 	add_child(bg)
 	Sfx.play_music("music_menu")
+	if int(data.get("place", 0)) == 0 and data.has("players"):
+		_team_layout(result)
+		return
 
 	# your brawler, big: celebrating on a win, slumped on a loss
 	var hero := Hero.new()
@@ -292,9 +295,7 @@ class Hero extends Control:
 				draw_rect(Rect2(-4, -2, 8, 4), c[3])
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
-			draw_set_transform(feet, -0.12, Vector2.ONE)
-			BrawlerArt.draw(self, brawler_id, Vector2(0, 8), 3.1, {"t": _t * 0.3, "aim": Vector2(1, 0.9), "moving": false, "skin": skin, "no_shadow": true, "blink": true, "alpha": 0.85})
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			BrawlerArt.draw(self, brawler_id, feet + Vector2(0, 8), 3.0, {"t": 0.5, "aim": Vector2(1, 0.9), "moving": false, "skin": skin, "no_shadow": true, "blink": true, "alpha": 0.85})
 			# rain cloud
 			var cc := Vector2(size.x * 0.5, 50)
 			for k in 3:
@@ -303,3 +304,256 @@ class Hero extends Control:
 				var ph := fmod(_t * 1.6 + k * 0.17, 1.0)
 				var p := cc + Vector2(-40 + k * 16, 20 + ph * 110)
 				draw_line(p, p + Vector2(-2, 10), Color(0.6, 0.8, 1, 1.0 - ph), 2.0, true)
+
+
+# ====================================================================== 3v3 layout
+## Split screen: your team big on the blue side, the enemy smaller on the red
+## side, a stat card under every brawler, awards, and HAVE FUN? + PROCEED.
+func _team_layout(result: String) -> void:
+	for c in get_children():
+		c.queue_free()
+	var view: int = data.get("view_team", 0)
+	var stage := TeamStage.new()
+	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage.result = result
+	stage.view = view
+	stage.players = data.players
+	add_child(stage)
+
+	# awards: most KOs / most damage across everyone
+	var best_ko: Dictionary = {}
+	var best_dmg: Dictionary = {}
+	for p: Dictionary in data.players:
+		if best_ko.is_empty() or int(p.kos) > int(best_ko.kos):
+			best_ko = p
+		if best_dmg.is_empty() or int(p.damage) > int(best_dmg.damage):
+			best_dmg = p
+
+	var ours: Array = data.players.filter(func(p): return int(p.team) == view)
+	var theirs: Array = data.players.filter(func(p): return int(p.team) != view)
+	for i in ours.size():
+		var card := _stat_card(ours[i], true, best_ko, best_dmg)
+		card.position = Vector2(150 + i * 186, 404)
+		add_child(card)
+		UIKit.pop_in(card, 0.15 + i * 0.06, Vector2(0, 30))
+	for i in theirs.size():
+		var card := _stat_card(theirs[i], false, best_ko, best_dmg)
+		card.position = Vector2(760 + i * 148, 330)
+		add_child(card)
+		UIKit.pop_in(card, 0.35 + i * 0.06, Vector2(0, 30))
+
+	# title + trophies + other rewards
+	var title_text: String = {"win": "VICTORY!", "loss": "DEFEAT", "draw": "DRAW"}[result]
+	var tl := TitleSlant.new()
+	tl.text = title_text
+	tl.col = {"win": Color("fff3c2"), "loss": Color("ffd0d0"), "draw": Color.WHITE}[result]
+	tl.position = Vector2(60, 14)
+	tl.size = Vector2(520, 120)
+	add_child(tl)
+	var rewards: Dictionary = data.get("rewards", {})
+	var rr := RewardStrip.new()
+	rr.rewards = rewards
+	rr.position = Vector2(66, 118)
+	rr.size = Vector2(620, 50)
+	add_child(rr)
+
+	# HAVE FUN? + PROCEED
+	var fun := UIKit.label("HAVE FUN?", 22, Color.WHITE, 6, HORIZONTAL_ALIGNMENT_CENTER)
+	fun.position = Vector2(820, 588)
+	fun.size = Vector2(220, 30)
+	add_child(fun)
+	for k in 2:
+		var b := ThumbButton.new()
+		b.up = k == 0
+		b.position = Vector2(830 + k * 106, 622)
+		b.size = Vector2(96, 72)
+		b.pressed.connect(func():
+			Sfx.play("ui_confirm")
+			for c in get_children():
+				if c is ThumbButton:
+					c.disabled = true
+					c.queue_redraw())
+		add_child(b)
+	var proceed := UIKit.button("PROCEED", UIKit.BLUE, 30, Vector2(230, 72))
+	proceed.position = Vector2(1040, 622)
+	if data.get("champs", false):
+		proceed.pressed.connect(func(): Router.goto("champs"))
+	else:
+		proceed.pressed.connect(func(): Router.goto("menu"))
+	add_child(proceed)
+	var again := UIKit.button("PLAY AGAIN", UIKit.YELLOW, 18, Vector2(180, 48))
+	again.position = Vector2(1090, 560)
+	if data.get("champs", false):
+		again.text = "CHAMPS"
+		again.pressed.connect(func(): Router.goto("champs"))
+	else:
+		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
+	add_child(again)
+
+func _stat_card(p: Dictionary, big: bool, best_ko: Dictionary, best_dmg: Dictionary) -> Control:
+	var c := StatCard.new()
+	c.p = p
+	c.big = big
+	c.size = Vector2(178, 140) if big else Vector2(142, 110)
+	c.award = ""
+	if p == best_ko and int(p.kos) > 0:
+		c.award = "Most KOs"
+	elif p == best_dmg:
+		c.award = "Most Damage"
+	return c
+
+
+class TeamStage extends Control:
+	var result := "win"
+	var view := 0
+	var players: Array = []
+	var _t := 0.0
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(d: float) -> void:
+		_t += d
+		queue_redraw()
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		# diagonal split: blue (us) and red (them)
+		draw_rect(Rect2(0, 0, w, h), Color("2f7ef0"))
+		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.62, 0), Vector2(w, 0), Vector2(w, h), Vector2(w * 0.54, h)]), Color("c4282a"))
+		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.6, 0), Vector2(w * 0.625, 0), Vector2(w * 0.545, h), Vector2(w * 0.52, h)]), Color("e8453a"))
+		for k in 5:
+			var x := fmod(_t * 30.0 + k * 220.0, w * 0.6)
+			draw_colored_polygon(PackedVector2Array([Vector2(x, 0), Vector2(x + 50, 0), Vector2(x - 80, h), Vector2(x - 130, h)]), Color(1, 1, 1, 0.04))
+		var we_won: bool = result == "win"
+		var ours: Array = players.filter(func(p): return int(p.team) == view)
+		var theirs: Array = players.filter(func(p): return int(p.team) != view)
+		for i in ours.size():
+			var p: Dictionary = ours[i]
+			var feet := Vector2(239 + i * 186, 388)
+			_pose(p, feet, 2.8, we_won or result == "draw", i)
+			if p.get("mvp", false):
+				var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+				draw_colored_polygon(PackedVector2Array([feet + Vector2(-60, -250), feet + Vector2(60, -250), feet + Vector2(80, 10), feet + Vector2(-80, 10)]), Color(1, 0.95, 0.5, 0.18))
+				S2.text_c(self, "STAR PLAYER", feet + Vector2(0, 14), 18, Color("ffe14d"), 5)
+		for i in theirs.size():
+			var p: Dictionary = theirs[i]
+			_pose(p, Vector2(831 + i * 148, 312), 2.1, not we_won and result != "draw", i + 3)
+
+	func _pose(p: Dictionary, feet: Vector2, sc: float, happy: bool, k: int) -> void:
+		var id: String = p.brawler
+		var skin: String = Save.selected_skin(id) if p.get("is_player", false) else ""
+		draw_colored_polygon(PackedVector2Array([feet + Vector2(-40 * sc / 3.0, -4), feet + Vector2(40 * sc / 3.0, -4), feet + Vector2(34 * sc / 3.0, 6), feet + Vector2(-34 * sc / 3.0, 6)]), Color(0, 0, 0, 0.22))
+		if happy:
+			var hop := absf(sin(_t * 4.5 + k * 0.9)) * 14.0
+			BrawlerArt.draw(self, id, feet - Vector2(0, hop), sc, {"t": _t + k, "aim": Vector2(1 if k % 2 == 0 else -1, -0.5), "moving": true, "skin": skin, "no_shadow": true, "recoil": 0.3 + 0.3 * sin(_t * 4.0 + k)})
+		else:
+			var sag := 6.0 + sin(_t * 1.5 + k) * 2.0
+			BrawlerArt.draw(self, id, feet + Vector2(0, sag), sc * 0.96, {"t": k * 0.7, "aim": Vector2(1 if k % 2 == 0 else -1, 0.9), "skin": skin, "no_shadow": true, "blink": true, "alpha": 0.85})
+
+
+class StatCard extends Control:
+	var p: Dictionary = {}
+	var big := true
+	var award := ""
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var w := size.x
+		var h := size.y
+		var mine: bool = p.get("is_player", false)
+		var base := Color("16234a") if big else Color("4a1418")
+		draw_rect(Rect2(0, 0, w, h), UIKit.DARK)
+		draw_rect(Rect2(3, 3, w - 6, h - 6), base)
+		draw_rect(Rect2(3, 3, w - 6, 34), base.lightened(0.12))
+		if mine:
+			draw_rect(Rect2(0, 0, w, h), Color("ffd23a"), false, 3.0)
+		var fs := 15 if big else 12
+		S2.text_l(self, String(p.name).left(14), Vector2(10, 22), fs, Color("ffe14d") if mine else Color.WHITE)
+		if mine:
+			S2.text_l(self, Save.title_name(Save.data.get("profile_title", "rookie")), Vector2(10, 36), 10, Color("ffb84d"))
+		# thumbs-up badge in the corner
+		var tb := Vector2(w - 20, 20)
+		draw_circle(tb, 13, UIKit.DARK)
+		draw_circle(tb, 11, Color("2a8cff"))
+		ThumbButton.thumb(self, tb + Vector2(0, 1), 7.0, true, Color.WHITE)
+		# KOs and deaths
+		var row := Rect2(8, 44, w - 16, 34 if big else 28)
+		draw_rect(row, Color(0, 0, 0, 0.3))
+		UIKit.draw_icon(self, "attack", row.position + Vector2(18, row.size.y * 0.5), 26.0 if big else 22.0)
+		S2.text_l(self, str(p.kos), row.position + Vector2(36, row.size.y * 0.5 + 8), 20 if big else 16, Color.WHITE)
+		UIKit.draw_icon(self, "ko", row.position + Vector2(row.size.x * 0.58, row.size.y * 0.5), 26.0 if big else 22.0)
+		S2.text_l(self, str(p.deaths), row.position + Vector2(row.size.x * 0.58 + 18, row.size.y * 0.5 + 8), 20 if big else 16, Color.WHITE)
+		# damage
+		var dy := row.end.y + (22 if big else 18)
+		UIKit.draw_icon(self, "power_cell", Vector2(w * 0.5 - 40, dy - 6), 22.0)
+		S2.text_l(self, str(p.damage), Vector2(w * 0.5 - 24, dy), 18 if big else 14, Color.WHITE)
+		if award != "":
+			S2.text_c(self, award, Vector2(w * 0.5, h - 6), 15 if big else 12, Color("ffd23a"), 5)
+
+
+class TitleSlant extends Control:
+	var text := "VICTORY!"
+	var col := Color.WHITE
+	var _t := 0.0
+	func _process(d: float) -> void:
+		_t += d
+		queue_redraw()
+	func _draw() -> void:
+		var f := UIKit.bold()
+		var k := minf(1.0, _t / 0.35)
+		var sc := lerpf(0.4, 1.0, ease(k, -2.5))
+		draw_set_transform_matrix(Transform2D(0.0, Vector2(sc, sc), -0.12, Vector2(0, 92)))
+		draw_string_outline(f, Vector2(4, 6), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 84, 20, UIKit.DARK)
+		draw_string_outline(f, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 84, 16, UIKit.DARK)
+		draw_string(f, Vector2.ZERO, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 84, col)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+class RewardStrip extends Control:
+	var rewards: Dictionary = {}
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var x := 0.0
+		var items := [["trophy", int(rewards.get("trophies", 0))], ["coin", int(rewards.get("credits", 0))], ["xp", int(rewards.get("xp", 0))], ["token", int(rewards.get("tokens", 0))]]
+		for it in items:
+			UIKit.draw_icon(self, it[0], Vector2(x + 18, 22), 38.0)
+			var v: int = it[1]
+			S2.text_l(self, ("+%d" % v) if v >= 0 else str(v), Vector2(x + 40, 34), 26, Color.WHITE)
+			x += 110.0
+		if int(rewards.get("mastery_gain", 0)) > 0:
+			S2.text_l(self, "+%d MASTERY" % int(rewards.mastery_gain), Vector2(x + 6, 32), 18, Color("ffd98a"))
+
+
+## Round thumbs-up / thumbs-down button ("HAVE FUN?").
+class ThumbButton extends Button:
+	var up := true
+	func _ready() -> void:
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	func _draw() -> void:
+		var col := Color("2a8cff") if up else Color("e8453a")
+		if disabled:
+			col = col.darkened(0.4)
+		draw_rect(Rect2(0, 0, size.x, size.y), UIKit.DARK)
+		draw_rect(Rect2(3, 3, size.x - 6, size.y - 6), col)
+		draw_rect(Rect2(3, 3, size.x - 6, 12), col.lightened(0.2))
+		var c := size * 0.5
+		draw_circle(c, 24, UIKit.DARK)
+		draw_circle(c, 21, col.lightened(0.15))
+		thumb(self, c, 13.0, up, Color.WHITE)
+
+	## Simple vector thumb: fist + raised (or lowered) thumb.
+	static func thumb(ci: CanvasItem, c: Vector2, r: float, is_up: bool, col: Color) -> void:
+		var sgn := -1.0 if is_up else 1.0
+		ci.draw_rect(Rect2(c + Vector2(-r * 0.7, -r * 0.3 * sgn - r * 0.5), Vector2(r * 1.3, r * 1.0)), col)
+		ci.draw_rect(Rect2(c + Vector2(-r * 1.05, -r * 0.45), Vector2(r * 0.32, r * 0.9)), col)
+		var tip := c + Vector2(-r * 0.1, sgn * r * 1.05)
+		ci.draw_line(c + Vector2(-r * 0.1, sgn * r * 0.2), tip, col, r * 0.42, true)
+		ci.draw_circle(tip, r * 0.21, col)
