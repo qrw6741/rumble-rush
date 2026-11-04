@@ -118,6 +118,7 @@ static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dicti
 		"nova": _nova(ci, d, t, aim_l, recoil, step, blink)
 		"mira": _mira(ci, d, t, aim_l, recoil, step, blink)
 		"sprig": _sprig(ci, d, t, aim_l, recoil, step, blink)
+		_: _nova(ci, d, t, aim_l, recoil, step, blink)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_flash = 0.0
 	_alpha = 1.0
@@ -387,6 +388,16 @@ static func _sprig(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil
 static func draw_projectile(ci: CanvasItem, style: String, pos: Vector2, dir: Vector2, t: float, team_col: Color, d: Dictionary) -> void:
 	var a := dir.angle()
 	match style:
+		"paint":
+			# wobbly paint blob with a trailing splatter
+			var pc: Color = d.accent
+			var wob := 1.0 + sin(t * 30.0) * 0.12
+			for k in 3:
+				var back := pos - dir * (10.0 + k * 9.0)
+				ci.draw_circle(back, 6.0 - k * 1.6, Color(pc.r, pc.g, pc.b, 0.6 - k * 0.15))
+			ci.draw_circle(pos, 13.0 * wob, Color("1a1028"))
+			ci.draw_circle(pos, 10.5 * wob, pc)
+			ci.draw_circle(pos + Vector2(-3, -4), 3.5, pc.lightened(0.5))
 		"slash":
 			var acc: Color = d.accent
 			glow(ci, pos, 20, acc)

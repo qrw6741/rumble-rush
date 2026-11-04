@@ -194,8 +194,22 @@ const BRAWLERS := {
 			"damage": 300, "range": 7.5, "radius": 2.5, "duration": 4.0, "tick": 0.5, "slow": 0.45, "flight": 0.72},
 		"gadget": {"kind": "snare", "name": "Vine Snare", "desc": "Plants a hidden trap that roots the first enemy to step on it.", "cooldown": 12.0, "root": 1.6, "life": 12.0},
 	},
+	"rio": {
+		"name": "RIO", "role": "SKIRMISHER", "rarity": "SUPER RARE",
+		"tagline": "Tags the whole map. Tags you too.",
+		"bio": "Rio skates the rooftops at night with a backpack full of spray cans. Every wall is a canvas, every rival is a target.",
+		"health": 3800, "speed": 198.0, "radius": 21.0,
+		"ammo": 3, "reload": 1.15,
+		"primary": Color("ffcf3a"), "secondary": Color("1e7f8c"), "accent": Color("ff4fa3"), "skin": Color("b98563"),
+		"paint": true,
+		"attack": {"kind": "twin_slash", "name": "Paint Blast", "desc": "Fires two quick blobs of paint at short-medium range.",
+			"damage": 700, "range": 4.6, "speed": 620.0, "spread": 9.0, "super_per_hit": 0.14, "sfx": "shoot_blade"},
+		"super": {"kind": "phantom_dash", "name": "Grind Rush", "desc": "Kicks off on the skateboard and grinds straight through enemies, splashing everyone in the path. Can't be hit while grinding.",
+			"damage": 1400, "range": 6.0, "duration": 0.32},
+		"gadget": {"kind": "overclock", "name": "Fresh Cans", "desc": "Grabs fresh cans from the backpack: instantly refills all ammo.", "cooldown": 14.0},
+	},
 }
-const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig"]
+const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig", "rio"]
 
 const BOT_NAMES := ["Pixel", "Zapper", "Moxie", "Rook", "Tango", "Bolt", "Juno", "Kiwi", "Rumble", "Echo", "Sparx", "Blitz", "Nimbus", "Fuse"]
 

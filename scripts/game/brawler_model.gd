@@ -175,6 +175,7 @@ func build(brawler_id: String, skin := "") -> void:
 		"nova": _nova()
 		"mira": _mira()
 		"sprig": _sprig()
+		"rio": _rio()
 	# stylised proportions: slightly oversized heads on every brawler
 	head.scale = Vector3.ONE * 1.1
 	_merge_parts()
@@ -395,6 +396,75 @@ func _mira() -> void:
 	part(weapon, cyl(0.14, 0.12, 0.05, 24), gold.darkened(0.1), Vector3(0, -0.33, 0.3))
 	extra["flame"] = part(weapon, sphere(0.055), Color.WHITE, Vector3(0, -0.19, 0.3), Vector3.ZERO, Vector3(1, 1.4, 1), 3.0)
 
+# ------------------------------------------------------------------ RIO: rooftop skater and paint tagger
+func _rio() -> void:
+	var prim: Color = d.primary   # hoodie
+	var sec: Color = d.secondary  # shorts / cap
+	var acc: Color = d.accent     # paint
+	var skin: Color = d.skin
+	var hair := Color("3a2416")
+	# legs: shorts, bare shins with high socks, chunky skate sneakers
+	limb_legs(skin, Color("f2f2f6"), 0.12, 0.4, 0.07, 1.05)
+	for lg in [leg_l, leg_r]:
+		part(lg, cyl(0.1, 0.11, 0.18, 24), sec, Vector3(0, -0.06, 0))
+		part(lg, cyl(0.075, 0.075, 0.12, 20), Color.WHITE, Vector3(0, -0.26, 0))
+		part(lg, torus(0.07, 0.085), acc, Vector3(0, -0.21, 0))
+	# oversized hoodie with kangaroo pocket, drawstrings and paint splats
+	part(body, cyl(0.28, 0.32, 0.5, 28), prim, Vector3(0, 0.72, 0))
+	part(body, cyl(0.32, 0.31, 0.08, 28), prim.darkened(0.15), Vector3(0, 0.46, 0))
+	part(body, sphere(0.28), prim, Vector3(0, 0.95, 0), Vector3.ZERO, Vector3(1.15, 0.55, 1.0))
+	part(body, box(0.32, 0.14, 0.06), prim.darkened(0.12), Vector3(0, 0.6, 0.29), Vector3(-6, 0, 0))
+	for sx in [-1.0, 1.0]:
+		part(body, capsule(0.012, 0.16), Color.WHITE, Vector3(0.05 * sx, 0.9, 0.29), Vector3(8, 0, 0))
+		part(body, sphere(0.02), Color.WHITE, Vector3(0.05 * sx, 0.82, 0.3))
+	part(body, sphere(0.06), acc, Vector3(-0.15, 0.78, 0.29), Vector3.ZERO, Vector3(1.4, 1.0, 0.3))
+	part(body, sphere(0.035), Color("4fc3ff"), Vector3(0.12, 0.66, 0.31), Vector3.ZERO, Vector3(1.3, 1.0, 0.3))
+	# hood bunched at the back of the neck
+	part(body, torus(0.17, 0.27), prim.darkened(0.08), Vector3(0, 1.02, -0.05), Vector3(20, 0, 0), Vector3(1.0, 1.4, 1.0))
+	# backpack with spray cans sticking out
+	part(body, box(0.4, 0.42, 0.18), sec.darkened(0.15), Vector3(0, 0.76, -0.32))
+	part(body, box(0.3, 0.16, 0.05), sec, Vector3(0, 0.66, -0.42))
+	for k in 3:
+		var cx := -0.12 + k * 0.12
+		var cc: Color = [acc, Color("4fc3ff"), Color("8cff5a")][k]
+		part(body, cyl(0.045, 0.045, 0.2, 16), cc, Vector3(cx, 1.0, -0.32))
+		part(body, cyl(0.025, 0.04, 0.04, 12), Color("e6e9f2"), Vector3(cx, 1.12, -0.32))
+	# skateboard strapped to the backpack
+	part(body, box(0.26, 0.04, 0.8), Color("23232e"), Vector3(0, 0.82, -0.45), Vector3(90, 0, 0))
+	part(body, box(0.24, 0.045, 0.6), acc, Vector3(0, 0.82, -0.47), Vector3(90, 0, 0))
+	arm_l = arm(-1.0, Vector3(0.33, 0.93, 0), prim, skin, 0.08, 0.34, 0.09)
+	arm_r = arm(1.0, Vector3(0.33, 0.93, 0), prim, skin, 0.08, 0.34, 0.09)
+	for a in [arm_l, arm_r]:
+		part(a, cyl(0.09, 0.09, 0.07, 20), prim.darkened(0.15), Vector3(0, -0.22, 0))
+	# head: curly hair, backwards cap, freckles, cheeky grin
+	head = pivot(body, Vector3(0, 1.36, 0))
+	head.set_meta("skin", skin)
+	part(head, sphere(0.36), skin, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 0.98, 0.95))
+	for k in 9:
+		var ang := k * TAU / 9.0
+		part(head, sphere(0.1), hair, Vector3(cos(ang) * 0.3, -0.02 + absf(sin(ang)) * 0.05, sin(ang) * 0.26 - 0.06))
+	part(head, sphere(0.37), sec, Vector3(0, 0.12, -0.02), Vector3.ZERO, Vector3(1.02, 0.62, 1.0))
+	part(head, box(0.3, 0.035, 0.22), sec.darkened(0.2), Vector3(0, 0.08, -0.38), Vector3(-12, 0, 0))
+	part(head, cyl(0.06, 0.06, 0.03, 16), acc, Vector3(0, 0.3, 0.1), Vector3(30, 0, 0))
+	for sx in [-1.0, 1.0]:
+		part(head, sphere(0.07), skin, Vector3(0.35 * sx, -0.02, 0), Vector3.ZERO, Vector3(0.5, 1.0, 0.8))
+	eye(head, Vector3(-0.12, -0.03, 0.3), 0.07, Color("5a3a1e"))
+	eye(head, Vector3(0.12, -0.03, 0.3), 0.07, Color("5a3a1e"))
+	brow(head, Vector3(-0.12, 0.08, 0.33), 0.1, 12, hair, 0.024)
+	brow(head, Vector3(0.13, 0.1, 0.33), 0.1, -22, hair, 0.024)
+	part(head, sphere(0.04), skin.darkened(0.1), Vector3(0, -0.08, 0.35))
+	for f in [Vector3(-0.17, -0.1, 0.3), Vector3(-0.21, -0.07, 0.28), Vector3(0.18, -0.1, 0.3), Vector3(0.22, -0.07, 0.28)]:
+		part(head, sphere(0.012), skin.darkened(0.35), f)
+	smile(head, Vector3(0.03, -0.17, 0.32), 0.13, 0.35)
+	# paint blaster: two-can launcher with a nozzle
+	weapon = pivot(arm_r, Vector3(-0.04, -0.34, 0.02))
+	part(weapon, box(0.1, 0.16, 0.12), Color("2b2f3e"), Vector3(0, -0.04, 0.04))
+	part(weapon, cyl(0.07, 0.07, 0.42, 20), acc, Vector3(-0.05, 0.03, 0.3), Vector3(90, 0, 0))
+	part(weapon, cyl(0.07, 0.07, 0.42, 20), Color("4fc3ff"), Vector3(0.07, 0.03, 0.3), Vector3(90, 0, 0))
+	part(weapon, box(0.24, 0.06, 0.08), Color("2b2f3e"), Vector3(0.01, 0.03, 0.12))
+	part(weapon, cyl(0.03, 0.05, 0.12, 16), Color("e6e9f2"), Vector3(0.01, 0.03, 0.56), Vector3(90, 0, 0))
+	part(weapon, sphere(0.04), acc, Vector3(0.01, 0.03, 0.63), Vector3.ZERO, Vector3.ONE, 1.2)
+
 # ------------------------------------------------------------------ SPRIG: goblin gardener
 func _sprig() -> void:
 	var prim: Color = d.primary
@@ -608,6 +678,11 @@ func animate(delta: float, state: Dictionary) -> void:
 			weapon.position.y = -0.34 + sin(_t * 3.0) * 0.02
 			var flame: MeshInstance3D = extra.flame
 			flame.scale = Vector3(1, 1.4, 1) * (1.0 + sin(_t * 11.0) * 0.15)
+		"rio":
+			arm_r.rotation.x = -1.4 + recoil * 0.5
+			arm_l.rotation.x = -0.9 if recoil > 0.0 else arm_l.rotation.x
+			weapon.rotation.x = -arm_r.rotation.x - 0.05
+			weapon.position.z = 0.02 - recoil * 0.08
 		"sprig":
 			arm_r.rotation.x = -0.6 - recoil * 1.6 + (0.0 if recoil > 0.0 else sin(_t * 2.0) * 0.1)
 			weapon.rotation.x = -arm_r.rotation.x

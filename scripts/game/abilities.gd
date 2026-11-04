@@ -15,11 +15,11 @@ static func primary(b: Brawler, dir: Vector2, dist: float) -> void:
 			_melee(b, dir, a, dmg)
 		"twin_slash":
 			var sp := deg_to_rad(a.spread)
-			_shoot(b, dir.rotated(-sp * 0.5), a, dmg, "slash")
+			_shoot(b, dir.rotated(-sp * 0.5), a, dmg, "paint" if b.d.get("paint", false) else "slash")
 			var tree := b.get_tree()
 			tree.create_timer(0.09, false).timeout.connect(func():
 				if is_instance_valid(b) and b.alive and not b.game.ended:
-					_shoot(b, dir.rotated(sp * 0.5), a, dmg, "slash")
+					_shoot(b, dir.rotated(sp * 0.5), a, dmg, "paint" if b.d.get("paint", false) else "slash")
 					Sfx.play_at(a.sfx, b.global_position, -6.0))
 		"rifle":
 			_shoot(b, dir, a, dmg, "bolt", {"bonus": a.max_bonus})
