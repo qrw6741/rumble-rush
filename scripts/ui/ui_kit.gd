@@ -324,8 +324,17 @@ class BrawlerPortrait extends Control:
 	var _view: BrawlerView
 	var _rect: TextureRect
 
+	var flat := false
+
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# 2D brawler view: draw the 2D art here instead of a 3D render
+		flat = Save.setting("view_mode") == "2d"
+		if flat:
+			clip_contents = view_kind == "bust"
+			if locked:
+				modulate = Color(0.2, 0.2, 0.25, 0.8)
+			return
 		var want: Vector2 = custom_minimum_size if custom_minimum_size != Vector2.ZERO else size
 		var px := int(clampf(max(want.x, want.y) * 1.6, 128.0, 640.0))
 		var sk := Save.selected_skin(brawler_id) if skin == "auto" else skin
@@ -343,12 +352,26 @@ class BrawlerPortrait extends Control:
 
 	func _process(delta: float) -> void:
 		_t += delta
-		if backdrop:
+		if backdrop or flat:
 			queue_redraw()
 
 	func _draw() -> void:
-		if not backdrop:
-			return
+		if backdrop:
+			_draw_backdrop()
+		if flat:
+			var sk := Save.selected_skin(brawler_id) if skin == "auto" else skin
+			var s: float
+			var feet: Vector2
+			if view_kind == "bust":
+				# head-and-shoulders crop
+				s = size.y / 34.0
+				feet = Vector2(size.x * 0.5, size.y * 0.42 + 46.0 * s)
+			else:
+				s = minf(size.y / 78.0, size.x / 60.0)
+				feet = Vector2(size.x * 0.5, size.y * 0.93)
+			BrawlerArt.draw(self, brawler_id, feet, s, {"t": _t, "aim": Vector2(1, 0.25), "skin": sk})
+
+	func _draw_backdrop() -> void:
 		var d: Dictionary = Config.BRAWLERS[brawler_id]
 		var c := Vector2(size.x * 0.5, size.y * 0.5)
 		var r: float = min(size.x, size.y) * 0.46

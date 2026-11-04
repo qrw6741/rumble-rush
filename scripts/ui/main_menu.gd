@@ -53,15 +53,28 @@ func _build_stage() -> void:
 	var floor_shadow := StageShadow.new()
 	floor_shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_stage.add_child(floor_shadow)
-	_view = BrawlerView.create(id, "showcase", 720, true, Save.selected_skin(id))
-	_view.state = {"yaw": _yaw, "manual": true}
-	_stage.add_child(_view)
-	var tr := TextureRect.new()
-	tr.texture = _view.get_texture()
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tr: Control
+	if Save.setting("view_mode") == "2d":
+		# 2D brawler view: big animated 2D art on the lobby stage
+		var pt := UIKit.BrawlerPortrait.new()
+		pt.brawler_id = id
+		pt.backdrop = false
+		pt.view_kind = "showcase"
+		pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		pt.offset_top = 120
+		pt.offset_bottom = -50
+		tr = pt
+	else:
+		_view = BrawlerView.create(id, "showcase", 720, true, Save.selected_skin(id))
+		_view.state = {"yaw": _yaw, "manual": true}
+		_stage.add_child(_view)
+		var trr := TextureRect.new()
+		trr.texture = _view.get_texture()
+		trr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		trr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		trr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		trr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr = trr
 	_stage.add_child(tr)
 	# rank / trophies / power badge above the head
 	var badge := BrawlerBadge.new()

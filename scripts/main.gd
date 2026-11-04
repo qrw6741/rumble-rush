@@ -124,7 +124,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("%s_%d.png" % [out, i])
-		print("saved ", "%s_%d.png" % [out, i])
+		print("saved ", "%s_%d.png" % [out, i], "  fps=", Engine.get_frames_per_second())
 	get_tree().quit()
 
 func _demo_inputs(args: PackedStringArray) -> void:

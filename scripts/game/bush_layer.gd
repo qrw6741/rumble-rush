@@ -6,7 +6,16 @@ extends Node2D
 const T := 48.0
 
 var map: ArenaMap
-var focus: Node2D = null # local player
+var focus: Node2D = null: # local player
+	set(v):
+		focus = v
+		for ch in get_children():
+			if ch is BushLayer:
+				ch.focus = v
+var _chunk := false
+var _painter := false  # draws into a texture once (never fades)
+var _baked: Sprite2D = null
+var _active := true
 var _t := 0.0
 var _cells: Array[Vector2i] = []
 var _leaves: Dictionary = {}
@@ -28,8 +37,78 @@ var _acc := 0.0
 
 func _ready() -> void:
 	_low = Save.low_graphics() or map.flat or (map.w * map.h > 900 and Save.setting("graphics") != "high")
+	if _chunk:
+		if _low and not _painter:
+			_bake()
+		return
+	# split the bushes into 6x6-cell chunks: each chunk is its own canvas item, so
+	# the renderer skips every chunk that is off screen (big win on Showdown maps)
+	var groups := {}
+	for c in _cells:
+		var k := Vector2i(c.x / 6, c.y / 6)
+		if not groups.has(k):
+			groups[k] = []
+		groups[k].append(c)
+	for k in groups.keys():
+		var ch := BushLayer.new()
+		ch.map = map
+		ch._chunk = true
+		ch._leaves = _leaves
+		for c in groups[k]:
+			ch._cells.append(c)
+		add_child(ch)
+	_cells.clear()
+	set_process(false)
 
+## Static chunks paint themselves once into a texture; while the local player hides
+## inside this chunk it switches back to live drawing so nearby bushes can fade.
+func _bake() -> void:
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for c in _cells:
+		var p := map.cell_center(c)
+		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.y))
+		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
+	var rect := Rect2(lo - Vector2(64, 80), hi - lo + Vector2(128, 140))
+	var vp := SubViewport.new()
+	vp.size = Vector2i(int(rect.size.x), int(rect.size.y))
+	vp.transparent_bg = true
+	vp.disable_3d = true
+	vp.msaa_2d = Viewport.MSAA_2X
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var painter := BushLayer.new()
+	painter.map = map
+	painter._chunk = true
+	painter._painter = true
+	painter._leaves = _leaves
+	painter._cells = _cells
+	painter.position = -rect.position
+	vp.add_child(painter)
+	add_child(vp)
+	_baked = Sprite2D.new()
+	_baked.texture = vp.get_texture()
+	_baked.centered = false
+	_baked.position = rect.position
+	add_child(_baked)
+	_active = false
 func _process(delta: float) -> void:
+	if _painter:
+		set_process(false)
+		return
+	if _baked:
+		var on := false
+		if focus and is_instance_valid(focus) and focus.get("alive") and map.is_bush(focus.global_position):
+			var fc := map.world_to_cell(focus.global_position)
+			for c in _cells:
+				if absi(c.x - fc.x) <= 3 and absi(c.y - fc.y) <= 3:
+					on = true
+					break
+		if on != _active:
+			_active = on
+			_baked.visible = not on
+			queue_redraw()
+		if not on:
+			return
 	if not _low:
 		# gentle sway at ~12 fps: looks the same, costs a fraction of per-frame redraws
 		_t += delta
@@ -48,6 +127,8 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _alpha_for(center: Vector2) -> float:
+	if _painter:
+		return 1.0
 	if focus and is_instance_valid(focus) and focus.get("alive") and map.is_bush(focus.global_position):
 		var d := center.distance_to(focus.global_position)
 		if d < T * 2.2:
@@ -81,6 +162,8 @@ func _blob_raised(c: Vector2i, dy: float, col: Color) -> void:
 		draw_rect(Rect2(p + s, Vector2(T, T)), col)
 
 func _draw() -> void:
+	if _cells.is_empty() or (_baked and not _active):
+		return
 	var dark: Color = map.theme.bush_dark
 	var light: Color = map.theme.bush
 	var outline := Color("1a1028")
@@ -127,7 +210,7 @@ func _draw_grass(light: Color, dark: Color) -> void:
 		var a := _alpha_for(base)
 		var rng := RandomNumberGenerator.new()
 		rng.seed = c.x * 913 + c.y * 271
-		for k in 7:
+		for k in (4 if _low else 7):
 			var bx := base.x + rng.randf_range(-22, 22)
 			var by := base.y + rng.randf_range(-20, 14)
 			var hgt := rng.randf_range(30, 44)
@@ -136,10 +219,11 @@ func _draw_grass(light: Color, dark: Color) -> void:
 			var blade := PackedVector2Array([Vector2(bx - 6, by), tip, Vector2(bx + 6, by)])
 			var oc := ink
 			oc.a = a
-			draw_polyline(PackedVector2Array([blade[0], blade[1], blade[2]]), oc, 4.0, true)
+			draw_polyline(PackedVector2Array([blade[0], blade[1], blade[2]]), oc, 4.0, not _low)
 			var col := light.lerp(dark, rng.randf_range(0.0, 0.45))
 			col.a = a
 			draw_colored_polygon(blade, col)
-			var hl := light.lightened(0.35)
-			hl.a = a * 0.8
-			draw_line(Vector2(bx - 1, by - 4), tip.lerp(Vector2(bx, by), 0.25), hl, 1.5, true)
+			if not _low:
+				var hl := light.lightened(0.35)
+				hl.a = a * 0.8
+				draw_line(Vector2(bx - 1, by - 4), tip.lerp(Vector2(bx, by), 0.25), hl, 1.5, true)

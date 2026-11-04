@@ -210,7 +210,9 @@ func _physics_process(delta: float) -> void:
 	if game.ended:
 		move_input = Vector2.ZERO
 	_update_sprite(delta)
-	queue_redraw()
+	# 2D view: only spend time redrawing brawlers the camera can actually see
+	if not flat or _on_screen():
+		queue_redraw()
 
 ## Swap the live 3D render for pre-rendered frames (much cheaper).
 func use_bank(set: Dictionary) -> void:
@@ -501,7 +503,8 @@ func _draw() -> void:
 	_draw_ellipse(Vector2(0, 2), 24.0 * sh, 9.0 * sh, Color(0, 0, 0, 0.3 * alpha))
 	if flat:
 		var anim := {"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
-			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0}
+			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin,
+			"cheap": not is_player and game.brawlers.size() > 6}
 		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.35, anim)
 
 func _draw_ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
@@ -527,6 +530,8 @@ class BrawlerStatus extends Node2D:
 	var b: Brawler
 
 	func _process(_delta: float) -> void:
+		if b.flat and not b._on_screen():
+			return
 		queue_redraw()
 
 	func _draw() -> void:
@@ -576,6 +581,8 @@ class BrawlerOverhead extends Node2D:
 		z_index = 30
 
 	func _process(_delta: float) -> void:
+		if b.flat and not b._on_screen():
+			return
 		queue_redraw()
 
 	func _draw() -> void:
