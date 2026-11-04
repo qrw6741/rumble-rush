@@ -502,7 +502,7 @@ func _draw() -> void:
 	if flat:
 		var anim := {"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
 			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0}
-		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.25, anim)
+		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.35, anim)
 
 func _draw_ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
 	var pts := PackedVector2Array()

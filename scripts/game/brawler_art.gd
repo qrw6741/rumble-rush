@@ -31,12 +31,50 @@ static func _closed(pts: PackedVector2Array) -> PackedVector2Array:
 	p.append(pts[0])
 	return p
 
+static var shading := true
+
 static func poly(ci: CanvasItem, pts: PackedVector2Array, fill: Color, outline := true, w := OW) -> void:
 	ci.draw_colored_polygon(pts, _c(fill))
+	if outline and shading and pts.size() >= 4:
+		_shade(ci, pts, fill)
 	if outline:
 		ci.draw_polyline(_closed(pts), _c(OUTLINE), w / sqrt(_s), true)
 	else:
 		ci.draw_polyline(_closed(pts), _c(fill), 1.0, true) # anti-alias the fill edge
+
+## Painterly volume: darker underside, soft highlight up-left, warm bounce light.
+static func _shade(ci: CanvasItem, pts: PackedVector2Array, fill: Color) -> void:
+	var lo := pts[0]
+	var hi := pts[0]
+	for p in pts:
+		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.y))
+		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
+	var sz := hi - lo
+	if sz.x < 7.0 or sz.y < 7.0:
+		return
+	# underside shadow: bottom 38%, slightly curved
+	var cut := lo.y + sz.y * 0.62
+	var band := PackedVector2Array([Vector2(lo.x - 2, cut + sz.y * 0.06), Vector2(lo.x + sz.x * 0.5, cut - sz.y * 0.04), Vector2(hi.x + 2, cut + sz.y * 0.06), Vector2(hi.x + 2, hi.y + 2), Vector2(lo.x - 2, hi.y + 2)])
+	var dark := fill.darkened(0.2).lerp(Color("3a2a8a"), 0.12)
+	for part in Geometry2D.intersect_polygons(pts, band):
+		ci.draw_colored_polygon(part, _c(dark))
+	# highlight: shrunken copy nudged up-left, clipped to the top part
+	var c := (lo + hi) * 0.5
+	var inset := PackedVector2Array()
+	for p in pts:
+		inset.append(c + (p - c) * 0.72 + Vector2(-sz.x * 0.08, -sz.y * 0.1))
+	var top := PackedVector2Array([Vector2(lo.x - 2, lo.y - 2), Vector2(hi.x + 2, lo.y - 2), Vector2(hi.x + 2, lo.y + sz.y * 0.42), Vector2(lo.x - 2, lo.y + sz.y * 0.5)])
+	var light := fill.lightened(0.28)
+	light.a = fill.a * 0.75
+	for a in Geometry2D.intersect_polygons(inset, pts):
+		for part in Geometry2D.intersect_polygons(a, top):
+			ci.draw_colored_polygon(part, _c(light))
+	# tiny specular dot on bigger forms
+	if sz.x > 16.0 and sz.y > 14.0:
+		var sp := lo + Vector2(sz.x * 0.3, sz.y * 0.24)
+		if Geometry2D.is_point_in_polygon(sp, pts):
+			var w := Color(1, 1, 1, 0.45)
+			ci.draw_circle(sp, minf(sz.x, sz.y) * 0.07, _c(w))
 
 static func ell(ci: CanvasItem, c: Vector2, rx: float, ry: float, fill: Color, outline := true, w := OW, rot := 0.0) -> void:
 	poly(ci, _ellipse_pts(c, rx, ry, 28, rot), fill, outline, w)
@@ -137,8 +175,17 @@ static func _eyes(ci: CanvasItem, l: Vector2, r: Vector2, rx: float, ry: float, 
 	for e in [l, r]:
 		ell(ci, e, rx, ry, white, true, 2.0)
 		var p: Vector2 = e + look * Vector2(rx * 0.35, ry * 0.3)
-		ell(ci, p, rx * 0.55, ry * 0.62, pupil, false)
-		ci.draw_circle(p + Vector2(-rx * 0.2, -ry * 0.28), rx * 0.2, _c(Color.WHITE))
+		# iris with a lighter lower half, pupil, two catch-lights, lash line
+		ell(ci, p, rx * 0.62, ry * 0.68, pupil.lightened(0.25), false)
+		ell(ci, p + Vector2(0, ry * 0.18), rx * 0.48, ry * 0.4, pupil.lightened(0.45), false)
+		ell(ci, p, rx * 0.34, ry * 0.4, Color("0d0812"), false)
+		ci.draw_circle(p + Vector2(-rx * 0.22, -ry * 0.3), rx * 0.22, _c(Color.WHITE))
+		ci.draw_circle(p + Vector2(rx * 0.2, ry * 0.25), rx * 0.1, _c(Color(1, 1, 1, 0.8)))
+		var lash := PackedVector2Array()
+		for k in 9:
+			var a := PI + PI * float(k) / 8.0
+			lash.append(e + Vector2(cos(a) * rx * 1.02, sin(a) * ry * 1.02))
+		ci.draw_polyline(lash, _c(OUTLINE), 2.2, true)
 
 # ------------------------------------------------------------------ BRONT (tank)
 static func _bront(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
@@ -276,21 +323,23 @@ static func _rio(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: 
 	line(ci, Vector2(3, -34), Vector2(3, -28), Color.WHITE, 1.4, false)
 	circ(ci, Vector2(-15, -21 + step), 5.0, prim.darkened(0.08))
 	# head: curls, backwards cap, freckles, grin
+	# curls peeking out behind the head, then the face
+	for k in 4:
+		circ(ci, Vector2(-14 + k * 1.5, -50 + k * 3.5), 4.5, hair)
 	circ(ci, Vector2(0, -45), 14.5, skin)
-	for k in 5:
-		circ(ci, Vector2(-13 + k * 2.0, -43 + k * 1.2), 4.0, hair, false)
+	circ(ci, Vector2(-10, -44), 3.0, skin.darkened(0.08), false)
 	ell(ci, Vector2(-1, -52), 15, 9, sec)
 	rrect(ci, Vector2(-15, -50), Vector2(10, 4), 2, sec.darkened(0.2), true, OW, 0.3)
 	circ(ci, Vector2(2, -58), 2.2, acc, false)
-	if not blink:
-		ell(ci, Vector2(1 + aim.x * 2, -45), 2.6, 3.2, OUTLINE, false)
-		ell(ci, Vector2(9 + aim.x * 2, -45), 2.6, 3.2, OUTLINE, false)
-	else:
-		line(ci, Vector2(-1, -45), Vector2(3, -45), OUTLINE, 1.6, false)
-		line(ci, Vector2(7, -45), Vector2(11, -45), OUTLINE, 1.6, false)
+	_eyes(ci, Vector2(0, -45), Vector2(9, -45), 3.4, 4.0, aim, blink, Color("5a3a1e"))
+	line(ci, Vector2(-3, -51), Vector2(3, -50), Color("3a2416"), 1.8, false)
+	line(ci, Vector2(6, -50), Vector2(12, -52), Color("3a2416"), 1.8, false)
 	for f in [Vector2(-3, -40), Vector2(-1, -39), Vector2(11, -40), Vector2(13, -39)]:
 		ci.draw_circle(f, 0.8, _c(skin.darkened(0.35)))
-	line(ci, Vector2(2, -37), Vector2(9, -38), OUTLINE, 1.8, false)
+	# cheeky open grin with teeth
+	var grin := PackedVector2Array([Vector2(1, -38), Vector2(10, -39), Vector2(8, -35), Vector2(4, -34.5)])
+	poly(ci, grin, Color("5a1a2a"), true, 1.6)
+	poly(ci, PackedVector2Array([Vector2(2, -38), Vector2(9.5, -38.8), Vector2(9, -37.4), Vector2(2.5, -36.8)]), Color.WHITE, false)
 	if not behind:
 		_rio_blaster(ci, hand, aim, recoil, acc)
 
