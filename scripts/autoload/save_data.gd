@@ -179,8 +179,8 @@ func apply_settings() -> void:
 		if want_fs != is_fs:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if want_fs else DisplayServer.WINDOW_MODE_WINDOWED)
 	apply_fps()
-	if is_instance_valid(Router) and Router.root_container and Router.root_container.has_method("apply_resolution"):
-		Router.root_container.apply_resolution()
+	if is_instance_valid(Router) and is_instance_valid(Router.app) and Router.app.has_method("apply_resolution"):
+		Router.app.apply_resolution()
 	if is_instance_valid(Sfx) and Sfx.is_node_ready():
 		Sfx.apply_volumes()
 

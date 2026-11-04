@@ -232,6 +232,32 @@ const BRAWLERS := {
 			"damage": 1500, "range": 6.0, "duration": 0.32},
 		"gadget": {"kind": "shadow_step", "name": "Fade", "desc": "Vanishes from enemy sight for 2.5 seconds.", "cooldown": 15.0, "duration": 2.5},
 	},
+	"cyber": {
+		"name": "CYBER NINJA", "role": "ASSASSIN", "rarity": "EPIC", "unlock": {"currency": "gems", "cost": 99},
+		"tagline": "You won't see the second blade.",
+		"bio": "A silent ninja in glowing armour who strikes from the shadows with twin blades and razor stars.",
+		"health": 2800, "speed": 215.0, "radius": 20.0,
+		"ammo": 3, "reload": 1.0, "shuriken": true,
+		"primary": Color("1c2140"), "secondary": Color("0d0f1e"), "accent": Color("3fd8ff"), "skin": Color("c9c3e6"),
+		"attack": {"kind": "twin_slash", "name": "Star Volley", "desc": "Flings two glowing throwing stars that slice through the air.",
+			"damage": 780, "range": 6.8, "speed": 1050.0, "spread": 6.0, "super_per_hit": 0.16, "sfx": "shoot_blade"},
+		"super": {"kind": "phantom_dash", "name": "Shadow Dash", "desc": "Dashes through enemies as a streak of shadow, cutting everyone in his path.",
+			"damage": 1400, "range": 6.5, "duration": 0.26},
+		"gadget": {"kind": "shadow_step", "name": "Smoke Bomb", "desc": "Vanishes in a puff of smoke for 2 seconds.", "cooldown": 14.0, "duration": 2.0},
+	},
+	"king": {
+		"name": "SPECTRAL KING", "role": "TANK", "rarity": "LEGENDARY", "unlock": {"currency": "gems", "cost": 179},
+		"tagline": "Kneel. Or be made to.",
+		"bio": "A ghostly king in gold-trimmed armour, crowned in blue spirit fire. His greatsword has never lost a duel.",
+		"health": 4800, "speed": 165.0, "radius": 26.0,
+		"ammo": 3, "reload": 1.4,
+		"primary": Color("1d2a5a"), "secondary": Color("0e1430"), "accent": Color("4fb8ff"), "skin": Color("d8c48a"),
+		"attack": {"kind": "melee_cone", "name": "Royal Cleave", "desc": "A wide sweep of his spectral greatsword that hits everyone in front of him.",
+			"damage": 620, "range": 2.6, "arc": 120.0, "windup": 0.1, "super_per_hit": 0.18, "sfx": "shoot_hammer"},
+		"super": {"kind": "leap_slam", "name": "Royal Guard", "desc": "Leaps into battle and drives his sword into the ground, stunning every enemy nearby.",
+			"damage": 1300, "range": 6.0, "radius": 2.4, "stun": 0.8, "air_time": 0.6},
+		"gadget": {"kind": "iron_skin", "name": "Spirit Aegis", "desc": "A spectral shield blocks 50% of damage for 3 seconds.", "cooldown": 14.0, "duration": 3.0, "reduction": 0.5},
+	},
 	"dusty": {
 		"name": "DUSTY", "role": "SHARPSHOOTER", "rarity": "RARE", "unlock": {"currency": "credits", "cost": 600},
 		"tagline": "Fastest draw this side of the arena.",
@@ -311,7 +337,7 @@ const BRAWLERS := {
 		"gadget": {"kind": "shadow_step", "name": "Smoke Veil", "desc": "Disappears in a puff of smoke for 2.5 seconds.", "cooldown": 16.0, "duration": 2.5},
 	},
 }
-const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig", "rio", "graves", "dusty", "kora", "patch", "bruno", "skye", "ember"]
+const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig", "rio", "graves", "dusty", "kora", "patch", "bruno", "skye", "ember", "cyber", "king"]
 const STARTER_BRAWLERS := ["bront", "vex", "nova", "mira", "sprig", "rio"]
 
 const BOT_NAMES := ["Pixel", "Zapper", "Moxie", "Rook", "Tango", "Bolt", "Juno", "Kiwi", "Rumble", "Echo", "Sparx", "Blitz", "Nimbus", "Fuse"]

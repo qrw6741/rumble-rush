@@ -103,6 +103,18 @@ static func glow(ci: CanvasItem, c: Vector2, r: float, col: Color, layers := 4) 
 # ---------------------------------------------------------------------------
 ## Hand-drawn sprite frames: [width, height, feet_x, feet_y, character_height_px, faces_right]
 const SPRITES := {
+	"cyber": {
+		"main": [322, 314, 194.5, 304.6, 300.0, true],
+		"front": [111, 193, 58.0, 187.2, 193.0, true],
+		"side": [64, 179, 33.0, 173.6, 179.0, true],
+		"back": [99, 189, 50.0, 183.3, 189.0, true],
+	},
+	"king": {
+		"main": [325, 318, 180.5, 308.5, 300.0, false],
+		"front": [137, 211, 76.0, 204.7, 205.0, true],
+		"side": [69, 196, 32.5, 190.1, 196.0, false],
+		"back": [106, 216, 56.5, 209.5, 216.0, true],
+	},
 	"graves": {
 		"main": [553, 643, 260.0, 620.5, 643.0, true],
 		"idle": [172, 216, 86.0, 208.4, 216.0, false],
@@ -115,7 +127,13 @@ const SPRITES := {
 		"back": [164, 275, 78.0, 265.4, 275.0, true],
 	},
 }
-const SPRITE_UNITS := 84.0  # drawn height of a sprite character, in art units
+const SPRITE_UNITS := 84.0
+## Trail / slash colour per sprite brawler.
+const SPRITE_FX := {"graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff")}
+## Size of each sprite brawler relative to the others.
+const SPRITE_SIZE := {"king": 1.12, "cyber": 0.98}
+## Missing frames fall back to these.
+const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side"}  # drawn height of a sprite character, in art units
 static var _tex_cache := {}
 
 static func has_sprites(id: String) -> bool:
@@ -130,116 +148,247 @@ static func _sprite_tex(id: String, frame: String, lo: bool) -> Texture2D:
 static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2, s: float, anim: Dictionary) -> void:
 	var t: float = anim.get("t", 0.0)
 	var moving: bool = anim.get("moving", false)
-	var recoil: float = anim.get("recoil", 0.0)
 	var alpha: float = anim.get("alpha", 1.0)
 	var in_match: bool = anim.get("in_match", false)
 	var hurt: float = anim.get("hurt", 0.0)
 	var sup: float = anim.get("super_pose", 0.0)
+	var atk: float = anim.get("atk", 9.0)
+	if not in_match and anim.get("recoil", 0.0) > 0.0 and anim.has("frame") == false:
+		atk = 9.0
 	var aim: Vector2 = anim.get("aim", Vector2.RIGHT)
 	var facing := -1.0 if aim.x < -0.05 else 1.0
-	# pose parameters (all smooth functions of time)
-	var lean := 0.0       # shear around the feet, + = forward
-	var sq := 1.0         # vertical squash/stretch
-	var flutter := 1.0    # cloak flutter strength
-	var stride := 0.0     # lower-body swing
-	var lift := 0.0       # pixels up (screen space, before scale)
-	var shake := 0.0
-	var pop := 1.0
-	var frame: String = anim.get("frame", "")
-	if frame == "":
-		if not in_match and (anim.get("blink", false) or alpha < 0.95):
-			frame = "hurt"
-			sq = 0.97 + sin(t * 1.6) * 0.01
-			lean = -0.05
-			flutter = 0.4
-		elif sup > 0.0:
-			frame = "super"
-			var k := 1.0 - sup / 0.6
-			pop = 1.0 + 0.25 * sin(minf(1.0, k * 2.5) * PI) * 0.6
-			lift = 10.0 * sin(k * PI)
-			flutter = 2.0
-		elif hurt > 0.0 and in_match:
-			frame = "hurt"
-			shake = sin(t * 70.0) * 2.5 * (hurt / 0.28)
-			lean = -0.12 * (hurt / 0.28)
-		elif recoil > 0.12 and in_match:
-			frame = "attack"
-			# quick lunge forward that settles back
-			lean = 0.16 * recoil
-			pop = 1.0 + 0.1 * recoil
-			sq = 1.0 - 0.06 * recoil
-			flutter = 1.6
-		elif moving and in_match:
-			frame = "walk"
-			if aim.y > 0.62:
-				frame = "front"
-			elif aim.y < -0.62:
-				frame = "back"
-			var ph := t * 11.0
-			stride = sin(ph)
-			lift = absf(sin(ph)) * 5.0
-			sq = 1.0 + cos(ph * 2.0) * 0.035
-			lean = 0.08 if frame == "walk" else 0.0
-			flutter = 1.8
+	var tint := Color(1, 1, 1, alpha)
+	match d.get("fx", ""):
+		"frost": tint = Color(0.72, 0.9, 1.0, alpha)
+		"fire": tint = Color(1.0, 0.8, 0.7, alpha)
+	var fl: float = anim.get("flash", 0.0)
+	tint = tint.lerp(Color(1.6, 1.6, 1.6, alpha), fl * 0.6)
+	var P := {"t": t, "lean": 0.0, "sq": 1.0, "flutter": 1.0, "stride": 0.0, "scissor": 0.0, "lift": 0.0, "shake": 0.0, "pop": 1.0, "facing": facing}
+	var glow_c: Color = SPRITE_FX.get(id, d.get("accent", Color("a46bff")))
+	const ATK_LEN := 0.42
+	var forced: String = anim.get("frame", "")
+	if forced != "":
+		_mesh(ci, id, forced, pos, s, P, tint)
+	elif not in_match and (anim.get("blink", false) or alpha < 0.95):
+		# defeated: slumped and sad
+		P.sq = 0.97 + sin(t * 1.6) * 0.01
+		P.lean = -0.05
+		P.flutter = 0.4
+		_mesh(ci, id, "hurt", pos, s, P, tint)
+	elif sup > 0.0:
+		var k := 1.0 - sup / 0.6
+		P.pop = 1.0 + 0.15 * sin(minf(1.0, k * 2.5) * PI)
+		P.lift = 10.0 * sin(k * PI)
+		P.flutter = 2.0
+		_mesh(ci, id, "super", pos, s, P, tint)
+	elif hurt > 0.0 and in_match:
+		P.shake = sin(t * 70.0) * 2.5 * (hurt / 0.28)
+		P.lean = -0.12 * (hurt / 0.28)
+		_mesh(ci, id, "hurt", pos, s, P, tint)
+	elif atk < ATK_LEN and in_match:
+		_swing(ci, id, pos, s, P, tint, atk / ATK_LEN, glow_c)
+	elif moving and in_match:
+		var frame := "walk"
+		if aim.y > 0.62:
+			frame = "front"
+		elif aim.y < -0.62:
+			frame = "back"
+		var ph := t * 10.0
+		P.stride = sin(ph)
+		P.scissor = sin(ph) if frame == "walk" else 0.0
+		P.lift = absf(sin(ph)) * 6.0
+		P.sq = 1.0 + cos(ph * 2.0) * 0.04
+		P.lean = 0.09 if frame == "walk" else 0.0
+		P.flutter = 2.2
+		_wisps(ci, pos, s, t, facing, glow_c, alpha)
+		_dust(ci, pos, s, t, ph, facing, alpha)
+		_mesh(ci, id, frame, pos, s, P, tint)
+	else:
+		if moving:  # celebrating (results)
+			var ph2 := t * 6.4
+			P.lift = absf(sin(ph2)) * 18.0
+			P.sq = 1.0 + (0.08 if absf(sin(ph2)) > 0.5 else -0.06) * absf(cos(ph2))
+			P.lean = sin(ph2 * 0.5) * 0.05
+			P.flutter = 1.6
+			_mesh(ci, id, "main", pos, s, P, tint)
 		else:
-			frame = "main"
-			if moving:  # celebrating (results)
-				var ph2 := t * 6.4
-				lift = absf(sin(ph2)) * 18.0
-				sq = 1.0 + (0.08 if absf(sin(ph2)) > 0.5 else -0.06) * absf(cos(ph2))
-				lean = sin(ph2 * 0.5) * 0.05
-				flutter = 1.6
-			else:  # breathing idle
-				sq = 1.0 + sin(t * 2.4) * 0.022
-				lean = sin(t * 1.2) * 0.018
-				if in_match and aim.y > 0.62:
-					frame = "front"
-				elif in_match and aim.y < -0.62:
-					frame = "back"
-	var f: Array = SPRITES[id][frame]
-	var k_px: float = SPRITE_UNITS / float(f[4]) * s * pop  # screen px per texture px
+			P.sq = 1.0 + sin(t * 2.4) * 0.022
+			P.lean = sin(t * 1.2) * 0.018
+			var frame2 := "main"
+			if in_match and aim.y > 0.62:
+				frame2 = "front"
+			elif in_match and aim.y < -0.62:
+				frame2 = "back"
+			if frame2 == "main":
+				# idle fidget: every few seconds rest the scythe on the shoulder and bring it back
+				var cyc := fmod(t + 2.0, 7.0)
+				var w := 0.0
+				if cyc > 4.6 and cyc < 6.4:
+					w = clampf((cyc - 4.6) / 0.18, 0.0, 1.0) * clampf((6.4 - cyc) / 0.18, 0.0, 1.0)
+				if w > 0.0:
+					var P2 := P.duplicate()
+					P2.lift = sin(clampf((cyc - 4.6) / 1.8, 0.0, 1.0) * PI) * 4.0
+					if w < 1.0:
+						_mesh(ci, id, "main", pos, s, P, Color(tint.r, tint.g, tint.b, tint.a * (1.0 - w)))
+					_mesh(ci, id, "idle", pos, s, P2, Color(tint.r, tint.g, tint.b, tint.a * w))
+				else:
+					_mesh(ci, id, "main", pos, s, P, tint)
+			else:
+				_mesh(ci, id, frame2, pos, s, P, tint)
+	# skin effects drawn in art units around the body
+	ci.draw_set_transform(pos, 0.0, Vector2(s * facing, s))
+	_alpha = alpha
+	match d.get("fx", ""):
+		"fire": _fx_fire(ci, t, d.accent)
+		"frost": _fx_frost(ci, t, d.accent)
+		"neon": _fx_neon(ci, t, d.secondary, d.accent)
+		"stars": _fx_stars(ci, t, d.accent)
+	_alpha = 1.0
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## Three-stage scythe swing: wind-up (scythe raised), strike (slash pose + sweeping arc), follow-through.
+static func _swing(ci: CanvasItem, id: String, pos: Vector2, s: float, P: Dictionary, tint: Color, k: float, glow_c: Color) -> void:
+	var facing: float = P.facing
+	if k < 0.2:
+		# wind-up: lean back with the scythe raised
+		var w := k / 0.2
+		P.lean = -0.14 * sin(w * PI * 0.5)
+		P.sq = 1.0 + 0.05 * w
+		P.flutter = 1.4
+		_mesh(ci, id, "idle", pos, s, P, tint)
+		return
+	var st := (k - 0.2) / 0.8  # 0..1 strike -> recover
+	# strike: lunge forward fast, then settle
+	var lunge := sin(minf(1.0, st * 3.0) * PI * 0.5) * (1.0 - smoothstep(0.45, 1.0, st))
+	P.lean = 0.18 * lunge
+	P.sq = 1.0 - 0.07 * lunge
+	P.pop = 1.0 + 0.08 * lunge
+	P.flutter = 2.4
+	var off := Vector2(facing * 10.0 * lunge * s, 0)
+	# sweeping slash arc behind the body
+	_slash_arc(ci, pos + off, s, facing, st, glow_c, tint.a)
+	var a_main := smoothstep(0.62, 1.0, st)
+	if a_main < 1.0:
+		_mesh(ci, id, "attack", pos + off, s, P, Color(tint.r, tint.g, tint.b, tint.a * (1.0 - a_main)))
+	if a_main > 0.0:
+		var P2 := P.duplicate()
+		P2.lean = 0.04 * (1.0 - a_main)
+		_mesh(ci, id, "main", pos + off, s, P2, Color(tint.r, tint.g, tint.b, tint.a * a_main))
+
+## Painted crescent smear that sweeps around the reaper during the strike.
+static func _slash_arc(ci: CanvasItem, pos: Vector2, s: float, facing: float, st: float, col: Color, alpha: float) -> void:
+	var sweep := smoothstep(0.0, 0.35, st)      # how far the blade has travelled
+	var fade := 1.0 - smoothstep(0.35, 0.8, st)  # trail fades after the hit
+	if fade <= 0.0:
+		return
+	ci.draw_set_transform(pos, 0.0, Vector2(s * facing, s))
+	var c := Vector2(6, -38)
+	var a0 := -2.4
+	var a1 := lerpf(-2.4, 0.9, sweep)
+	var n := 22
+	for layer in 3:
+		var r_out := 58.0 - layer * 5.0
+		var thick := (16.0 - layer * 4.0)
+		var pts := PackedVector2Array()
+		var cols := PackedColorArray()
+		var cc: Color = [col.darkened(0.2), col.lightened(0.25), Color(1, 0.96, 1)][layer]
+		for i in n + 1:
+			var f := float(i) / n
+			var a := lerpf(a0, a1, f)
+			var th := thick * sin(f * PI * 0.92 + 0.08) * (0.4 + 0.6 * f)
+			pts.append(c + Vector2(cos(a), sin(a)) * r_out)
+			cols.append(Color(cc.r, cc.g, cc.b, alpha * fade * f * (0.75 if layer == 0 else 0.9)))
+		for i in range(n, -1, -1):
+			var f := float(i) / n
+			var a := lerpf(a0, a1, f)
+			var th := thick * sin(f * PI * 0.92 + 0.08) * (0.4 + 0.6 * f)
+			pts.append(c + Vector2(cos(a), sin(a)) * (r_out - th))
+			cols.append(Color(cc.r, cc.g, cc.b, alpha * fade * f * (0.75 if layer == 0 else 0.9)))
+		ci.draw_polygon(pts, cols)
+	# sparks flung off the tip
+	var tip := c + Vector2(cos(a1), sin(a1)) * 56.0
+	for i in 5:
+		var sp := tip + Vector2(cos(a1 + 1.6 + i * 0.5), sin(a1 + 1.6 + i * 0.5)) * (6.0 + st * 30.0 + i * 3.0)
+		ci.draw_circle(sp, 2.2 * fade, Color(col.lightened(0.4).r, col.lightened(0.4).g, col.lightened(0.4).b, alpha * fade))
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## Ghostly purple wisps trailing off the cloak while moving.
+static func _wisps(ci: CanvasItem, pos: Vector2, s: float, t: float, facing: float, col: Color, alpha: float) -> void:
+	ci.draw_set_transform(pos, 0.0, Vector2(s * facing, s))
+	for i in 6:
+		var life := fmod(t * 1.6 + i * 0.37, 1.0)
+		var p := Vector2(-14.0 - life * 30.0, -12.0 - i * 6.0 - life * 10.0 + sin(t * 5.0 + i) * 3.0)
+		var r := (4.5 - i * 0.4) * (1.0 - life)
+		ci.draw_circle(p, r, Color(col.r, col.g, col.b, 0.35 * alpha * (1.0 - life)))
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## Little dust puffs where each foot lands.
+static func _dust(ci: CanvasItem, pos: Vector2, s: float, t: float, ph: float, facing: float, alpha: float) -> void:
+	ci.draw_set_transform(pos, 0.0, Vector2(s * facing, s))
+	for k in 2:
+		# each foot lands once per cycle; age since its last landing
+		var land := fposmod(ph / PI - k, 2.0) / 2.0  # 0..1 over a full cycle
+		if land > 0.45:
+			continue
+		var e := land / 0.45
+		for j in 3:
+			var p := Vector2(-6.0 - e * 14.0 - j * 4.0 + k * 8.0, -2.0 - e * 6.0 - j * 1.5)
+			ci.draw_circle(p, (3.5 + j) * (0.6 + e * 0.6), Color(0.85, 0.8, 0.95, 0.38 * alpha * (1.0 - e)))
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## Draw one sprite frame as a deformable mesh (breathing, flutter, stride, lean...).
+static func _mesh(ci: CanvasItem, id: String, frame: String, pos: Vector2, s: float, P: Dictionary, tint: Color) -> void:
+	if tint.a <= 0.01:
+		return
+	var t: float = P.t
+	var frames: Dictionary = SPRITES[id]
+	while not frames.has(frame):
+		frame = FRAME_FALLBACK.get(frame, "main")
+	var f: Array = frames[frame]
+	var k_px: float = SPRITE_UNITS * float(SPRITE_SIZE.get(id, 1.0)) / float(f[4]) * s * float(P.pop)
 	var screen_k: float = Config.render_scale(ci) * ci.get_global_transform_with_canvas().get_scale().y
 	var lo: bool = float(f[1]) * k_px * screen_k < 230.0
 	var tex := _sprite_tex(id, frame, lo)
 	var tw := float(tex.get_width())
 	var th := float(tex.get_height())
 	var tk: float = k_px * float(f[1]) / th
-	var flip := facing if f[5] else -facing
+	var flip: float = P.facing if f[5] else -float(P.facing)
 	var fx := float(f[2]) * th / float(f[1])
 	var fy := float(f[3]) * th / float(f[1])
-	var tint := Color(1, 1, 1, alpha)
-	match d.get("fx", ""):
-		"frost": tint = Color(0.72, 0.9, 1.0, alpha)
-		"fire": tint = Color(1.0, 0.8, 0.7, alpha)
-	var fl: float = anim.get("flash", 0.0)
-	# deformed grid mesh
-	const COLS := 6
-	const ROWS := 8
+	var lean: float = P.lean
+	var sq: float = P.sq
+	var flutter: float = P.flutter
+	var stride: float = P.stride
+	var scissor: float = P.scissor
+	var shake: float = P.shake
+	const COLS := 8
+	const ROWS := 10
 	var pts := PackedVector2Array()
 	var uvs := PackedVector2Array()
 	var cols := PackedColorArray()
-	var fl_tint := tint.lerp(Color(1.6, 1.6, 1.6, alpha), fl * 0.6)
 	for r in ROWS + 1:
 		var v := float(r) / ROWS
 		for c in COLS + 1:
 			var u := float(c) / COLS
 			var x := u * tw - fx
 			var y := v * th - fy
-			var up := -y  # height above feet (texture px)
+			var up := -y
 			var dx := lean * up
-			# cloak flutter grows towards the hem, travels as a wave
 			var hem := clampf((v - 0.45) / 0.55, 0.0, 1.0)
 			dx += sin(t * 5.2 + v * 5.0 + u * 2.5) * th * 0.012 * flutter * hem * hem
-			# hood sway (top)
 			var top := clampf(1.0 - v / 0.4, 0.0, 1.0)
 			dx += sin(t * 2.0 + 0.6) * th * 0.006 * top
-			# leg stride on the lower body
-			var legs := clampf((v - 0.7) / 0.3, 0.0, 1.0)
-			dx += stride * th * 0.05 * legs
+			var legs := clampf((v - 0.68) / 0.32, 0.0, 1.0)
+			dx += stride * th * 0.025 * legs
 			var dy := up * (1.0 - sq)
+			if scissor != 0.0:
+				# front and back leg swing opposite ways, the forward one lifts
+				var side := clampf((u - 0.5) * 3.0, -1.0, 1.0)
+				dx += scissor * side * th * 0.06 * legs
+				dy -= maxf(0.0, scissor * side) * th * 0.035 * legs
 			pts.append(Vector2(x + dx + shake, y + dy))
 			uvs.append(Vector2(u, v))
-			cols.append(fl_tint)
+			cols.append(tint)
 	var idx := PackedInt32Array()
 	for r in ROWS:
 		for c in COLS:
@@ -248,17 +397,8 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 			var i2 := i0 + COLS + 1
 			var i3 := i2 + 1
 			idx.append_array([i0, i1, i2, i1, i3, i2])
-	ci.draw_set_transform(pos - Vector2(0, lift * s), 0.0, Vector2(tk * flip / sq, tk))
+	ci.draw_set_transform(pos - Vector2(0, float(P.lift) * s), 0.0, Vector2(tk * flip / sq, tk))
 	RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), idx, pts, cols, uvs, PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
-	# skin effects drawn in art units around the body
-	ci.draw_set_transform(pos - Vector2(0, lift * s), 0.0, Vector2(s * facing, s))
-	_alpha = alpha
-	match d.get("fx", ""):
-		"fire": _fx_fire(ci, t, d.accent)
-		"frost": _fx_frost(ci, t, d.accent)
-		"neon": _fx_neon(ci, t, d.secondary, d.accent)
-		"stars": _fx_stars(ci, t, d.accent)
-	_alpha = 1.0
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 ## Draw a brawler with feet at `pos`.
@@ -1167,6 +1307,27 @@ static func _ember(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil
 static func draw_projectile(ci: CanvasItem, style: String, pos: Vector2, dir: Vector2, t: float, team_col: Color, d: Dictionary) -> void:
 	var a := dir.angle()
 	match style:
+		"shuriken":
+			var cc := Color("3fd8ff")
+			glow(ci, pos, 14, cc, 3)
+			for k in 3:
+				var back := pos - dir * (8.0 + k * 8.0)
+				ci.draw_circle(back, 5.0 - k * 1.3, Color(cc.r, cc.g, cc.b, 0.45 - k * 0.12))
+			var rot := t * 26.0
+			var star := PackedVector2Array()
+			var inner := PackedVector2Array()
+			for i in 8:
+				var ang := rot + i * TAU / 8.0
+				var r := 13.0 if i % 2 == 0 else 4.5
+				star.append(pos + Vector2(cos(ang), sin(ang)) * r)
+				inner.append(pos + Vector2(cos(ang), sin(ang)) * r * 0.62)
+			var outl := PackedVector2Array()
+			for p2 in star:
+				outl.append(pos + (p2 - pos) * 1.25)
+			ci.draw_colored_polygon(outl, Color("0b0d1a"))
+			ci.draw_colored_polygon(star, Color("2b3550"))
+			ci.draw_colored_polygon(inner, cc)
+			ci.draw_circle(pos, 2.4, Color("0b0d1a"))
 		"bullet":
 			ci.draw_line(pos - dir * 18.0, pos, Color(1, 0.9, 0.6, 0.45), 4.0, true)
 			ci.draw_circle(pos, 6.0, Color("1a1028"))

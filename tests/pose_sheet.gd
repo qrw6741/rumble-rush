@@ -10,8 +10,11 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("3b7d4e"))
 	var poses := [
 		["idle", {"in_match": true}],
+		["fidget", {"in_match": true, "t_add": 4.0}],
 		["walk", {"in_match": true, "moving": true}],
-		["attack", {"in_match": true, "recoil": 0.9}],
+		["windup", {"in_match": true, "atk": 0.04}],
+		["strike", {"in_match": true, "atk": 0.16}],
+		["follow", {"in_match": true, "atk": 0.3}],
 		["hurt", {"in_match": true, "hurt": 0.2}],
 		["super", {"in_match": true, "super_pose": 0.35}],
 		["victory", {"moving": true}],
@@ -22,7 +25,7 @@ func _draw() -> void:
 	for i in poses.size():
 		for j in 3:
 			var a: Dictionary = poses[i][1].duplicate()
-			a["t"] = _t + j * 0.13
+			a["t"] = _t + float(a.get("t_add", 0.0))
 			a["aim"] = a.get("aim_override", Vector2(1, 0.2))
-			BrawlerArt.draw(self, "graves", Vector2(70 + i * 140, 220 + j * 230), 1.6, a)
-		draw_string(ThemeDB.fallback_font, Vector2(30 + i * 140, 30), poses[i][0], HORIZONTAL_ALIGNMENT_LEFT, -1, 22)
+			BrawlerArt.draw(self, ["graves", "cyber", "king"][j], Vector2(60 + i * 105, 220 + j * 230), 1.25, a)
+		draw_string(ThemeDB.fallback_font, Vector2(20 + i * 105, 30), poses[i][0], HORIZONTAL_ALIGNMENT_LEFT, -1, 16)

@@ -22,6 +22,7 @@ const SCREENS := {
 }
 
 var root_container: Node
+var app: Node  # main.gd (handles resolution / orientation)
 var current: Node
 var _fade_layer: CanvasLayer
 var _fade: ColorRect

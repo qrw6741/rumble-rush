@@ -230,4 +230,6 @@ static func _twin_style(b) -> String:
 		return "bullet"
 	if b.d.get("flames", false):
 		return "flame"
+	if b.d.get("shuriken", false):
+		return "shuriken"
 	return "slash"

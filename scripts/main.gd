@@ -11,6 +11,7 @@ var _rinner: Control
 
 func _ready() -> void:
 	Router.root_container = self
+	Router.app = self
 	randomize()
 	if OS.has_feature("web") or OS.has_feature("mobile"):
 		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
@@ -144,6 +145,14 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	if "--debugmenu" in args:
 		var dp: Control = preload("res://scripts/ui/debug_panel.gd").new()
 		add_child(dp)
+	if "--toggle4k" in args:
+		await get_tree().create_timer(1.2).timeout
+		Save.set_setting("resolution", "4k")
+		await get_tree().create_timer(0.6).timeout
+		Save.set_setting("resolution", "1080p")
+		await get_tree().create_timer(0.4).timeout
+		if "--tonative" in args:
+			Save.set_setting("resolution", "native")
 	if "--clicktest" in args:
 		await get_tree().create_timer(1.0).timeout
 		var ws := Vector2(get_tree().root.size)
@@ -213,7 +222,9 @@ func apply_resolution() -> void:
 		return
 	# render the whole game into an offscreen buffer of exactly this resolution,
 	# laid out at the usual 1280x720 units, then scale it to the window
-	if _rwrap == null:
+	var ls := root.get_visible_rect().size
+	var fresh := _rwrap == null
+	if fresh:
 		_rwrap = SubViewportContainer.new()
 		_rwrap.stretch = false
 		_rwrap.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -227,15 +238,16 @@ func apply_resolution() -> void:
 		_rinner = Control.new()
 		_rinner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_rsub.add_child(_rinner)
-		_move_screens(self, _rinner)
-	var ls := root.get_visible_rect().size
 	_rsub.size = Vector2i(int(ls.x * f), int(ls.y * f))
 	_rsub.size_2d_override = Vector2i(int(ls.x), int(ls.y))
 	_rsub.size_2d_override_stretch = true
 	_rwrap.size = Vector2(_rsub.size)
 	_rwrap.scale = Vector2.ONE / f
 	_rwrap.position = Vector2.ZERO
+	_rinner.position = Vector2.ZERO
 	_rinner.size = ls
+	if fresh:
+		_move_screens(self, _rinner)
 	Config.render_px = f
 	if Router.current is Control:
 		(Router.current as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -310,9 +322,9 @@ func _move_screens(from: Node, to: Node) -> void:
 		if c is SubViewportContainer:
 			continue
 		c.reparent(to, false)
-		_finish_entrance(c)
 		if c is Control:
 			(c as Control).set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_finish_entrance(c)
 		for cam in c.find_children("*", "Camera2D", true, false):
 			(cam as Camera2D).make_current()
 

@@ -69,6 +69,7 @@ var anim_t := 0.0
 var flash := 0.0
 var recoil := 0.0
 var hurt_t := 0.0
+var atk_age := 9.0  # seconds since the last basic attack
 var super_pose_t := 0.0
 var blink_t := 2.0
 var _moving := false
@@ -158,6 +159,7 @@ func _physics_process(delta: float) -> void:
 	flash = max(0.0, flash - delta * 7.0)
 	recoil = max(0.0, recoil - delta * 4.5)
 	hurt_t = max(0.0, hurt_t - delta)
+	atk_age += delta
 	super_pose_t = max(0.0, super_pose_t - delta)
 	blink_t -= delta
 	if blink_t < -0.12:
@@ -320,6 +322,7 @@ func try_attack(dir: Vector2, dist := -1.0) -> bool:
 	_on_offensive_action()
 	aim_dir = dir.normalized()
 	recoil = 1.0
+	atk_age = 0.0
 	Abilities.primary(self, aim_dir, dist)
 	return true
 
@@ -509,7 +512,7 @@ func _draw() -> void:
 	_draw_ellipse(Vector2(0, 2), 24.0 * sh, 9.0 * sh, Color(0, 0, 0, 0.3 * alpha))
 	if flat:
 		var anim := {"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
-			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin, "no_shadow": true, "in_match": true, "hurt": hurt_t, "super_pose": super_pose_t,
+			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin, "no_shadow": true, "in_match": true, "hurt": hurt_t, "super_pose": super_pose_t, "atk": atk_age,
 			"cheap": not is_player and game.brawlers.size() > 6}
 		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.6, anim)
 
