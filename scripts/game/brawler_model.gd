@@ -127,6 +127,8 @@ func smile(parent: Node3D, pos: Vector3, w: float, open := 0.3, teeth := true) -
 		part(parent, sphere(w * 0.38), Color.WHITE, pos + Vector3(0, w * open * 0.18, w * 0.06), Vector3.ZERO, Vector3(1.0, open * 0.45, 0.3))
 
 func shoe(leg: Node3D, hip_y: float, col: Color, size := 1.0) -> void:
+	size *= 1.2
+	part(leg, cyl(0.1 * size, 0.12 * size, 0.04, 20), col.lightened(0.35), Vector3(0, -hip_y + 0.12 * size, 0.04 * size))
 	part(leg, sphere(0.13 * size), col, Vector3(0, -hip_y + 0.075 * size, 0.05 * size), Vector3.ZERO, Vector3(1.0, 0.62, 1.45))
 	part(leg, box(0.2 * size, 0.035, 0.34 * size), col.darkened(0.45), Vector3(0, -hip_y + 0.02, 0.05 * size))
 
@@ -141,7 +143,9 @@ func arm(side: float, shoulder: Vector3, sleeve: Color, hand: Color, upper_r := 
 	var a := pivot(body, Vector3(shoulder.x * side, shoulder.y, shoulder.z))
 	part(a, sphere(upper_r * 1.35), sleeve, Vector3.ZERO)
 	part(a, capsule(upper_r, length), sleeve, Vector3(0, -length * 0.42, 0))
-	part(a, sphere(hand_r), hand, Vector3(0, -length * 0.95, 0.01))
+	# big chunky mitts read well from the top-down camera
+	part(a, sphere(hand_r * 1.3), hand, Vector3(0, -length * 0.98, 0.02), Vector3.ZERO, Vector3(1.0, 0.95, 1.05))
+	part(a, sphere(hand_r * 0.55), hand, Vector3(-hand_r * 0.95, -length * 0.9, 0.06))
 	return a
 
 # ------------------------------------------------------------------ build
@@ -155,6 +159,8 @@ func build(brawler_id: String, skin := "") -> void:
 		"nova": _nova()
 		"mira": _mira()
 		"sprig": _sprig()
+	# stylised proportions: slightly oversized heads on every brawler
+	head.scale = Vector3.ONE * 1.1
 	_merge_parts()
 
 # ------------------------------------------------------------------ BRONT: tank, big-hearted brute

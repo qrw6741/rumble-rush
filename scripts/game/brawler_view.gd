@@ -20,7 +20,7 @@ static func create(brawler_id: String, view_kind: String, px: int, live := true,
 	v.kind = view_kind
 	v.animated = live
 	var low := Save.low_graphics()
-	v.px_scale = 0.62 if low else 1.0
+	v.px_scale = 0.85 if low else 1.0
 	var real_px := maxi(64, int(px * v.px_scale))
 	v.size = Vector2i(real_px, real_px)
 	v.transparent_bg = true
@@ -56,7 +56,7 @@ func _build(brawler_id: String, skin := "") -> void:
 	add_child(fill)
 
 	model = BrawlerModel.new()
-	model.outline_width = 0.04 if kind == "battle" else 0.02
+	model.outline_width = 0.026 if kind == "battle" else 0.012
 	model.build(brawler_id, skin)
 	add_child(model)
 

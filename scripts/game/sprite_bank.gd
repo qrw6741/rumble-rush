@@ -35,6 +35,7 @@ static func bake(host: Node, combos: Array, px: int) -> void:
 		var views: Array[BrawlerView] = []
 		for d in DIRS:
 			var v := BrawlerView.create(combo[0], "battle", px, true, combo[1])
+			v.msaa_3d = Viewport.MSAA_4X # one-off bake: use full smoothing
 			v.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 			host.add_child(v)
 			views.append(v)
