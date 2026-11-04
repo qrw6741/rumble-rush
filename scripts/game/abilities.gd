@@ -15,11 +15,11 @@ static func primary(b: Brawler, dir: Vector2, dist: float) -> void:
 			_melee(b, dir, a, dmg)
 		"twin_slash":
 			var sp := deg_to_rad(a.spread)
-			_shoot(b, dir.rotated(-sp * 0.5), a, dmg, "paint" if b.d.get("paint", false) else "slash")
+			_shoot(b, dir.rotated(-sp * 0.5), a, dmg, _twin_style(b))
 			var tree := b.get_tree()
 			tree.create_timer(0.09, false).timeout.connect(func():
 				if is_instance_valid(b) and b.alive and not b.game.ended:
-					_shoot(b, dir.rotated(sp * 0.5), a, dmg, "paint" if b.d.get("paint", false) else "slash")
+					_shoot(b, dir.rotated(sp * 0.5), a, dmg, _twin_style(b))
 					Sfx.play_at(a.sfx, b.global_position, -6.0))
 		"rifle":
 			_shoot(b, dir, a, dmg, "bolt", {"bonus": a.max_bonus})
@@ -221,3 +221,13 @@ static func gadget(b: Brawler, dir: Vector2) -> void:
 		"snare":
 			SnareTrap.spawn(g, b, b.global_position, gd)
 			Sfx.play_at("root", b.global_position, -8.0)
+
+
+static func _twin_style(b) -> String:
+	if b.d.get("paint", false):
+		return "paint"
+	if b.d.get("bullets", false):
+		return "bullet"
+	if b.d.get("flames", false):
+		return "flame"
+	return "slash"

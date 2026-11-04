@@ -68,6 +68,7 @@ func _default() -> Dictionary:
 		"rank_claimed": ranks,
 		"skins_owned": [],
 		"gems": 30,
+		"unlocked": Config.STARTER_BRAWLERS.duplicate(),
 		"challenge_kos": {},
 		"quests": {"day": "", "progress": {}, "claimed": []},
 		"drops": [],
@@ -101,6 +102,11 @@ func load_game() -> void:
 		data["diff_auto_v2"] = true
 	if data.settings.difficulty == "expert":
 		data.settings.difficulty = "extreme"
+	for sid in Config.STARTER_BRAWLERS:
+		if not sid in data.unlocked:
+			data.unlocked.append(sid)
+	if not is_unlocked(data.selected_brawler):
+		data.selected_brawler = "bront"
 	data.credits = int(data.credits)
 	data.gems = int(data.get("gems", 0))
 	var dr: Array = []
@@ -314,6 +320,11 @@ func grant_reward(r: Dictionary) -> void:
 		"bundle":
 			for it in r.items:
 				grant_reward(it)
+		"brawler":
+			if not r.brawler in data.unlocked:
+				data.unlocked.append(r.brawler)
+			else:
+				data.credits += 500
 		"drop":
 			data.drops.append(int(r.get("tier", 0)))
 
@@ -376,6 +387,21 @@ func buy(id: String, reward: Dictionary, currency: String, cost: int, once := tr
 	if once:
 		data.shop.bought.append(id)
 	grant_reward(reward)
+	save_game()
+	return true
+
+func is_unlocked(id: String) -> bool:
+	return id in data.get("unlocked", Config.STARTER_BRAWLERS)
+
+## Buy a locked brawler with credits or gems. Returns true on success.
+func unlock_brawler(id: String) -> bool:
+	if is_unlocked(id):
+		return false
+	var u: Dictionary = Config.BRAWLERS[id].get("unlock", {})
+	var cur: String = u.get("currency", "credits")
+	if cur == "pass" or not spend(cur, int(u.get("cost", 0))):
+		return false
+	data.unlocked.append(id)
 	save_game()
 	return true
 

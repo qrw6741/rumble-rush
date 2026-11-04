@@ -10,6 +10,6 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("e8c88a"))
 	var ids: Array = Config.BRAWLER_ORDER
 	for i in ids.size():
-		var x := 110 + i * 212
-		BrawlerArt.draw(self, ids[i], Vector2(x, 330), 3.2, {"t": t, "aim": Vector2(1, 0.3), "moving": false})
-		BrawlerArt.draw(self, ids[i], Vector2(x, 660), 2.2, {"t": t, "aim": Vector2(-0.6, 0.8), "moving": true})
+		var x := 90 + (i % 7) * 180
+		var y := 320 if i < 7 else 680
+		BrawlerArt.draw(self, ids[i], Vector2(x, y), 2.9, {"t": t, "aim": Vector2(1, 0.3), "moving": false})

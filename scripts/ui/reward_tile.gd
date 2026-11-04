@@ -58,6 +58,7 @@ static func short_text(r: Dictionary) -> String:
 		"xp": return "%d XP" % r.amount
 		"skin": return "%s SKIN" % Progression.SKINS[r.skin].name
 		"gems": return "%d" % r.amount
+		"brawler": return Config.BRAWLERS[r.brawler].name
 		"drop": return "%s DROP" % Progression.DROP_TIERS[int(r.get("tier", 0))].name
 	return ""
 
@@ -72,6 +73,11 @@ static func draw_icon(ci: CanvasItem, r: Dictionary, c: Vector2, s: float) -> vo
 			UIKit.draw_icon(ci, "token", c, s * 2.0)
 		"gems":
 			UIKit.draw_icon(ci, "gem", c, s * 1.9)
+		"brawler":
+			var pc: Color = Config.BRAWLERS[r.brawler].primary
+			ci.draw_circle(c, s * 1.05, Color("1a1028"))
+			ci.draw_circle(c, s * 0.95, pc.darkened(0.3))
+			BrawlerArt.draw(ci, r.brawler, c + Vector2(0, s * 0.95), s / 38.0, {"t": Time.get_ticks_msec() / 1000.0, "aim": Vector2(1, 0.2), "no_shadow": true})
 		"drop":
 			var dc: Color = Progression.DROP_TIERS[int(r.get("tier", 0))].color
 			UIKit.draw_icon(ci, "drop", c, s * 2.0, dc.lerp(Color.WHITE, 0.45))

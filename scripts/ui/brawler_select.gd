@@ -237,6 +237,30 @@ func _show(id: String) -> void:
 	var actions := HBoxContainer.new()
 	actions.add_theme_constant_override("separation", 12)
 	_detail.add_child(actions)
+	if not Save.is_unlocked(id):
+		var u: Dictionary = Config.BRAWLERS[id].get("unlock", {})
+		var cur: String = u.get("currency", "credits")
+		var ub: Button
+		if cur == "pass":
+			ub = UIKit.button("REACH RUSH PASS TIER %d" % int(u.cost), Color("8e2bd8"), 20, Vector2(420, 62))
+			ub.pressed.connect(func(): Router.goto("pass"))
+		else:
+			var label := "UNLOCK  %d %s" % [int(u.cost), "GEMS" if cur == "gems" else "CREDITS"]
+			ub = UIKit.button(label, UIKit.GREEN, 22, Vector2(420, 62))
+			ub.disabled = not Save.can_afford(cur, int(u.cost))
+			if ub.disabled:
+				ub.text = "NEED %d %s" % [int(u.cost), "GEMS" if cur == "gems" else "CREDITS"]
+			ub.pressed.connect(func():
+				if Save.unlock_brawler(id):
+					Sfx.play("victory", -2.0, 0.0)
+					Save.data.selected_brawler = id
+					Save.save_game()
+					Router.goto("select")
+				else:
+					Sfx.play("ui_error"))
+		actions.add_child(ub)
+		_detail.add_child(UIKit.body(d.bio, 15, Color(1, 1, 1, 0.75)))
+		return
 	var cost := Save.upgrade_cost(id)
 	var up := UIKit.button("MAX LEVEL" if cost < 0 else "UPGRADE  %d" % cost, UIKit.YELLOW, 20, Vector2(250, 62))
 	up.disabled = cost < 0 or Save.data.credits < cost
@@ -494,6 +518,21 @@ class CardFront extends Control:
 		draw_string_outline(f, Vector2.ZERO, d.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, 9, ink)
 		draw_string(f, Vector2.ZERO, d.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color("ffe14d"))
 		draw_set_transform_matrix(Transform2D.IDENTITY)
+		if not Save.is_unlocked(brawler_id):
+			# locked: dim the portrait, padlock, unlock price
+			draw_rect(Rect2(16, 52, w - 70, 152), Color(0.05, 0.04, 0.12, 0.55))
+			UIKit.draw_icon(self, "lock", Vector2((w - 54) * 0.5, 120), 64.0)
+			var lbar := Rect2(16, 208, w - 30, 36)
+			draw_rect(lbar.grow(3), ink)
+			var u: Dictionary = d.get("unlock", {})
+			var cur: String = u.get("currency", "credits")
+			draw_rect(lbar, Color("8e2bd8") if cur == "pass" else Color("2f3d5c"))
+			if cur == "pass":
+				S.text_c(self, "RUSH PASS TIER %d" % int(u.cost), lbar.get_center() + Vector2(0, 8), 18, Color.WHITE)
+			else:
+				UIKit.draw_icon(self, "gem" if cur == "gems" else "coin", Vector2(lbar.get_center().x - 34, lbar.get_center().y), 30.0)
+				S.text_l(self, str(u.cost), Vector2(lbar.get_center().x - 14, lbar.end.y - 9), 22, Color.WHITE)
+			return
 		# bottom bar: power level + upgrade cost
 		var cost := Save.upgrade_cost(brawler_id)
 		var can_up: bool = cost >= 0 and Save.data.credits >= cost
@@ -543,7 +582,7 @@ class TitleBanner extends Control:
 		draw_rect(Rect2(r.position + Vector2(6, 6), Vector2(r.size.x - 12, 18)), Color("8fdcff"))
 		var n := Config.BRAWLER_ORDER.size()
 		S.text_l(self, "BRAWLERS", Vector2(28, 58), 40, Color("2a8cff"))
-		S.text_l(self, "%d/%d" % [n, n], Vector2(290, 58), 40, Color("ffe14d"))
+		S.text_l(self, "%d/%d" % [Save.data.unlocked.size(), n], Vector2(290, 58), 40, Color("ffe14d"))
 
 
 ## Sidebar sort option with an on/off pill.

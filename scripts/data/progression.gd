@@ -41,6 +41,8 @@ static func pass_reward(tier: int, track: String) -> Dictionary:
 			return {"type": "drop", "tier": 1}
 		return {"type": "credits", "amount": 40 + tier * 2}
 	# free track
+	if tier == PASS_TIERS:
+		return {"type": "brawler", "brawler": "ember"}
 	if tier % 10 == 0:
 		return {"type": "skin", "brawler": ["nova", "bront", "mira"][tier / 10 - 1], "skin": "shadow"}
 	if tier % 4 == 0:
@@ -65,7 +67,7 @@ static func season_time_left() -> String:
 static func daily_quests(day_key: String) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash(day_key + "quests")
-	var ids: Array = Config.BRAWLER_ORDER
+	var ids: Array = Save.data.get("unlocked", Config.STARTER_BRAWLERS)
 	var modes: Array = Config.MODES.keys()
 	var bid: String = ids[rng.randi() % ids.size()]
 	var mid: String = modes[rng.randi() % modes.size()]
@@ -201,6 +203,7 @@ static func reward_text(r: Dictionary) -> String:
 		"skin": return "%s %s" % [SKINS[r.skin].name, Config.BRAWLERS[r.brawler].name]
 		"gems": return "%d GEMS" % r.amount
 		"bundle": return "BUNDLE"
+		"brawler": return "NEW BRAWLER: " + Config.BRAWLERS[r.brawler].name
 		"drop": return "%s DROP" % DROP_TIERS[int(r.get("tier", 0))].name
 	return ""
 

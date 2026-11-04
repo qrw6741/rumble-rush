@@ -142,6 +142,13 @@ static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dicti
 		"mira": _mira(ci, d, t, aim_l, recoil, step, blink)
 		"sprig": _sprig(ci, d, t, aim_l, recoil, step, blink)
 		"rio": _rio(ci, d, t, aim_l, recoil, step, blink)
+		"graves": _graves(ci, d, t, aim_l, recoil, step, blink, moving)
+		"dusty": _dusty(ci, d, t, aim_l, recoil, step, blink)
+		"kora": _kora(ci, d, t, aim_l, recoil, step, blink)
+		"patch": _patch(ci, d, t, aim_l, recoil, step, blink)
+		"bruno": _bruno(ci, d, t, aim_l, recoil, step, blink)
+		"skye": _skye(ci, d, t, aim_l, recoil, step, blink)
+		"ember": _ember(ci, d, t, aim_l, recoil, step, blink, moving)
 		_: _nova(ci, d, t, aim_l, recoil, step, blink)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_flash = 0.0
@@ -594,11 +601,371 @@ static func _sprig(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil
 	ci.draw_circle(hp + aim * 6.0 + Vector2(-1.5, -1.5), 1.6, _c(Color(1, 1, 1, 0.8)))
 	hand(ci, hp, aim, skin, 4.2)
 
+# ------------------------------------------------------------------ GRAVES (reaper)
+static func _graves(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool, moving: bool) -> void:
+	var robe: Color = d.primary
+	var dark: Color = d.secondary
+	var glow_c: Color = d.accent
+	var bone: Color = d.skin
+	var float_y := sin(t * 2.2) * 1.5
+	var swing := -recoil * 2.2 + recoil * recoil * 0.8
+	var ang := aim.angle() - 0.5 + swing
+	var behind := aim.y < -0.35
+	if behind:
+		_graves_scythe(ci, Vector2(16, -30 + float_y), ang, glow_c)
+	# tattered robe floating above the ground (no feet)
+	var hem: Array = []
+	for k in 7:
+		var x := -16.0 + k * 5.3
+		hem.append(Vector2(x, -4 + float_y + (4.0 if k % 2 == 0 else -1.0) + sin(t * 6.0 + k) * (1.5 if moving else 0.6)))
+	var body: Array = [Vector2(-10, -40 + float_y), Vector2(10, -40 + float_y), Vector2(17, -14 + float_y)]
+	for k in range(hem.size() - 1, -1, -1):
+		body.append(hem[k])
+	body.append(Vector2(-17, -14 + float_y))
+	blob(ci, body, robe)
+	blob(ci, [Vector2(-3, -38 + float_y), Vector2(3, -38 + float_y), Vector2(5, -8 + float_y), Vector2(-5, -8 + float_y)], dark, false)
+	limb(ci, Vector2(-13, -22 + float_y), Vector2(13, -24 + float_y), 3.5, 3.5, Color("4a3a2a"), true)
+	# back arm (bony hand)
+	limb(ci, Vector2(-8, -36 + float_y), Vector2(-13, -24 + float_y + step), 7, 6, robe.darkened(0.1))
+	hand(ci, Vector2(-13, -21 + float_y + step), Vector2(0, 1), bone.darkened(0.08), 3.8)
+	# hood + skull face with glowing eyes
+	var hc := Vector2(1, -52 + float_y)
+	blob(ci, [hc + Vector2(-16, 8), hc + Vector2(-17, -8), hc + Vector2(-8, -17), hc + Vector2(-14, -24), hc + Vector2(4, -18), hc + Vector2(15, -8), hc + Vector2(16, 8), hc + Vector2(8, 14), hc + Vector2(-8, 14)], robe)
+	blob(ci, [hc + Vector2(-9, 7), hc + Vector2(-10, -4), hc + Vector2(0, -11), hc + Vector2(11, -6), hc + Vector2(12, 5), hc + Vector2(5, 11), hc + Vector2(-4, 11)], Color("0d0a14"))
+	blob(ci, [hc + Vector2(-6, 4), hc + Vector2(-6, -4), hc + Vector2(1, -8), hc + Vector2(9, -4), hc + Vector2(9, 4), hc + Vector2(5, 9), hc + Vector2(-2, 9)], bone, true, 2.0)
+	for ex: float in [-1.5, 5.5]:
+		blob(ci, [hc + Vector2(ex - 2.5, -2), hc + Vector2(ex + 2.5, -2.5), hc + Vector2(ex + 2.2, 2), hc + Vector2(ex - 2, 2)], Color("1a1028"), false)
+		if not blink:
+			glow(ci, hc + Vector2(ex + aim.x * 0.8, 0), 5, glow_c, 3)
+			ci.draw_circle(hc + Vector2(ex + aim.x * 0.8, -0.2), 1.4, _c(glow_c.lightened(0.4)))
+	poly(ci, PackedVector2Array([hc + Vector2(1.5, 3), hc + Vector2(3, 5.5), hc + Vector2(0, 5.5)]), Color("1a1028"), false)
+	for k in 4:
+		ci.draw_line(hc + Vector2(-2 + k * 2.2, 7), hc + Vector2(-2 + k * 2.2, 9), _c(Color("1a1028")), 1.0, true)
+	if not behind:
+		_graves_scythe(ci, Vector2(16, -30 + float_y), ang, glow_c)
+	limb(ci, Vector2(8, -37 + float_y), Vector2(16, -30 + float_y), 7, 6, robe)
+	hand(ci, Vector2(16, -30 + float_y), Vector2.RIGHT.rotated(ang), bone, 3.8)
+
+static func _graves_scythe(ci: CanvasItem, hp: Vector2, ang: float, glow_c: Color) -> void:
+	var dir := Vector2.RIGHT.rotated(ang)
+	var n := dir.orthogonal()
+	var top := hp + dir * 34.0
+	limb(ci, hp - dir * 18.0, top, 4.2, 4.0, Color("4a3428"))
+	limb(ci, top - dir * 3.0, top + dir * 2.0, 6, 6, Color("8a8fa0"), true)
+	# curved blade sweeping back
+	var blade := spline([top + n * 2.0, top - n * 10.0 + dir * 2.0, top - n * 24.0 - dir * 6.0, top - n * 30.0 - dir * 18.0, top - n * 20.0 - dir * 8.0, top - n * 8.0 - dir * 2.0, top + n * 1.0 - dir * 3.0])
+	glow(ci, top - n * 18.0 - dir * 6.0, 12, glow_c, 2)
+	poly(ci, blade, Color("d9dde8"), true, 2.4)
+	ci.draw_polyline(spline([top - n * 8.0 - dir * 1.0, top - n * 20.0 - dir * 6.0, top - n * 27.0 - dir * 15.0], false), _c(glow_c), 2.0, true)
+
+# ------------------------------------------------------------------ DUSTY (cowboy)
+static func _dusty(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
+	var poncho: Color = d.primary
+	var leather: Color = d.secondary
+	var brass: Color = d.accent
+	var skin: Color = d.skin
+	var hp_front := Vector2(14, -25) - aim * recoil * 5.0
+	var hp_back := Vector2(10, -29) - aim * recoil * 3.0
+	_dusty_revolver(ci, hp_back, aim, brass, 0.9)
+	limb(ci, Vector2(-6, -34), hp_back, 6.5, 6, poncho.darkened(0.15))
+	hand(ci, hp_back, aim, skin.darkened(0.1), 4.0)
+	legs2(ci, step, 14, 5.5, 11, 7, Color("4a5a7a"), leather, Color("2a1a10"), 1.05, leather.lightened(0.2))
+	for side: float in [-1.0, 1.0]:
+		var ank := Vector2(side * 5.5 + step * side * 4.0, -3.0 - maxf(0.0, step * side) * 2.5)
+		ci.draw_circle(ank + Vector2(-6, 1), 2.2, _c(Color("c9d0de")))
+	# belt with holster and buckle
+	blob(ci, [Vector2(-12, -18), Vector2(12, -18), Vector2(12, -14), Vector2(-12, -14)], leather, true, 2.0)
+	poly(ci, PackedVector2Array([Vector2(-2.5, -19), Vector2(2.5, -19), Vector2(2.5, -13), Vector2(-2.5, -13)]), brass, true, 1.8)
+	# striped poncho
+	var pon: Array = [Vector2(-17, -16), Vector2(-14, -30), Vector2(-6, -40), Vector2(7, -40), Vector2(15, -30), Vector2(18, -16), Vector2(8, -20), Vector2(0, -16), Vector2(-8, -20)]
+	blob(ci, pon, poncho)
+	for k in 2:
+		var y := -27.0 + k * 6.0
+		ci.draw_polyline(spline([Vector2(-15, y + 4), Vector2(-6, y), Vector2(6, y), Vector2(16, y + 4)], false), _c(brass.lightened(0.1)), 2.2, true)
+		ci.draw_polyline(spline([Vector2(-15, y + 6), Vector2(-6, y + 2), Vector2(6, y + 2), Vector2(16, y + 6)], false), _c(Color("8a2a2a")), 1.4, true)
+	blob(ci, [Vector2(-7, -41), Vector2(7, -41), Vector2(5, -37), Vector2(-5, -37)], Color("b33a2a"), true, 2.0)
+	# weathered face: mustache, stubble, squint
+	var hc := Vector2(1, -52)
+	_ear(ci, hc + Vector2(-9, 2), skin)
+	blob(ci, _head_pts(hc, 26, 24), skin)
+	blob(ci, [hc + Vector2(-8, 6), hc + Vector2(12, 5), hc + Vector2(12, 11), hc + Vector2(2, 13), hc + Vector2(-7, 10)], skin.darkened(0.12), false)
+	_eyes(ci, hc + Vector2(2, -1), hc + Vector2(10, -1), 2.8, 2.6, aim, blink, Color("4a6a8a"))
+	limb(ci, hc + Vector2(-1, -5), hc + Vector2(5, -4), 2.6, 2.2, Color("c9c9c9"), false)
+	limb(ci, hc + Vector2(8, -4), hc + Vector2(13, -5), 2.2, 2.6, Color("c9c9c9"), false)
+	blob(ci, [hc + Vector2(9, 1), hc + Vector2(13, 3), hc + Vector2(9, 5)], skin.darkened(0.1), false)
+	blob(ci, [hc + Vector2(0, 6), hc + Vector2(6, 4), hc + Vector2(12, 6), hc + Vector2(14, 10), hc + Vector2(8, 8), hc + Vector2(6, 9), hc + Vector2(3, 8), hc + Vector2(-2, 10)], Color("e6e6e6"), true, 2.0)
+	# wide-brim hat with band
+	blob(ci, [hc + Vector2(-24, -6), hc + Vector2(-10, -9), hc + Vector2(10, -9), hc + Vector2(25, -7), hc + Vector2(22, -3), hc + Vector2(0, -4), hc + Vector2(-21, -2)], leather.lightened(0.15))
+	blob(ci, [hc + Vector2(-11, -8), hc + Vector2(-10, -20), hc + Vector2(-3, -17), hc + Vector2(3, -21), hc + Vector2(11, -18), hc + Vector2(12, -8)], leather.lightened(0.15))
+	blob(ci, [hc + Vector2(-11, -11), hc + Vector2(12, -11), hc + Vector2(12, -8), hc + Vector2(-11, -8)], Color("3a2416"), false)
+	ci.draw_circle(hc + Vector2(6, -9.5), 1.6, _c(brass))
+	_dusty_revolver(ci, hp_front, aim, brass, 1.0)
+	limb(ci, Vector2(8, -34), hp_front, 7, 6.5, poncho)
+	hand(ci, hp_front, aim, skin, 4.2)
+
+static func _dusty_revolver(ci: CanvasItem, hp: Vector2, aim: Vector2, brass: Color, sc: float) -> void:
+	var n := aim.orthogonal()
+	limb(ci, hp + n * 3.0 * sc, hp + n * 6.0 * sc - aim * 3.0 * sc, 4.5 * sc, 4.5 * sc, Color("6b4426"))
+	limb(ci, hp, hp + aim * 7.0 * sc, 7 * sc, 6.5 * sc, Color("8a93a8"))
+	ci.draw_circle(hp + aim * 3.5 * sc, 2.0 * sc, _c(Color("5a6078")))
+	limb(ci, hp + aim * 6.0 * sc - n * 1.0 * sc, hp + aim * 17.0 * sc - n * 1.0 * sc, 3.6 * sc, 3.2 * sc, Color("aab3c8"))
+	ci.draw_circle(hp + aim * 2.0 * sc + n * 3.5 * sc, 1.4 * sc, _c(brass))
+
+# ------------------------------------------------------------------ KORA (frost mage)
+static func _kora(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
+	var ice: Color = d.primary
+	var cloak: Color = d.secondary
+	var frost: Color = d.accent
+	var skin: Color = d.skin
+	var hair := Color("e6f4ff")
+	var staff_hp := Vector2(15, -26) + aim * (3.0 + recoil * 4.0)
+	var behind := aim.y < -0.4
+	# long icy hair at the back
+	var hc := Vector2(1, -52)
+	blob(ci, [hc + Vector2(-14, -6), hc + Vector2(-17, 8), hc + Vector2(-15, 22), hc + Vector2(-8, 18), hc + Vector2(-6, 6)], hair.darkened(0.05))
+	if behind:
+		_kora_staff(ci, staff_hp, aim, ice, frost, t)
+	limb(ci, Vector2(-7, -34), Vector2(-11, -24 + step * 2.0), 6.5, 5.5, cloak.lightened(0.1))
+	hand(ci, Vector2(-11, -21 + step * 2.0), Vector2(0, 1), skin, 4.0)
+	legs2(ci, step, 12, 5, 9, 6, Color("dfeaff"), cloak, Color("1a2a4a"), 1.0, ice)
+	# layered robe with fur trim and snowflake clasp
+	blob(ci, [Vector2(-16, -9), Vector2(-12, -26), Vector2(-7, -40), Vector2(7, -40), Vector2(12, -26), Vector2(16, -9), Vector2(0, -6)], cloak)
+	blob(ci, [Vector2(-8, -9), Vector2(-5, -36), Vector2(5, -36), Vector2(8, -9), Vector2(0, -7)], ice)
+	var trim: Array = []
+	for k in 9:
+		trim.append(Vector2(-16 + k * 4.0, -8 + (1.5 if k % 2 == 0 else -0.5)))
+	ci.draw_polyline(spline(trim, false), _c(Color.WHITE), 4.0, true)
+	blob(ci, [Vector2(-10, -41), Vector2(0, -37), Vector2(10, -41), Vector2(8, -36), Vector2(0, -33), Vector2(-8, -36)], Color.WHITE, true, 2.0)
+	for k in 3:
+		var a := k * PI / 3.0
+		ci.draw_line(Vector2(0, -30) + Vector2.from_angle(a) * 3.5, Vector2(0, -30) - Vector2.from_angle(a) * 3.5, _c(frost), 1.6, true)
+	# face + fringe + ice crown
+	blob(ci, _head_pts(hc, 24, 23), skin)
+	blob(ci, [hc + Vector2(-13, 2), hc + Vector2(-12, -10), hc + Vector2(-1, -14), hc + Vector2(10, -11), hc + Vector2(13, -3), hc + Vector2(7, -5), hc + Vector2(2, -2), hc + Vector2(-4, -6), hc + Vector2(-8, 1)], hair)
+	for k in 3:
+		var bx := -5.0 + k * 6.0
+		poly(ci, PackedVector2Array([hc + Vector2(bx - 3, -11), hc + Vector2(bx, -20 - (k % 2) * 3.0), hc + Vector2(bx + 3, -11)]), ice.lightened(0.2), true, 1.8)
+	_eyes(ci, hc + Vector2(-1, 2), hc + Vector2(8, 2), 3.2, 3.8, aim, blink, Color("2a7ab8"))
+	ell(ci, hc + Vector2(-5, 7), 2.2, 1.2, Color(0.6, 0.8, 1, 0.6), false)
+	ell(ci, hc + Vector2(12, 7), 2.2, 1.2, Color(0.6, 0.8, 1, 0.6), false)
+	blob(ci, [hc + Vector2(2, 10), hc + Vector2(5, 9.5), hc + Vector2(4, 11)], Color("7a3a5a"), true, 1.2)
+	if not behind:
+		_kora_staff(ci, staff_hp, aim, ice, frost, t)
+	limb(ci, Vector2(7, -34), staff_hp, 6.5, 5.5, cloak.lightened(0.1))
+	hand(ci, staff_hp, Vector2(0, -1), skin, 4.0)
+
+static func _kora_staff(ci: CanvasItem, hp: Vector2, aim: Vector2, ice: Color, frost: Color, t: float) -> void:
+	limb(ci, hp + Vector2(0, 16), hp + Vector2(0, -22), 3.5, 3.5, Color("8ab8e0"))
+	var top := hp + Vector2(0, -26)
+	glow(ci, top, 12 + sin(t * 4.0) * 2.0, ice)
+	poly(ci, PackedVector2Array([top + Vector2(0, -10), top + Vector2(6, 0), top + Vector2(0, 8), top + Vector2(-6, 0)]), frost, true, 2.2)
+	poly(ci, PackedVector2Array([top + Vector2(0, -6), top + Vector2(3, 0), top + Vector2(0, 4), top + Vector2(-3, 0)]), ice, false)
+
+# ------------------------------------------------------------------ PATCH (repair robot)
+static func _patch(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
+	var shell: Color = d.primary
+	var metal: Color = d.secondary
+	var orange: Color = d.accent
+	var screen: Color = d.skin
+	var hover := sin(t * 3.0) * 1.5
+	# hover jet instead of legs
+	glow(ci, Vector2(0, -6), 9 + sin(t * 20.0) * 1.5, Color(0.5, 0.8, 1, 0.9), 3)
+	blob(ci, [Vector2(-8, -14 + hover), Vector2(8, -14 + hover), Vector2(6, -8 + hover), Vector2(-6, -8 + hover)], metal)
+	# back arm: claw
+	limb(ci, Vector2(-14, -28 + hover), Vector2(-20, -22 + hover + step), 4, 4, metal)
+	blob(ci, [Vector2(-23, -24 + hover + step), Vector2(-18, -24 + hover + step), Vector2(-18, -18 + hover + step), Vector2(-23, -18 + hover + step)], orange, true, 2.0)
+	# round body = head, one big eye screen
+	var bc := Vector2(0, -34 + hover)
+	blob(ci, [bc + Vector2(-17, 4), bc + Vector2(-16, -12), bc + Vector2(-4, -20), bc + Vector2(8, -19), bc + Vector2(17, -10), bc + Vector2(18, 5), bc + Vector2(10, 15), bc + Vector2(-9, 15)], shell)
+	blob(ci, [bc + Vector2(-12, 8), bc + Vector2(12, 8), bc + Vector2(10, 13), bc + Vector2(-10, 13)], orange, true, 2.0)
+	for k in 3:
+		ci.draw_circle(bc + Vector2(-6 + k * 6, 10.5), 1.2, _c(metal))
+	blob(ci, [bc + Vector2(-9, -8), bc + Vector2(1, -13), bc + Vector2(13, -9), bc + Vector2(13, 3), bc + Vector2(1, 5), bc + Vector2(-9, 2)], Color("1a2236"))
+	var look := aim * 2.0
+	if blink:
+		ci.draw_line(bc + Vector2(-2, -3), bc + Vector2(8, -3), _c(screen), 2.4, true)
+	else:
+		glow(ci, bc + Vector2(3, -3) + look, 9, screen, 2)
+		ci.draw_circle(bc + Vector2(3, -3) + look, 5.0, _c(screen))
+		ci.draw_circle(bc + Vector2(3, -3) + look, 2.2, _c(Color.WHITE))
+	# antenna
+	ci.draw_line(bc + Vector2(-2, -19), bc + Vector2(-5, -27), _c(metal), 2.0, true)
+	ci.draw_circle(bc + Vector2(-5, -28), 2.6, _c(orange))
+	# front arm: wrench / zapper
+	var hp := Vector2(16, -30 + hover) + aim * (4.0 - recoil * 4.0)
+	limb(ci, bc + Vector2(14, 2), hp, 4, 4, metal)
+	limb(ci, hp, hp + aim * 12.0, 5, 4, Color("aab3c8"))
+	var wt := hp + aim * 14.0
+	blob(ci, [wt + aim.orthogonal() * 5.0, wt + aim * 5.0 + aim.orthogonal() * 3.0, wt + aim * 5.0 - aim.orthogonal() * 3.0, wt - aim.orthogonal() * 5.0], Color("aab3c8"), true, 2.0)
+	if recoil > 0.1:
+		glow(ci, wt + aim * 6.0, 7, screen, 2)
+
+# ------------------------------------------------------------------ BRUNO (boxer bear)
+static func _bruno(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
+	var glove: Color = d.primary
+	var fur: Color = d.skin
+	var shorts: Color = Color("2a5ad8")
+	var gold: Color = d.accent
+	var jab := recoil
+	# back glove
+	limb(ci, Vector2(-14, -36), Vector2(-18, -28 + step * 1.5), 11, 10, fur.darkened(0.1))
+	blob(ci, _o([Vector2(-8, -6), Vector2(4, -8), Vector2(9, 0), Vector2(5, 8), Vector2(-7, 7)], Vector2(-18, -24 + step * 1.5)), glove.darkened(0.1))
+	# legs: furry with sneaker-boots
+	legs2(ci, step, 14, 8, 11, 11, fur, Color("f2f2f6"), Color("c9cfe0"), 1.2, glove)
+	# boxing shorts with gold band
+	blob(ci, [Vector2(-17, -20), Vector2(17, -20), Vector2(18, -9), Vector2(3, -9), Vector2(0, -12), Vector2(-3, -9), Vector2(-18, -9)], shorts)
+	blob(ci, [Vector2(-17, -22), Vector2(17, -22), Vector2(17, -18), Vector2(-17, -18)], gold, true, 2.0)
+	# big furry torso with lighter belly
+	blob(ci, [Vector2(-20, -20), Vector2(-22, -34), Vector2(-13, -45), Vector2(0, -47), Vector2(13, -45), Vector2(22, -34), Vector2(20, -20)], fur)
+	blob(ci, [Vector2(-10, -21), Vector2(-11, -35), Vector2(0, -40), Vector2(11, -35), Vector2(10, -21)], fur.lightened(0.25), false)
+	# head: round ears, muzzle, nose, mouth guard
+	var hc := Vector2(2, -55)
+	circ(ci, hc + Vector2(-11, -11), 5.0, fur)
+	circ(ci, hc + Vector2(-11, -11), 2.5, fur.lightened(0.25), false)
+	circ(ci, hc + Vector2(11, -12), 5.0, fur)
+	circ(ci, hc + Vector2(11, -12), 2.5, fur.lightened(0.25), false)
+	blob(ci, [hc + Vector2(-15, 0), hc + Vector2(-13, -11), hc + Vector2(0, -15), hc + Vector2(13, -11), hc + Vector2(16, 1), hc + Vector2(10, 11), hc + Vector2(-9, 11)], fur)
+	blob(ci, [hc + Vector2(-2, 2), hc + Vector2(10, 0), hc + Vector2(15, 5), hc + Vector2(10, 11), hc + Vector2(0, 10)], fur.lightened(0.3))
+	blob(ci, [hc + Vector2(9, 1), hc + Vector2(14, 1), hc + Vector2(12, 5)], Color("1a1028"), false)
+	blob(ci, [hc + Vector2(3, 7), hc + Vector2(12, 7), hc + Vector2(11, 9.5), hc + Vector2(4, 9.5)], Color("4fc3ff"), true, 1.5)
+	_eyes(ci, hc + Vector2(-2, -4), hc + Vector2(7, -4), 2.6, 2.8, aim, blink, Color("2a1a10"))
+	limb(ci, hc + Vector2(-5, -8), hc + Vector2(0, -7), 2.4, 2.0, fur.darkened(0.35), false)
+	limb(ci, hc + Vector2(5, -7), hc + Vector2(10, -9), 2.0, 2.4, fur.darkened(0.35), false)
+	# headband
+	blob(ci, [hc + Vector2(-15, -6), hc + Vector2(0, -10), hc + Vector2(15, -7), hc + Vector2(15, -4), hc + Vector2(0, -7), hc + Vector2(-15, -3)], glove, true, 2.0)
+	# front glove punching along aim
+	var gp := Vector2(18, -32) + aim * (4.0 + jab * 14.0)
+	limb(ci, Vector2(13, -38), gp - aim * 4.0, 11, 10, fur)
+	var n := aim.orthogonal()
+	blob(ci, [gp - aim * 7.0 + n * 8.0, gp + aim * 6.0 + n * 7.0, gp + aim * 10.0, gp + aim * 6.0 - n * 7.0, gp - aim * 7.0 - n * 8.0], glove)
+	blob(ci, [gp - aim * 9.0 + n * 6.0, gp - aim * 5.0 + n * 6.0, gp - aim * 5.0 - n * 6.0, gp - aim * 9.0 - n * 6.0], Color.WHITE, true, 1.8)
+
+# ------------------------------------------------------------------ SKYE (jetpack bomber)
+static func _skye(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
+	var suit: Color = d.primary
+	var navy: Color = d.secondary
+	var flame: Color = d.accent
+	var skin: Color = d.skin
+	var hair := Color("5a2a14")
+	# jetpack with twin thrusters
+	for k in 2:
+		var tx := -19.0 + k * 7.0
+		glow(ci, Vector2(tx, -10), 6 + sin(t * 22.0 + k) * 1.5, flame, 2)
+		blob(ci, [Vector2(tx - 3, -40), Vector2(tx + 3, -40), Vector2(tx + 3.5, -16), Vector2(tx - 3.5, -16)], Color("8a93a8"))
+		blob(ci, [Vector2(tx - 3.5, -18), Vector2(tx + 3.5, -18), Vector2(tx + 2.5, -13), Vector2(tx - 2.5, -13)], Color("3a3f58"), true, 1.8)
+	# scarf flying back
+	var sc: Array = []
+	for i in 5:
+		sc.append(Vector2(-6 - i * 5.0, -40 + i * 1.5 + sin(t * 9.0 - i) * (0.8 + i * 0.6)))
+	var sp := spline(sc, false)
+	ci.draw_polyline(sp, _c(OUTLINE), 8.0, true)
+	ci.draw_polyline(sp, _c(Color.WHITE), 4.0, true)
+	limb(ci, Vector2(-7, -34), Vector2(-11, -24 + step * 2.0), 6.5, 6, suit.darkened(0.1))
+	hand(ci, Vector2(-11, -21 + step * 2.0), Vector2(0, 1), Color("6b4426"), 4.0)
+	legs2(ci, step, 13, 5.5, 10, 7, navy, Color("6b4426"), Color("2a1a10"), 1.05, flame)
+	# flight suit with harness straps
+	blob(ci, [Vector2(-12, -14), Vector2(-13, -33), Vector2(-6, -41), Vector2(7, -41), Vector2(13, -33), Vector2(12, -14), Vector2(0, -12)], suit)
+	ci.draw_line(Vector2(-9, -39), Vector2(6, -16), _c(navy), 3.0, true)
+	ci.draw_line(Vector2(9, -39), Vector2(-6, -16), _c(navy), 3.0, true)
+	circ(ci, Vector2(0, -27), 3.0, Color("c9d0de"), true, 1.8)
+	blob(ci, [Vector2(-13, -18), Vector2(13, -18), Vector2(13, -14), Vector2(-13, -14)], navy, true, 2.0)
+	# head: bob haircut, aviator cap + goggles
+	var hc := Vector2(1, -52)
+	blob(ci, [hc + Vector2(-14, -4), hc + Vector2(-15, 8), hc + Vector2(-10, 12), hc + Vector2(-8, 2)], hair)
+	_ear(ci, hc + Vector2(-9, 2), skin)
+	blob(ci, _head_pts(hc, 25, 24), skin)
+	blob(ci, [hc + Vector2(-14, -1), hc + Vector2(-13, -11), hc + Vector2(-2, -16), hc + Vector2(10, -13), hc + Vector2(14, -5), hc + Vector2(4, -6), hc + Vector2(-8, -3)], Color("8a5a36"))
+	blob(ci, [hc + Vector2(-14, -1), hc + Vector2(-16, 6), hc + Vector2(-12, 9), hc + Vector2(-10, 1)], Color("8a5a36"), true, 2.0)
+	for gx: float in [-3.0, 6.5]:
+		circ(ci, hc + Vector2(gx, -9), 4.2, Color("c9d0de"), true, 2.0)
+		circ(ci, hc + Vector2(gx, -9), 2.6, Color("ffb84d"), false)
+	_eyes(ci, hc + Vector2(1, 1), hc + Vector2(9, 1), 3.0, 3.6, aim, blink, Color("4a3a1a"))
+	for f in [Vector2(-1, 6), Vector2(1, 7), Vector2(11, 6)]:
+		ci.draw_circle(hc + f, 0.8, _c(skin.darkened(0.3)))
+	_mouth(ci, hc + Vector2(5, 9), 6.0, 2.5)
+	# front hand with a sky bomb
+	var hp := Vector2(13, -24) + aim * (5.0 - recoil * 5.0)
+	limb(ci, Vector2(8, -35), hp - aim * 2.0, 6.5, 6, suit)
+	circ(ci, hp + aim * 7.0, 6.0, Color("3a3f58"))
+	ci.draw_line(hp + aim * 7.0 + Vector2(0, -6), hp + aim * 7.0 + Vector2(3, -10), _c(Color("c9a24a")), 1.6, true)
+	glow(ci, hp + aim * 7.0 + Vector2(3, -11), 3 + sin(t * 18.0), flame, 2)
+	hand(ci, hp, aim, Color("6b4426"), 4.2)
+
+# ------------------------------------------------------------------ EMBER (fire dancer)
+static func _ember(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool, moving: bool) -> void:
+	var fire: Color = d.primary
+	var plum: Color = d.secondary
+	var gold: Color = d.accent
+	var skin: Color = d.skin
+	var hc := Vector2(1, -53)
+	# flame hair streaming back
+	var flick := sin(t * 10.0)
+	blob(ci, [hc + Vector2(-8, -12), hc + Vector2(-20, -16 + flick * 2.0), hc + Vector2(-28, -6 + flick * 3.0), hc + Vector2(-22, 2), hc + Vector2(-30, 10 + flick * 2.0), hc + Vector2(-16, 10), hc + Vector2(-10, 4)], fire)
+	blob(ci, [hc + Vector2(-10, -8), hc + Vector2(-20, -8 + flick * 1.5), hc + Vector2(-16, 4), hc + Vector2(-10, 2)], gold, false)
+	# ribbon trailing from back hand
+	var rb: Array = []
+	for i in 6:
+		rb.append(Vector2(-12 - i * 4.5, -24 + sin(t * (12.0 if moving else 5.0) - i) * (1.0 + i * 0.9) + i * 1.5))
+	var rsp := spline(rb, false)
+	ci.draw_polyline(rsp, _c(OUTLINE), 8.0, true)
+	ci.draw_polyline(rsp, _c(fire), 4.5, true)
+	limb(ci, Vector2(-7, -34), Vector2(-12, -24 + step * 2.0), 6, 5.5, skin.darkened(0.08))
+	hand(ci, Vector2(-12, -22 + step * 2.0), Vector2(-1, 0.5), skin.darkened(0.08), 3.8)
+	legs2(ci, step, 13, 5, 10, 6, plum.lightened(0.15), gold.darkened(0.2), Color("5a3a10"), 0.95)
+	# layered dancer dress with flame hem and gold sash
+	var hem: Array = []
+	for k in 8:
+		hem.append(Vector2(-16 + k * 4.6, -9 + (3.0 if k % 2 == 0 else -2.0) + sin(t * 8.0 + k) * 0.8))
+	var dress: Array = [Vector2(-8, -38), Vector2(8, -38), Vector2(12, -24)]
+	for k in range(hem.size() - 1, -1, -1):
+		dress.append(hem[k])
+	dress.append(Vector2(-12, -24))
+	blob(ci, dress, plum)
+	var flm: Array = []
+	for k in 8:
+		flm.append(Vector2(-15 + k * 4.4, -12 + (-4.0 if k % 2 == 0 else 1.0) + sin(t * 10.0 + k) * 1.2))
+	ci.draw_polyline(spline(flm, false), _c(fire), 3.5, true)
+	blob(ci, [Vector2(-11, -26), Vector2(11, -26), Vector2(10, -22), Vector2(-10, -22)], gold, true, 2.0)
+	circ(ci, Vector2(0, -24), 2.4, fire, true, 1.6)
+	# face, gold circlet, flame mark
+	blob(ci, _head_pts(hc, 24, 23), skin)
+	blob(ci, [hc + Vector2(-13, 1), hc + Vector2(-11, -10), hc + Vector2(0, -14), hc + Vector2(11, -11), hc + Vector2(13, -3), hc + Vector2(6, -6), hc + Vector2(-2, -3), hc + Vector2(-8, -5)], fire)
+	blob(ci, [hc + Vector2(-12, -6), hc + Vector2(0, -9), hc + Vector2(12, -6), hc + Vector2(12, -4), hc + Vector2(0, -7), hc + Vector2(-12, -4)], gold, false)
+	ci.draw_circle(hc + Vector2(1, -8), 1.8, _c(Color("ff3a5a")))
+	_eyes(ci, hc + Vector2(-1, 2), hc + Vector2(8, 2), 3.2, 3.6, aim, blink, Color("8a3a10"))
+	_mouth(ci, hc + Vector2(4, 9), 6.0, 2.0, false)
+	# front hand spinning a fire ribbon
+	var hp := Vector2(14, -27) + aim * (3.0 + recoil * 6.0)
+	limb(ci, Vector2(7, -35), hp, 6, 5.5, skin)
+	var spin := t * 9.0
+	var ribbon: Array = []
+	for i in 6:
+		var a := spin + i * 0.55
+		ribbon.append(hp + aim * 6.0 + Vector2.from_angle(a) * (4.0 + i * 1.8))
+	var r2 := spline(ribbon, false)
+	glow(ci, hp + aim * 6.0, 10, fire, 2)
+	ci.draw_polyline(r2, _c(fire), 4.0, true)
+	ci.draw_polyline(r2, _c(gold), 1.8, true)
+	hand(ci, hp, aim, skin, 3.8)
+
 # ---------------------------------------------------------------------------
 ## Draws a stylized projectile for a given visual style.
 static func draw_projectile(ci: CanvasItem, style: String, pos: Vector2, dir: Vector2, t: float, team_col: Color, d: Dictionary) -> void:
 	var a := dir.angle()
 	match style:
+		"bullet":
+			ci.draw_line(pos - dir * 18.0, pos, Color(1, 0.9, 0.6, 0.45), 4.0, true)
+			ci.draw_circle(pos, 6.0, Color("1a1028"))
+			ci.draw_circle(pos, 4.2, Color("ffe08a"))
+			ci.draw_circle(pos + Vector2(-1, -1), 1.6, Color.WHITE)
+		"flame":
+			var fc: Color = d.primary
+			glow(ci, pos, 16, fc)
+			for k in 4:
+				var back := pos - dir * (6.0 + k * 7.0) + dir.orthogonal() * sin(t * 25.0 + k) * 3.0
+				ci.draw_circle(back, 8.0 - k * 1.6, Color(1, 0.55 + k * 0.08, 0.15, 0.75 - k * 0.15))
+			ci.draw_circle(pos, 8.0, Color("ffd23a"))
+			ci.draw_circle(pos, 4.5, Color("fff6c2"))
 		"paint":
 			# wobbly paint blob with a trailing splatter
 			var pc: Color = d.accent

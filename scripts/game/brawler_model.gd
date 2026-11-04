@@ -176,6 +176,7 @@ func build(brawler_id: String, skin := "") -> void:
 		"mira": _mira()
 		"sprig": _sprig()
 		"rio": _rio()
+		_: _generic()
 	# stylised proportions: slightly oversized heads on every brawler
 	head.scale = Vector3.ONE * 1.1
 	_merge_parts()
@@ -464,6 +465,27 @@ func _rio() -> void:
 	part(weapon, box(0.24, 0.06, 0.08), Color("2b2f3e"), Vector3(0.01, 0.03, 0.12))
 	part(weapon, cyl(0.03, 0.05, 0.12, 16), Color("e6e9f2"), Vector3(0.01, 0.03, 0.56), Vector3(90, 0, 0))
 	part(weapon, sphere(0.04), acc, Vector3(0.01, 0.03, 0.63), Vector3.ZERO, Vector3.ONE, 1.2)
+
+# ------------------------------------------------------------------ generic body (newer brawlers in 3D view)
+func _generic() -> void:
+	var prim: Color = d.primary
+	var sec: Color = d.secondary
+	var acc: Color = d.accent
+	var skin: Color = d.skin
+	limb_legs(sec, sec.darkened(0.3), 0.12, 0.38, 0.08, 1.05)
+	part(body, cyl(0.24, 0.3, 0.55, 28), prim, Vector3(0, 0.72, 0))
+	part(body, torus(0.25, 0.31), acc, Vector3(0, 0.5, 0), Vector3.ZERO, Vector3(1, 0.7, 1))
+	arm_l = arm(-1.0, Vector3(0.32, 0.95, 0), prim, skin, 0.075, 0.34, 0.09)
+	arm_r = arm(1.0, Vector3(0.32, 0.95, 0), prim, skin, 0.075, 0.34, 0.09)
+	head = pivot(body, Vector3(0, 1.36, 0))
+	head.set_meta("skin", skin)
+	part(head, sphere(0.37), skin)
+	part(head, sphere(0.39), sec, Vector3(0, 0.12, -0.04), Vector3.ZERO, Vector3(1.0, 0.7, 1.0))
+	eye(head, Vector3(-0.12, 0.0, 0.31), 0.07, sec.darkened(0.2))
+	eye(head, Vector3(0.12, 0.0, 0.31), 0.07, sec.darkened(0.2))
+	smile(head, Vector3(0, -0.16, 0.33), 0.11, 0.3, false)
+	weapon = pivot(arm_r, Vector3(0, -0.34, 0.02))
+	part(weapon, box(0.1, 0.1, 0.5), acc, Vector3(0, 0, 0.22))
 
 # ------------------------------------------------------------------ SPRIG: goblin gardener
 func _sprig() -> void:

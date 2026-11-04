@@ -22,8 +22,23 @@ static var _theme: Theme
 static func icon(name: String) -> Texture2D:
 	if not _icons.has(name):
 		var path := "res://assets/icons/%s.png" % name
-		_icons[name] = load(path) if ResourceLoader.exists(path) else null
+		_icons[name] = load(path) if ResourceLoader.exists(path) else _ability_fallback(name)
 	return _icons[name]
+
+## New brawlers without their own ability art borrow the icon of a brawler
+## whose ability works the same way.
+static func _ability_fallback(name: String) -> Texture2D:
+	if not name.begins_with("ab_"):
+		return null
+	var parts := name.split("_")
+	if parts.size() < 3 or not Config.BRAWLERS.has(parts[1]):
+		return null
+	var slot := parts[2]
+	var kind: String = Config.BRAWLERS[parts[1]].get(slot, {}).get("kind", "")
+	for other in ["bront", "vex", "nova", "mira", "sprig", "rio"]:
+		if Config.BRAWLERS[other].get(slot, {}).get("kind", "") == kind:
+			return icon("ab_%s_%s" % [other, slot])
+	return null
 
 static func draw_icon(ci: CanvasItem, name: String, center: Vector2, size: float, tint := Color.WHITE) -> void:
 	var t := icon(name)
