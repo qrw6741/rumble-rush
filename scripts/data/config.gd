@@ -57,11 +57,72 @@ const MODES := {
 
 const DIFFICULTY := {
 	"easy":   {"name": "EASY",   "reaction": 0.55, "aim_error": 0.30, "dodge": 0.10, "lead": 0.0, "super_smart": 0.3, "think": 0.45},
-	"normal": {"name": "NORMAL", "reaction": 0.35, "aim_error": 0.17, "dodge": 0.35, "lead": 0.5, "super_smart": 0.7, "think": 0.30},
+	"normal": {"name": "MEDIUM", "reaction": 0.35, "aim_error": 0.17, "dodge": 0.35, "lead": 0.5, "super_smart": 0.7, "think": 0.30},
 	"hard":   {"name": "HARD",   "reaction": 0.22, "aim_error": 0.09, "dodge": 0.60, "lead": 0.8, "super_smart": 0.9, "think": 0.22},
-	"expert": {"name": "EXPERT", "reaction": 0.14, "aim_error": 0.05, "dodge": 0.80, "lead": 1.0, "super_smart": 1.0, "think": 0.15},
+	"expert": {"name": "EXTREME", "reaction": 0.10, "aim_error": 0.03, "dodge": 0.90, "lead": 1.0, "super_smart": 1.0, "think": 0.11},
+	"extreme": {"name": "EXTREME", "reaction": 0.10, "aim_error": 0.03, "dodge": 0.90, "lead": 1.0, "super_smart": 1.0, "think": 0.11},
 }
-const DIFFICULTY_ORDER := ["easy", "normal", "hard", "expert"]
+const DIFFICULTY_ORDER := ["easy", "normal", "hard", "extreme"]
+
+## Bots scale with the rank of the brawler you play:
+## rank 1-5 easy, 6-10 medium, 11-25 hard, 26+ extreme.
+static func difficulty_for_rank(rank: int) -> String:
+	if rank <= 5:
+		return "easy"
+	if rank <= 10:
+		return "normal"
+	if rank <= 25:
+		return "hard"
+	return "extreme"
+
+## The difficulty actually used for a match with this brawler ("auto" = by rank).
+static func match_difficulty(brawler_id: String) -> String:
+	var d: String = Save.setting("difficulty")
+	if d == "auto" or not DIFFICULTY.has(d):
+		return difficulty_for_rank(Progression.rank_for(Save.brawler_trophies(brawler_id)))
+	return d
+
+# ------------------------------------------------------------------ bot player names
+const _NAME_A := ["Shadow", "Blaze", "Frost", "Nova", "Viper", "Pixel", "Turbo", "Lucky", "Ghost", "Storm",
+	"Crimson", "Rocket", "Neon", "Ace", "Cosmic", "Savage", "Silent", "Golden", "Hyper", "Lil",
+	"Mega", "Dark", "Iron", "Wild", "Sneaky", "Royal", "Toxic", "Mighty", "Fuzzy", "Sonic"]
+const _NAME_B := ["Wolf", "King", "Ninja", "Hunter", "Sniper", "Tiger", "Dragon", "Fox", "Panda", "Falcon",
+	"Rider", "Legend", "Slayer", "Gamer", "Boss", "Hero", "Knight", "Shark", "Phoenix", "Bandit",
+	"Wizard", "Rex", "Blade", "Spark", "Monk", "Raven", "Cobra", "Bear", "Storm", "Dash"]
+const _NAME_SOLO := ["Zayed", "Omar", "Layla", "Sara", "Mo", "Alex", "Sami", "Noah", "Maya", "Rami",
+	"Jay", "Kai", "Leo", "Nora", "Yousef", "Hamad", "Rashid", "Mira", "Lina", "Adam", "Ziggy", "Bubbles",
+	"Potato", "Noodle", "Pickle", "Waffle", "Mango", "Biscuit"]
+
+## A believable random player name, e.g. "ShadowWolf27", "xX_Kai_Xx", "lil.mango".
+static func random_player_name(rng: RandomNumberGenerator) -> String:
+	var a: String = _NAME_A[rng.randi() % _NAME_A.size()]
+	var b: String = _NAME_B[rng.randi() % _NAME_B.size()]
+	var solo: String = _NAME_SOLO[rng.randi() % _NAME_SOLO.size()]
+	var num := str(rng.randi_range(1, 999))
+	var yr := str(rng.randi_range(2005, 2014))
+	match rng.randi() % 12:
+		0: return a + b
+		1: return a + b + num
+		2: return "xX_%s_Xx" % solo
+		3: return solo + num
+		4: return "%s.%s" % [a.to_lower(), b.to_lower()]
+		5: return solo.to_upper()
+		6: return "%s_%s" % [solo, yr]
+		7: return "The%s" % b
+		8: return "%s%s" % [solo, b]
+		9: return "%s %s" % [a, b]
+		10: return "ii%sii" % solo.to_lower()
+	return "%s%s" % [b, yr.substr(2)]
+
+static func random_player_names(count: int) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var out: Array = []
+	while out.size() < count:
+		var n := random_player_name(rng)
+		if n.length() <= 16 and not n in out:
+			out.append(n)
+	return out
 
 # ------------------------------------------------------------------ brawlers
 # attack.kind: melee_cone | twin_slash | rifle | orb | lob

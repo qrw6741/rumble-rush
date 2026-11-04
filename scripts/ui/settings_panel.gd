@@ -23,7 +23,7 @@ func _ready() -> void:
 	v.add_child(UIKit.label("SETTINGS", 34, UIKit.YELLOW, 10, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(slider_row("MUSIC", "music_volume"))
 	v.add_child(slider_row("SOUND EFFECTS", "sfx_volume"))
-	v.add_child(choice_row("BOT DIFFICULTY", "difficulty", Config.DIFFICULTY_ORDER, ["EASY", "NORMAL", "HARD", "EXPERT"]))
+	v.add_child(choice_row("BOT DIFFICULTY", "difficulty", ["auto", "easy", "normal", "hard", "extreme"], ["AUTO", "EASY", "MED", "HARD", "EXTRM"], 66))
 	v.add_child(choice_row("TOUCH CONTROLS", "touch_controls", ["auto", "on", "off"], ["AUTO", "ON", "OFF"]))
 	v.add_child(choice_row("GRAPHICS", "graphics", ["auto", "high", "low"], ["AUTO", "HIGH", "LOW"]))
 	v.add_child(toggle_row("AIM ASSIST", "aim_assist"))

@@ -46,7 +46,7 @@ var _paused := false
 func setup(params: Dictionary) -> void:
 	mode_id = params.get("mode", Save.data.selected_mode)
 	player_brawler = params.get("brawler", Save.data.selected_brawler)
-	difficulty = params.get("difficulty", Save.setting("difficulty"))
+	difficulty = params.get("difficulty", Config.match_difficulty(player_brawler))
 	autoplay = params.get("autoplay", false)
 	quit_after = params.get("quit_after", false)
 	sim_time_scale = params.get("time_scale", 1.0)
@@ -212,8 +212,7 @@ func _fit_zoom() -> void:
 
 ## Showdown: the player plus 9 bots, every brawler on their own team.
 func _spawn_solo() -> void:
-	var names: Array = Config.BOT_NAMES.duplicate()
-	names.shuffle()
+	var names: Array = Config.random_player_names(10)
 	var spawns: Array[Vector2] = map.ffa_spawns.duplicate()
 	var start := randi() % spawns.size()
 	for i in 10:
@@ -221,7 +220,7 @@ func _spawn_solo() -> void:
 		var bid: String = player_brawler if is_player else Config.BRAWLER_ORDER[randi() % Config.BRAWLER_ORDER.size()]
 		var b := Brawler.new()
 		var lvl := Save.brawler_level(bid) if is_player else clampi(Save.brawler_level(player_brawler) + randi_range(-1, 1), 1, Config.MAX_LEVEL)
-		var nm: String = Save.data.username if is_player else "%s (BOT)" % names[i % names.size()]
+		var nm: String = Save.data.username if is_player else names[i % names.size()]
 		b.setup(bid, i, is_player, nm, lvl, self)
 		b.spawn_pos = spawns[(start + i) % spawns.size()]
 		b.position = b.spawn_pos
@@ -245,8 +244,7 @@ func _spawn_solo() -> void:
 
 func _spawn_teams() -> void:
 	var pool: Array = Config.BRAWLER_ORDER.duplicate()
-	var names: Array = Config.BOT_NAMES.duplicate()
-	names.shuffle()
+	var names: Array = Config.random_player_names(6)
 	var name_i := 0
 	for team in 2:
 		var spawns: Array[Vector2] = map.blue_spawns if team == 0 else map.red_spawns
@@ -260,7 +258,7 @@ func _spawn_teams() -> void:
 			var b := Brawler.new()
 			var is_player := team == 0 and i == 0
 			var lvl := Save.brawler_level(bid) if is_player else clampi(Save.brawler_level(player_brawler) + randi_range(-1, 1), 1, Config.MAX_LEVEL)
-			var nm: String = Save.data.username if is_player else "%s (BOT)" % names[name_i % names.size()]
+			var nm: String = Save.data.username if is_player else names[name_i % names.size()]
 			if not is_player:
 				name_i += 1
 			b.setup(bid, team, is_player, nm, lvl, self)

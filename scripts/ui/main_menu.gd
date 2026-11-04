@@ -252,10 +252,12 @@ func _build_mode_panel() -> void:
 	_bots_btn.position = Vector2(-160, -170)
 	_bots_btn.size = Vector2(370, 36)
 	_bots_btn.custom_draw = func(ci: Control):
-		var dn: String = Config.DIFFICULTY[Save.setting("difficulty")].name
-		SlantButton.text_r(ci, "BOTS: %s   (tap to change)" % dn, Vector2(350, 26), 16, Color("8fd0ff"))
+		var bid: String = Save.data.selected_brawler
+		var dn: String = Config.DIFFICULTY[Config.match_difficulty(bid)].name
+		var txt := "BOTS: %s  (RANK %d)" % [dn, Progression.rank_for(Save.brawler_trophies(bid))] if Save.setting("difficulty") == "auto" else "BOTS: %s  (fixed - tap)" % dn
+		SlantButton.text_r(ci, txt, Vector2(350, 26), 16, Color("8fd0ff"))
 	_bots_btn.pressed.connect(func():
-		var order: Array = Config.DIFFICULTY_ORDER
+		var order: Array = ["auto", "easy", "normal", "hard", "extreme"]
 		var i := order.find(Save.setting("difficulty"))
 		Save.set_setting("difficulty", order[(i + 1) % order.size()])
 		_bots_btn.queue_redraw())

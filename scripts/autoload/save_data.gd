@@ -72,7 +72,7 @@ func _default() -> Dictionary:
 		"shop": {"day": "", "bought": []},
 		"skin_selected": skins,
 		"settings": {
-			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "normal",
+			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "auto",
 			"touch_controls": "auto", "screen_shake": true, "damage_numbers": true,
 			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto", "fps_cap": 60,
 		},
@@ -93,6 +93,12 @@ func load_game() -> void:
 	for id in Config.BRAWLER_ORDER:
 		data.brawler_trophies[id] = int(data.brawler_trophies.get(id, 0))
 		data.brawler_levels[id] = clampi(int(data.brawler_levels.get(id, 1)), 1, Config.MAX_LEVEL)
+	# bots now scale with brawler rank: move older saves onto AUTO once
+	if not data.get("diff_auto_v2", false):
+		data.settings.difficulty = "auto"
+		data["diff_auto_v2"] = true
+	if data.settings.difficulty == "expert":
+		data.settings.difficulty = "extreme"
 	data.credits = int(data.credits)
 	data.gems = int(data.get("gems", 0))
 	var dr: Array = []
