@@ -27,6 +27,9 @@ func _ready() -> void:
 	if int(data.get("place", 0)) == 0 and data.has("players"):
 		_team_layout(result)
 		return
+	if int(data.get("place", 0)) > 0:
+		_showdown_layout(result)
+		return
 
 	# your brawler, big: celebrating on a win, slumped on a loss
 	var hero := Hero.new()
@@ -392,6 +395,41 @@ func _team_layout(result: String) -> void:
 		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
 	add_child(again)
 
+func _showdown_layout(result: String) -> void:
+	for c in get_children():
+		c.queue_free()
+	var place: int = int(data.get("place", 1))
+	var rewards: Dictionary = data.get("rewards", {})
+	var stage := SDStage.new()
+	stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stage.brawler_id = data.get("brawler", "bront")
+	stage.happy = result == "win" or place <= 3
+	stage.place = place
+	stage.rewards = rewards
+	add_child(stage)
+	# profile icon (top right)
+	var pic := UIKit.ProfileIcon.new()
+	pic.position = Vector2(1112, 116)
+	pic.size = Vector2(92, 92)
+	pic.custom_minimum_size = pic.size
+	add_child(pic)
+	# exit icon (top right corner)
+	var ex := UIKit.button("", UIKit.BLUE, 18, Vector2(76, 52))
+	ex.position = Vector2(1186, 12)
+	ex.pressed.connect(func(): Router.goto("champs" if data.get("champs", false) else "menu"))
+	var arrow := ExitArrow.new()
+	arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ex.add_child(arrow)
+	add_child(ex)
+	var again := UIKit.button("PLAY AGAIN", UIKit.YELLOW, 24, Vector2(210, 64))
+	again.position = Vector2(820, 630)
+	again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
+	add_child(again)
+	var exit := UIKit.button("EXIT", UIKit.BLUE, 26, Vector2(210, 64))
+	exit.position = Vector2(1050, 630)
+	exit.pressed.connect(func(): Router.goto("menu"))
+	add_child(exit)
+
 func _streak_banner(rewards: Dictionary, pos: Vector2) -> void:
 	var st := int(rewards.get("streak", 0))
 	if st >= 2:
@@ -581,3 +619,121 @@ class ThumbButton extends Button:
 		var tip := c + Vector2(-r * 0.1, sgn * r * 1.05)
 		ci.draw_line(c + Vector2(-r * 0.1, sgn * r * 0.2), tip, col, r * 0.42, true)
 		ci.draw_circle(tip, r * 0.21, col)
+
+
+
+## Showdown results in the "You are #N!" layout.
+class SDStage extends Control:
+	var brawler_id := "bront"
+	var happy := true
+	var place := 1
+	var rewards: Dictionary = {}
+	var _t := 0.0
+	func _process(d: float) -> void:
+		_t += d
+		queue_redraw()
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var W := size.x
+		var H := size.y
+		# blue backdrop with soft centre light and slanted streaks
+		draw_rect(Rect2(0, 0, W, H), Color("1d5fd6"))
+		for i in 8:
+			var r := 620.0 - i * 70.0
+			draw_circle(Vector2(W * 0.5, H * 0.52), r, Color(0.45, 0.75, 1.0, 0.05))
+		for i in 6:
+			var x0 := -200.0 + i * 260.0 + fmod(_t * 18.0, 260.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(x0, 0), Vector2(x0 + 70, 0), Vector2(x0 - 180, H), Vector2(x0 - 250, H)]), Color(1, 1, 1, 0.035))
+		# title band
+		draw_colored_polygon(PackedVector2Array([Vector2(0, 0), Vector2(560, 0), Vector2(520, 104), Vector2(0, 104)]), Color(0.05, 0.12, 0.35, 0.55))
+		var f := UIKit.bold()
+		var k := minf(1.0, _t / 0.35)
+		var sc := lerpf(0.5, 1.0, ease(k, -2.5))
+		var title := "You are #%d!" % place
+		draw_set_transform_matrix(Transform2D(0.0, Vector2(sc, sc), -0.08, Vector2(34, 80)))
+		draw_string_outline(f, Vector2(3, 5), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 68, 16, UIKit.DARK)
+		draw_string_outline(f, Vector2.ZERO, title, HORIZONTAL_ALIGNMENT_LEFT, -1, 68, 12, UIKit.DARK)
+		draw_string(f, Vector2.ZERO, title, HORIZONTAL_ALIGNMENT_LEFT, -1, 68, Color.WHITE)
+		draw_set_transform_matrix(Transform2D.IDENTITY)
+
+		# trophy breakdown: base + win streak bonus
+		var total_tr := int(rewards.get("trophies", 0))
+		var st_tr := int(rewards.get("streak_trophies", 0))
+		var base := total_tr - st_tr
+		UIKit.draw_icon(self, "trophy", Vector2(56, 138), 36.0)
+		S2.text_l(self, ("+%d" % base) if base >= 0 else str(base), Vector2(78, 150), 28, Color.WHITE)
+		if st_tr > 0:
+			var px := 150.0
+			var pill := PackedVector2Array([Vector2(px + 10, 116), Vector2(px + 196, 116), Vector2(px + 186, 158), Vector2(px, 158)])
+			draw_colored_polygon(pill, UIKit.DARK)
+			var pin := PackedVector2Array([Vector2(px + 13, 119), Vector2(px + 192, 119), Vector2(px + 183, 155), Vector2(px + 4, 155)])
+			draw_colored_polygon(pin, Color("e8731c"))
+			UIKit.StreakBadge.flame(self, Vector2(px + 26, 138), 32.0, Progression.streak_color(int(rewards.get("streak", 2))), _t)
+			S2.text_l(self, "WIN STREAK", Vector2(px + 48, 146), 20, Color.WHITE)
+			UIKit.draw_icon(self, "trophy", Vector2(px + 216, 136), 30.0)
+			S2.text_l(self, "+%d" % st_tr, Vector2(px + 234, 148), 24, Color.WHITE)
+
+		# brawler trophies with rank badge + progress
+		var bt := Save.brawler_trophies(brawler_id)
+		var rank := Progression.rank_for(bt)
+		var nxt := bt
+		if rank < Progression.RANK_TROPHIES.size():
+			nxt = int(Progression.RANK_TROPHIES[rank])
+		UIKit.draw_rank_badge(self, Vector2(58, 196), 52.0, rank)
+		draw_rect(Rect2(90, 182, 210, 30), UIKit.DARK)
+		var prev := int(Progression.RANK_TROPHIES[rank - 1])
+		var fr := 1.0 if nxt <= prev else clampf(float(bt - prev) / float(nxt - prev), 0.0, 1.0)
+		draw_rect(Rect2(93, 185, 204 * fr, 24), Color("ff8a1f"))
+		UIKit.draw_icon(self, "trophy", Vector2(112, 197), 22.0)
+		S2.text_l(self, "%d/%d" % [bt, nxt], Vector2(128, 205), 18, Color.WHITE)
+
+		# other rewards, small
+		var rx := 40.0
+		for it in [["coin", int(rewards.get("credits", 0))], ["xp", int(rewards.get("xp", 0))], ["token", int(rewards.get("tokens", 0))]]:
+			UIKit.draw_icon(self, it[0], Vector2(rx + 16, 250), 28.0)
+			S2.text_l(self, "+%d" % int(it[1]), Vector2(rx + 34, 259), 20, Color.WHITE)
+			rx += 96.0
+
+		# big brawler in the centre
+		var feet := Vector2(W * 0.5, H * 0.86)
+		draw_set_transform(Vector2.ZERO)
+		var sh := PackedVector2Array()
+		for i in 24:
+			var a := TAU * i / 24.0
+			sh.append(feet + Vector2(cos(a) * 120, sin(a) * 26))
+		draw_colored_polygon(sh, Color(0.02, 0.1, 0.3, 0.35))
+		var skin: String = Save.selected_skin(brawler_id)
+		if happy:
+			var hop := absf(sin(_t * 3.2)) * 14.0
+			BrawlerArt.draw(self, brawler_id, feet - Vector2(0, hop), 4.4, {"t": _t, "aim": Vector2(1, -0.5), "moving": true, "skin": skin, "no_shadow": true, "recoil": 0.3 + 0.3 * sin(_t * 4.0)})
+		else:
+			BrawlerArt.draw(self, brawler_id, feet + Vector2(0, 6), 4.2, {"t": 0.7, "aim": Vector2(1, 0.9), "skin": skin, "no_shadow": true, "blink": true, "alpha": 0.9})
+
+		# right card: total trophies and change
+		var tt := Save.total_trophies()
+		draw_rect(Rect2(1104, 108, 108, 108), UIKit.DARK)
+		var dc := Color("4cd964") if total_tr >= 0 else Color("ff6a5a")
+		draw_rect(Rect2(1122, 220, 72, 30), UIKit.DARK)
+		draw_rect(Rect2(1125, 223, 66, 24), dc.darkened(0.55))
+		var dtxt := ("+%d" % total_tr) if total_tr >= 0 else str(total_tr)
+		var dw := f.get_string_size(dtxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x
+		S2.text_l(self, dtxt, Vector2(1158 - dw * 0.5, 243), 22, dc)
+		var goal := tt
+		for r in Progression.ROAD:
+			if int(r.trophies) > tt:
+				goal = int(r.trophies)
+				break
+		draw_rect(Rect2(1062, 260, 196, 28), UIKit.DARK)
+		var gf := 1.0 if goal <= 0 else clampf(float(tt) / float(goal), 0.0, 1.0)
+		draw_rect(Rect2(1065, 263, 190 * gf, 22), Color("ffb020"))
+		UIKit.draw_icon(self, "trophy", Vector2(1080, 274), 22.0)
+		S2.text_l(self, "%d/%d" % [tt, goal], Vector2(1096, 282), 17, Color.WHITE)
+
+
+class ExitArrow extends Control:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		var c := size * 0.5
+		draw_rect(Rect2(c.x - 18, c.y - 14, 22, 28), Color.WHITE, false, 4.0)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-2, -4), c + Vector2(10, -4), c + Vector2(10, -12), c + Vector2(22, 0), c + Vector2(10, 12), c + Vector2(10, 4), c + Vector2(-2, 4)]), Color.WHITE)

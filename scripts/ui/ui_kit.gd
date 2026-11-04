@@ -451,39 +451,52 @@ class StreakBadge extends Control:
 	func _process(d: float) -> void:
 		t += d
 		queue_redraw()
-	static func flame(ci: CanvasItem, c: Vector2, h: float, col: Color, tt: float) -> void:
+	static func _flame_pts(c: Vector2, w: float, h: float, tt: float) -> PackedVector2Array:
+		# key points: round base, side tongues, tall centre tip (flickers)
+		var f1 := sin(tt * 8.0) * 0.05
+		var f2 := sin(tt * 6.3 + 1.7) * 0.06
+		var key := [
+			Vector2(0.0, 0.5), Vector2(0.38, 0.4), Vector2(0.5, 0.12), Vector2(0.44, -0.18),
+			Vector2(0.52 + f2, -0.42), Vector2(0.28, -0.24), Vector2(0.22, -0.5),
+			Vector2(0.04 + f1, -0.86), Vector2(-0.12, -0.5), Vector2(-0.24, -0.34),
+			Vector2(-0.48 - f1, -0.58), Vector2(-0.46, -0.16), Vector2(-0.5, 0.12), Vector2(-0.38, 0.4),
+		]
 		var pts := PackedVector2Array()
-		var n := 28
+		var n := key.size()
 		for i in n:
-			var a := TAU * float(i) / n
-			var y := -cos(a)
-			var x := sin(a)
-			var w := 0.62 * (1.0 - 0.55 * maxf(0.0, -y))  # narrow at the top
-			var wob := 0.06 * sin(tt * 9.0 + a * 3.0) * maxf(0.0, -y)
-			var py := y * 0.5 if y > 0.0 else y * (0.95 + 0.08 * sin(tt * 7.0))
-			pts.append(c + Vector2((x * w + wob) * h * 0.55, py * h * 0.6))
-		var outline := PackedVector2Array()
-		for p in pts:
-			outline.append(c + (p - c) * 1.14 + Vector2(0, 1))
-		ci.draw_colored_polygon(outline, Color("1a1020"))
-		ci.draw_colored_polygon(pts, col)
-		var inner := PackedVector2Array()
-		for p in pts:
-			inner.append(c + Vector2(0, h * 0.12) + (p - c) * 0.55)
-		ci.draw_colored_polygon(inner, col.lightened(0.55))
+			var p0: Vector2 = key[(i - 1 + n) % n]
+			var p1: Vector2 = key[i]
+			var p2: Vector2 = key[(i + 1) % n]
+			var p3: Vector2 = key[(i + 2) % n]
+			for k in 5:
+				var t := k / 5.0
+				var t2 := t * t
+				var t3 := t2 * t
+				var q: Vector2 = 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2 + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
+				pts.append(c + Vector2(q.x * w, q.y * h))
+		return pts
+
+	static func flame(ci: CanvasItem, c: Vector2, h: float, col: Color, tt: float) -> void:
+		var w := h * 0.9
+		var hh := h * 0.95
+		ci.draw_colored_polygon(_flame_pts(c + Vector2(0, 2), w * 1.16, hh * 1.12, tt), Color("1a1020"))
+		ci.draw_colored_polygon(_flame_pts(c, w, hh, tt), col.darkened(0.15))
+		ci.draw_colored_polygon(_flame_pts(c + Vector2(0, h * 0.06), w * 0.78, hh * 0.8, tt + 0.6), col)
+		ci.draw_colored_polygon(_flame_pts(c + Vector2(0, h * 0.2), w * 0.5, hh * 0.5, tt + 1.3), col.lightened(0.5))
+
 	func _draw() -> void:
 		var col := Progression.streak_color(streak) if streak > 0 else Color("8a93a8")
 		var h := size.y
 		if show_label and size.x > h * 1.4:
 			var bg := PackedVector2Array([Vector2(h * 0.5, h * 0.12), Vector2(size.x, h * 0.12), Vector2(size.x - 10, h * 0.92), Vector2(h * 0.5, h * 0.92)])
 			draw_colored_polygon(bg, Color(0.06, 0.07, 0.14, 0.72))
-		var c := Vector2(h * 0.5, h * 0.55)
+		var c := Vector2(h * 0.5, h * 0.56)
 		flame(self, c, h, col, t)
 		var f: Font = UIKit.bold()
-		var fs := int(h * 0.42)
+		var fs := int(h * 0.46)
 		var txt := str(streak)
 		var tw := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		var tp := c + Vector2(-tw * 0.5, h * 0.22)
+		var tp := c + Vector2(-tw * 0.5, h * 0.27)
 		draw_string_outline(f, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, Color("1a1020"))
 		draw_string(f, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 		if show_label and size.x > h * 1.4:

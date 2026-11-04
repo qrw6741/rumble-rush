@@ -130,13 +130,6 @@ func _build_top_bar() -> void:
 	prof.add_child(pic)
 	prof.pressed.connect(func(): Router.goto("profile"))
 	add_child(prof)
-	var streak := int(Save.data.get("win_streak", 0))
-	var sb := UIKit.StreakBadge.new()
-	sb.streak = streak
-	sb.name = "WinStreak"
-	sb.position = Vector2(18, 104)
-	sb.size = Vector2(250, 56)
-	add_child(sb)
 
 	# trophy / level bar with the yellow profile button
 	var bar := SlantButton.new()
@@ -334,6 +327,16 @@ func _build_play() -> void:
 	play.custom_draw = func(ci: Control):
 		SlantButton.text_c(ci, "PLAY", Vector2(186, 88), 66, Color.WHITE, 14)
 	play.name = "Play"
+	# win streak flame on the top-right corner of PLAY
+	var streak := int(Save.data.get("win_streak", 0))
+	if streak >= 1:
+		var sb := UIKit.StreakBadge.new()
+		sb.streak = streak
+		sb.show_label = false
+		sb.name = "WinStreak"
+		sb.position = Vector2(300, -32)
+		sb.size = Vector2(62, 62)
+		play.add_child(sb)
 	play.pressed.connect(func():
 		Sfx.play("ui_confirm")
 		Router.goto("match", {"mode": Save.data.selected_mode, "brawler": Save.data.selected_brawler}))
@@ -342,7 +345,7 @@ func _build_play() -> void:
 	var ch := SlantButton.new()
 	ch.color = Color("3a1a12")
 	ch.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	ch.position = Vector2(-372, -262)
+	ch.position = Vector2(-372, -278)
 	ch.size = Vector2(340, 96)
 	ch.name = "Champs"
 	ch.custom_draw = func(ci: Control):

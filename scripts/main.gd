@@ -99,8 +99,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			]}
 	if screen == "results" and "--sd" in args:
 		params.mode = "showdown"
-		params.place = 2
+		params.place = 1
 		params.brawler = "vex"
+		params.erase("players")
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
 	if "--demo-champs" in args:
