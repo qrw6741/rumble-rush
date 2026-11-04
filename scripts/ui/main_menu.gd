@@ -528,15 +528,8 @@ class BrawlerBadge extends Control:
 		draw_colored_polygon(PackedVector2Array([Vector2(74, 30), Vector2(74 + 192 * frac, 30), Vector2(67 + 192 * frac, 64), Vector2(66, 64)]), Color("ff7a2b"))
 		SlantButton.trophy(self, Vector2(168, 47), 12.0)
 		SlantButton.text_l(self, str(bt), Vector2(188, 60), 28, Color.WHITE)
-		# rank shield
-		var c := Vector2(48, 46)
-		var sh := PackedVector2Array([c + Vector2(-36, -38), c + Vector2(36, -38), c + Vector2(36, 12), c + Vector2(0, 42), c + Vector2(-36, 12)])
-		draw_colored_polygon(sh, UIKit.DARK)
-		var sh2 := PackedVector2Array([c + Vector2(-30, -32), c + Vector2(30, -32), c + Vector2(30, 9), c + Vector2(0, 35), c + Vector2(-30, 9)])
-		draw_colored_polygon(sh2, rcol.darkened(0.35))
-		draw_colored_polygon(PackedVector2Array([c + Vector2(-30, -32), c + Vector2(30, -32), c + Vector2(30, -14), c + Vector2(-30, -14)]), Color("e8ecff"))
-		SlantButton.text_c(self, "RANK", c + Vector2(0, -17), 14, UIKit.DARK, 1)
-		SlantButton.text_c(self, str(rank), c + Vector2(0, 22), 30, Color.WHITE)
+		# rank crest
+		UIKit.draw_rank_badge(self, Vector2(46, 46), 82.0, rank)
 		# power hex
 		var pc := Vector2(292, 46)
 		var pts := PackedVector2Array()

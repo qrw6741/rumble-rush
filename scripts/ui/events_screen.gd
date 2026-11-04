@@ -97,7 +97,7 @@ func _rebuild() -> void:
 		info.pressed.connect(func(): _show_info(e.mode))
 		card.add_child(info)
 		_row.add_child(card)
-		UIKit.pop_in(card, 0.06 * _row.get_child_count(), Vector2(0, 30))
+		UIKit.pop_in(card, 0.06 * _row.get_child_count())
 
 func _show_info(mode_id: String) -> void:
 	var m: Dictionary = Config.MODES[mode_id]

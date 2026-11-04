@@ -108,21 +108,25 @@ static func rank_progress(trophies: int) -> Vector2i:
 	var hi: int = RANK_TROPHIES[r]
 	return Vector2i(trophies - lo, hi - lo)
 
-## Badge colours by rank band: wood, bronze, silver, gold, crystal, master.
+## Badge colours by rank band (every 5 ranks a new colour; 35 is the final one).
+const RANK_TIER_COLORS := [
+	Color("e8873a"), # 1-4   copper
+	Color("9aa6e0"), # 5-9   steel
+	Color("f5b82e"), # 10-14 gold
+	Color("2fb8ec"), # 15-19 sky
+	Color("c44fe0"), # 20-24 orchid
+	Color("2fcf86"), # 25-29 jade
+	Color("e8404f"), # 30-34 ruby
+	Color("5b46c8"), # 35    royal
+]
+
+static func rank_tier(rank: int) -> int:
+	if rank >= 35:
+		return 7
+	return clampi(rank / 5, 0, 6)
+
 static func rank_color(rank: int) -> Color:
-	if rank >= 30:
-		return Color("ff4d5e")
-	if rank >= 25:
-		return Color("4fe3d0")
-	if rank >= 20:
-		return Color("c25bff")
-	if rank >= 15:
-		return Color("ffc93a")
-	if rank >= 10:
-		return Color("c9d0de")
-	if rank >= 5:
-		return Color("d98a4a")
-	return Color("8a6a5a")
+	return RANK_TIER_COLORS[rank_tier(rank)]
 
 ## Reward for reaching a rank (rank 1 has none).
 static func rank_reward(rank: int) -> Dictionary:

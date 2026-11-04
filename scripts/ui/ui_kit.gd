@@ -123,6 +123,52 @@ static func button(text: String, col := ORANGE, font_size := 26, min_size := Vec
 	return b
 
 ## Smooth entrance: fade + spring scale (optionally slide), after `delay` seconds.
+## Rank crest: gem-cut shield with bevelled facets, a "RANK" ribbon and the number.
+## c = centre, h = total height. Colour changes every 5 ranks.
+static func draw_rank_badge(ci: CanvasItem, c: Vector2, h: float, rank: int) -> void:
+	var col := Progression.rank_color(rank)
+	var u := h / 100.0
+	var tier := Progression.rank_tier(rank)
+	# crest outline: clipped top corners, straight sides, pointed bottom
+	var outer := PackedVector2Array([Vector2(-30, -46), Vector2(30, -46), Vector2(42, -34), Vector2(42, 18), Vector2(0, 50), Vector2(-42, 18), Vector2(-42, -34)])
+	var inner := PackedVector2Array([Vector2(-26, -39), Vector2(26, -39), Vector2(35, -30), Vector2(35, 14), Vector2(0, 41), Vector2(-35, 14), Vector2(-35, -30)])
+	var face := PackedVector2Array([Vector2(-20, -30), Vector2(20, -30), Vector2(26, -24), Vector2(26, 10), Vector2(0, 30), Vector2(-26, 10), Vector2(-26, -24)])
+	var tf := func(arr: PackedVector2Array, grow := 1.0) -> PackedVector2Array:
+		var o := PackedVector2Array()
+		for p in arr:
+			o.append(c + p * u * grow)
+		return o
+	ci.draw_colored_polygon(tf.call(outer, 1.08), DARK)
+	ci.draw_colored_polygon(tf.call(outer), col.lightened(0.15))
+	# bevel facets: light from top-left, shade bottom-right
+	for i in outer.size():
+		var j := (i + 1) % outer.size()
+		var mid := (outer[i] + outer[j]) * 0.5
+		var light := clampf(0.5 - (mid.x * 0.6 + mid.y) / 90.0, 0.0, 1.0)
+		var fc := col.darkened(0.35).lerp(col.lightened(0.45), light)
+		ci.draw_colored_polygon(PackedVector2Array([c + outer[i] * u, c + outer[j] * u, c + inner[j] * u, c + inner[i] * u]), fc)
+	ci.draw_colored_polygon(tf.call(inner), DARK)
+	ci.draw_colored_polygon(tf.call(face), col.darkened(0.4))
+	ci.draw_colored_polygon(PackedVector2Array([c + face[0] * u, c + face[1] * u, c + face[2] * u, c + Vector2(26, -8) * u, c + Vector2(-26, -8) * u, c + face[6] * u]), col.darkened(0.15))
+	# shine streak
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-30, -34) * u, c + Vector2(-18, -34) * u, c + Vector2(-34, 6) * u, c + Vector2(-34, -24) * u]), Color(1, 1, 1, 0.25))
+	# ribbon banner with folded tails
+	var ry := -30.0
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-50, ry - 2) * u, c + Vector2(-38, ry - 2) * u, c + Vector2(-38, ry + 16) * u, c + Vector2(-50, ry + 16) * u, c + Vector2(-44, ry + 7) * u]), DARK)
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(50, ry - 2) * u, c + Vector2(38, ry - 2) * u, c + Vector2(38, ry + 16) * u, c + Vector2(50, ry + 16) * u, c + Vector2(44, ry + 7) * u]), DARK)
+	ci.draw_rect(Rect2(c + Vector2(-40, ry - 4) * u, Vector2(80, 22) * u), DARK)
+	ci.draw_rect(Rect2(c + Vector2(-37, ry - 1) * u, Vector2(74, 16) * u), Color("f2f4ff"))
+	ci.draw_rect(Rect2(c + Vector2(-37, ry + 9) * u, Vector2(74, 6) * u), Color("c9cfe8"))
+	var S := preload("res://scripts/ui/main_menu.gd").SlantButton
+	S.text_c(ci, "RANK", c + Vector2(0, ry + 12.5) * u, int(15 * u), DARK, 1)
+	S.text_c(ci, str(rank), c + Vector2(0, 22) * u, int((34 if rank < 10 else 30) * u), Color.WHITE, maxi(4, int(7 * u)))
+	# top gem on higher tiers
+	if tier >= 2:
+		var g := c + Vector2(0, -50) * u
+		var gem := PackedVector2Array([g + Vector2(0, -9) * u, g + Vector2(8, 0) * u, g + Vector2(0, 9) * u, g + Vector2(-8, 0) * u])
+		ci.draw_colored_polygon(PackedVector2Array([g + Vector2(0, -12) * u, g + Vector2(11, 0) * u, g + Vector2(0, 12) * u, g + Vector2(-11, 0) * u]), DARK)
+		ci.draw_colored_polygon(gem, col.lightened(0.5))
+
 static func pop_in(c: CanvasItem, delay := 0.0, from_offset := Vector2.ZERO) -> void:
 	if c == null:
 		return

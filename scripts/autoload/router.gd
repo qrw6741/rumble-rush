@@ -9,6 +9,7 @@ const SCREENS := {
 	"results": "res://scripts/ui/results_screen.gd",
 	"profile": "res://scripts/ui/profile_screen.gd",
 	"gallery": "res://tests/gallery.gd",
+	"badges": "res://tests/badge_sheet.gd",
 	"pass": "res://scripts/ui/pass_screen.gd",
 	"road": "res://scripts/ui/road_screen.gd",
 	"events": "res://scripts/ui/events_screen.gd",
