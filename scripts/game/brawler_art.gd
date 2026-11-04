@@ -150,11 +150,61 @@ static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dicti
 		"skye": _skye(ci, d, t, aim_l, recoil, step, blink)
 		"ember": _ember(ci, d, t, aim_l, recoil, step, blink, moving)
 		_: _nova(ci, d, t, aim_l, recoil, step, blink)
+	match d.get("fx", ""):
+		"fire": _fx_fire(ci, t, d.accent)
+		"frost": _fx_frost(ci, t, d.accent)
+		"neon": _fx_neon(ci, t, d.secondary, d.accent)
+		"stars": _fx_stars(ci, t, d.accent)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_flash = 0.0
 	_alpha = 1.0
 	_s = 1.0
 	shading = true
+
+# ====================================================================== skin effects
+## Flames licking up around the body and embers drifting upward.
+static func _fx_fire(ci: CanvasItem, t: float, col: Color) -> void:
+	for k in 7:
+		var x := -16.0 + k * 5.4
+		var base := Vector2(x, -18.0 - absf(x) * 0.6)
+		var h := 9.0 + sin(t * 9.0 + k * 1.7) * 4.0
+		var sway := sin(t * 6.0 + k) * 2.0
+		var flame := spline([base + Vector2(-3.5, 0), base + Vector2(-2, -h * 0.5) , base + Vector2(sway, -h), base + Vector2(2, -h * 0.5), base + Vector2(3.5, 0)])
+		ci.draw_colored_polygon(flame, _c(Color(1.0, 0.45, 0.1, 0.55)))
+	for k in 6:
+		var ph := fmod(t * 0.9 + k * 0.37, 1.0)
+		var p := Vector2(-14 + k * 6.0 + sin(t * 3.0 + k) * 3.0, -20 - ph * 55.0)
+		ci.draw_circle(p, 1.8 * (1.0 - ph) + 0.4, _c(Color(1.0, 0.75 - ph * 0.4, 0.2, 1.0 - ph)))
+	glow(ci, Vector2(0, -36), 26, Color(col.r, col.g, col.b, 0.5), 3)
+
+## Cold mist aura and slowly falling snowflakes.
+static func _fx_frost(ci: CanvasItem, t: float, col: Color) -> void:
+	glow(ci, Vector2(0, -34), 30, Color(col.r, col.g, col.b, 0.55), 4)
+	for k in 6:
+		var ph := fmod(t * 0.35 + k * 0.17, 1.0)
+		var p := Vector2(-22 + k * 9.0 + sin(t * 1.5 + k) * 4.0, -70 + ph * 70.0)
+		var a := 1.0 - absf(ph - 0.5) * 2.0
+		for j in 3:
+			var dir := Vector2.from_angle(j * PI / 3.0 + t) * 2.6
+			ci.draw_line(p - dir, p + dir, _c(Color(1, 1, 1, a)), 1.2, true)
+
+## Pulsing neon rim.
+static func _fx_neon(ci: CanvasItem, t: float, a: Color, b: Color) -> void:
+	var k := 0.5 + 0.5 * sin(t * 4.0)
+	glow(ci, Vector2(0, -34), 28, Color(a.r, a.g, a.b, 0.35 + 0.2 * k), 3)
+	glow(ci, Vector2(0, -50), 18, Color(b.r, b.g, b.b, 0.3 + 0.2 * (1.0 - k)), 3)
+
+## Twinkling stars orbiting the head.
+static func _fx_stars(ci: CanvasItem, t: float, col: Color) -> void:
+	for k in 4:
+		var ang := t * 1.2 + k * TAU / 4.0
+		var p := Vector2(0, -52) + Vector2(cos(ang) * 20.0, sin(ang) * 7.0 - 14.0)
+		var sz := 2.4 + sin(t * 6.0 + k) * 0.8
+		var pts := PackedVector2Array()
+		for i in 8:
+			var r := sz if i % 2 == 0 else sz * 0.4
+			pts.append(p + Vector2.from_angle(i * PI / 4.0) * r)
+		ci.draw_colored_polygon(pts, _c(col))
 
 # ====================================================================== drawing kit
 ## Smooth closed (or open) Catmull-Rom curve through control points.

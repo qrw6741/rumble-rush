@@ -111,7 +111,7 @@ func _build() -> void:
 			var fo: Dictionary = o.duplicate()
 			fo["timer"] = day
 			fo["title"] = "SPECIAL OFFER"
-			fo["old_cost"] = Progression.SKIN_PRICE[o.reward.skin]
+			fo["old_cost"] = Progression.skin_price(o.reward.skin)
 			_card(offers, fo, "skin", Color("2a8cff"), Vector2(320, 520))
 
 	# DAILY DEALS: two rows of small cards
@@ -125,10 +125,10 @@ func _build() -> void:
 	# SKINS: tall cards with the 3D model
 	var skins := _section("SKINS", "")
 	for id in Config.BRAWLER_ORDER:
-		for sk in ["gold", "shadow"]:
+		for sk in Progression.skins_for(id):
 			var key := "%s:%s" % [id, sk]
 			var so := {"id": "skin_%s_%s" % [id, sk], "title": Config.BRAWLERS[id].name, "reward": {"type": "skin", "brawler": id, "skin": sk},
-				"currency": "gems", "cost": Progression.SKIN_PRICE[sk], "repeat": true, "owned": key in Save.data.skins_owned}
+				"currency": "gems", "cost": Progression.skin_price(sk), "repeat": true, "owned": key in Save.data.skins_owned}
 			_card(skins, so, "skin", Progression.palette(id, sk).primary.darkened(0.15), Vector2(260, 520))
 
 	# RESOURCES: drops + credit packs
@@ -390,7 +390,7 @@ class OfferCard extends Button:
 				S2.text_c(self, Progression.reward_text(items[2]), Vector2(w * 0.5, top + 262), 20, Color.WHITE, 6)
 				_pill(Vector2(w * 0.5, top + 376), "x1")
 			"skin":
-				S2.text_r(self, Progression.SKINS[r.skin].name, Vector2(w - 24, top + 100), 20, Color.WHITE)
+				S2.text_r(self, Progression.skin_info(r.skin).name, Vector2(w - 24, top + 100), 20, Color.WHITE)
 				S2.text_r(self, "SKIN", Vector2(w - 24, top + 122), 17, Color("8fd0ff"))
 			_:
 				RewardTile.draw_icon(self, r, Vector2(w * 0.5, top + 125), 46.0)

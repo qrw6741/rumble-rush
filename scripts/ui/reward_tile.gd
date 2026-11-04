@@ -56,7 +56,7 @@ static func short_text(r: Dictionary) -> String:
 		"credits": return "%d" % r.amount
 		"tokens": return "%d TOKENS" % r.amount
 		"xp": return "%d XP" % r.amount
-		"skin": return "%s SKIN" % Progression.SKINS[r.skin].name
+		"skin": return "%s SKIN" % Progression.skin_info(r.skin).name
 		"gems": return "%d" % r.amount
 		"brawler": return Config.BRAWLERS[r.brawler].name
 		"drop": return "%s DROP" % Progression.DROP_TIERS[int(r.get("tier", 0))].name

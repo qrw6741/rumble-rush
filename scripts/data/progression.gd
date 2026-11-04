@@ -186,13 +186,50 @@ const SKINS := {
 	"shadow": {"name": "SHADOW", "primary": Color("3a3f5a"), "secondary": Color("15172a"), "accent": Color("ff3d6e")},
 }
 
+## Unique skins made for one brawler. "fx" adds an animated effect in 2D.
+const SPECIAL_SKINS := {
+	"inferno": {"name": "INFERNO OUTLAW", "only": "dusty", "price": 149, "fx": "fire",
+		"primary": Color("3a1a14"), "secondary": Color("1a0e0a"), "accent": Color("ff9a2a"), "skin": Color("a8603a")},
+	"frost": {"name": "FROST WRAITH", "only": "graves", "price": 149, "fx": "frost",
+		"primary": Color("cfe8ff"), "secondary": Color("4a7ab0"), "accent": Color("8ae4ff"), "skin": Color("f4fbff")},
+	"neon": {"name": "NEON TAGGER", "only": "rio", "price": 99, "fx": "neon",
+		"primary": Color("1a1a2e"), "secondary": Color("ff3df0"), "accent": Color("3dfff0"), "skin": Color("b98563")},
+	"polar": {"name": "POLAR CHAMP", "only": "bruno", "price": 99,
+		"primary": Color("2a8cff"), "secondary": Color("1a3a7a"), "accent": Color("dff4ff"), "skin": Color("f2f2f6")},
+	"starlight": {"name": "STARLIGHT", "only": "mira", "price": 99, "fx": "stars",
+		"primary": Color("8a7aff"), "secondary": Color("1c1650"), "accent": Color("ffe98a"), "skin": Color("f2c6a0")},
+	"magma": {"name": "MAGMA MINER", "only": "bront", "price": 99, "fx": "fire",
+		"primary": Color("3a2a2a"), "secondary": Color("1a1010"), "accent": Color("ff6a1a"), "skin": Color("c98b62")},
+}
+
+static func skin_info(skin: String) -> Dictionary:
+	if SKINS.has(skin):
+		return SKINS[skin]
+	return SPECIAL_SKINS.get(skin, {})
+
+## Every skin a brawler can wear (not counting the default).
+static func skins_for(brawler_id: String) -> Array:
+	var out: Array = ["gold", "shadow"]
+	for k in SPECIAL_SKINS.keys():
+		if SPECIAL_SKINS[k].only == brawler_id:
+			out.append(k)
+	return out
+
+static func skin_price(skin: String) -> int:
+	if SKIN_PRICE.has(skin):
+		return int(SKIN_PRICE[skin])
+	return int(SPECIAL_SKINS.get(skin, {}).get("price", 99))
+
 static func palette(brawler_id: String, skin: String) -> Dictionary:
 	var d: Dictionary = Config.BRAWLERS[brawler_id].duplicate()
-	if SKINS.has(skin):
-		var s: Dictionary = SKINS[skin]
+	var s := skin_info(skin)
+	if not s.is_empty():
 		d.primary = s.primary
 		d.secondary = s.secondary
 		d.accent = s.accent
+		if s.has("skin"):
+			d.skin = s.skin
+		d.fx = s.get("fx", "")
 	return d
 
 static func reward_text(r: Dictionary) -> String:
@@ -200,7 +237,7 @@ static func reward_text(r: Dictionary) -> String:
 		"credits": return "%d CREDITS" % r.amount
 		"tokens": return "%d PASS TOKENS" % r.amount
 		"xp": return "%d XP" % r.amount
-		"skin": return "%s %s" % [SKINS[r.skin].name, Config.BRAWLERS[r.brawler].name]
+		"skin": return "%s %s" % [skin_info(r.skin).name, Config.BRAWLERS[r.brawler].name]
 		"gems": return "%d GEMS" % r.amount
 		"bundle": return "BUNDLE"
 		"brawler": return "NEW BRAWLER: " + Config.BRAWLERS[r.brawler].name
@@ -249,7 +286,7 @@ static func roll_drop(tier: int, rng: RandomNumberGenerator, owned_skins: Array)
 		4:
 			var free_skins: Array = []
 			for id in Config.BRAWLER_ORDER:
-				for sk in SKINS.keys():
+				for sk in skins_for(id):
 					if not ("%s:%s" % [id, sk]) in owned_skins:
 						free_skins.append({"type": "skin", "brawler": id, "skin": sk})
 			prize = free_skins[rng.randi() % free_skins.size()] if not free_skins.is_empty() else {"type": "gems", "amount": 60}
@@ -280,6 +317,7 @@ static func daily_offers(day_key: String) -> Array:
 	offers.append({"id": "deal_tokens", "title": "PASS BOOST", "reward": {"type": "tokens", "amount": 200}, "currency": "credits", "cost": 150})
 	var ids: Array = Config.BRAWLER_ORDER.duplicate()
 	var sk_id: String = ids[rng.randi() % ids.size()]
-	var sk: String = ["gold", "shadow"][rng.randi() % 2]
-	offers.append({"id": "deal_skin_%s_%s" % [sk_id, sk], "title": "FEATURED SKIN", "reward": {"type": "skin", "brawler": sk_id, "skin": sk}, "currency": "gems", "cost": int(SKIN_PRICE[sk] * 0.7), "tag": "-30%"})
+	var opts: Array = skins_for(sk_id)
+	var sk: String = opts[rng.randi() % opts.size()]
+	offers.append({"id": "deal_skin_%s_%s" % [sk_id, sk], "title": "FEATURED SKIN", "reward": {"type": "skin", "brawler": sk_id, "skin": sk}, "currency": "gems", "cost": int(skin_price(sk) * 0.7), "tag": "-30%"})
 	return offers

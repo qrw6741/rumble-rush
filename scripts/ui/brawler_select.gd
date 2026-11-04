@@ -328,11 +328,12 @@ func _show(id: String) -> void:
 	skins_row.add_theme_constant_override("separation", 10)
 	_detail.add_child(skins_row)
 	skins_row.add_child(UIKit.label("SKINS", 18, Color.WHITE, 6))
-	for sk in ["", "gold", "shadow"]:
+	var all_skins: Array = [""] + Progression.skins_for(id)
+	for sk in all_skins:
 		var owned: bool = Save.owns_skin(id, sk)
 		var is_sel_skin: bool = Save.selected_skin(id) == sk
-		var nm: String = "DEFAULT" if sk == "" else Progression.SKINS[sk].name
-		var col: Color = Color("2a8cff") if sk == "" else Progression.SKINS[sk].primary.darkened(0.15)
+		var nm: String = "DEFAULT" if sk == "" else Progression.skin_info(sk).name
+		var col: Color = Color("2a8cff") if sk == "" else Progression.skin_info(sk).primary.darkened(0.15)
 		var b := UIKit.button(nm if owned else nm + " (LOCKED)", col if owned else Color("4a5570"), 14, Vector2(120 if owned else 150, 44))
 		if is_sel_skin:
 			b.add_theme_stylebox_override("normal", UIKit.box(col, 18, 5, Color("4dff7a")))
