@@ -503,7 +503,7 @@ func _draw() -> void:
 	_draw_ellipse(Vector2(0, 2), 24.0 * sh, 9.0 * sh, Color(0, 0, 0, 0.3 * alpha))
 	if flat:
 		var anim := {"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
-			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin, "no_shadow": true,
+			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0, "skin": skin, "no_shadow": true, "in_match": true,
 			"cheap": not is_player and game.brawlers.size() > 6}
 		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.6, anim)
 

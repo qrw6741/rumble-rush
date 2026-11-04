@@ -101,9 +101,90 @@ static func glow(ci: CanvasItem, c: Vector2, r: float, col: Color, layers := 4) 
 		ci.draw_circle(c, r * (0.45 + f * 0.75), cc)
 
 # ---------------------------------------------------------------------------
+## Hand-drawn sprite frames: [width, height, feet_x, feet_y, character_height_px, faces_right]
+const SPRITES := {
+	"graves": {
+		"main": [553, 643, 260.0, 620.5, 643.0, true],
+		"idle": [172, 216, 86.0, 208.4, 216.0, false],
+		"walk": [174, 224, 81.0, 216.2, 224.0, true],
+		"run": [234, 216, 120.0, 208.4, 216.0, true],
+		"attack": [389, 249, 116.5, 240.3, 249.0, true],
+		"hurt": [192, 237, 93.5, 228.7, 237.0, false],
+		"super": [439, 363, 203.5, 350.3, 250.0, true],
+	},
+}
+const SPRITE_UNITS := 84.0  # drawn height of a sprite character, in art units
+static var _tex_cache := {}
+
+static func has_sprites(id: String) -> bool:
+	return SPRITES.has(id)
+
+static func _sprite_tex(id: String, frame: String, lo: bool) -> Texture2D:
+	var key := "%s/%s%s" % [id, frame, "_lo" if lo else ""]
+	if not _tex_cache.has(key):
+		_tex_cache[key] = load("res://assets/brawlers/%s.png" % key)
+	return _tex_cache[key]
+
+static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2, s: float, anim: Dictionary) -> void:
+	var t: float = anim.get("t", 0.0)
+	var moving: bool = anim.get("moving", false)
+	var recoil: float = anim.get("recoil", 0.0)
+	var alpha: float = anim.get("alpha", 1.0)
+	var aim: Vector2 = anim.get("aim", Vector2.RIGHT)
+	var facing := -1.0 if aim.x < -0.05 else 1.0
+	var frame: String = anim.get("frame", "")
+	if frame == "":
+		if anim.get("blink", false) or alpha < 0.95:
+			frame = "hurt"
+		elif recoil > 0.35 and anim.get("in_match", false):
+			frame = "attack"
+		elif moving and anim.get("in_match", false):
+			frame = "walk"
+		else:
+			frame = "main"
+	var f: Array = SPRITES[id][frame]
+	var k: float = SPRITE_UNITS / float(f[4]) * s  # pixels of screen per texture pixel
+	var lo: bool = float(f[1]) * k < 230.0
+	var tex := _sprite_tex(id, frame, lo)
+	var tk: float = k * float(f[1]) / float(tex.get_height())
+	var flip := facing if f[5] else -facing
+	var bob := 0.0
+	var rot := 0.0
+	var sq := 1.0
+	if moving:
+		bob = -absf(sin(t * 12.0)) * 4.0 * s
+		rot = sin(t * 12.0) * 0.06
+	else:
+		sq = 1.0 + sin(t * 2.6) * 0.018
+	var tint := Color(1, 1, 1, alpha)
+	match d.get("fx", ""):
+		"frost": tint = Color(0.72, 0.9, 1.0, alpha)
+		"fire": tint = Color(1.0, 0.8, 0.7, alpha)
+	var fl: float = anim.get("flash", 0.0)
+	if fl > 0.0:
+		tint = tint.lerp(Color(1, 1, 1, alpha), fl)
+	ci.draw_set_transform(pos + Vector2(0, bob), rot, Vector2(tk * flip / sq, tk * sq))
+	var off := -Vector2(float(f[2]), float(f[3])) * float(tex.get_height()) / float(f[1])
+	ci.draw_texture(tex, off, tint)
+	if fl > 0.2:
+		ci.draw_texture(tex, off, Color(1, 1, 1, fl * 0.5 * alpha))
+	# skin effects drawn in art units around the body
+	ci.draw_set_transform(pos + Vector2(0, bob), 0.0, Vector2(s * facing, s))
+	_alpha = alpha
+	match d.get("fx", ""):
+		"fire": _fx_fire(ci, t, d.accent)
+		"frost": _fx_frost(ci, t, d.accent)
+		"neon": _fx_neon(ci, t, d.secondary, d.accent)
+		"stars": _fx_stars(ci, t, d.accent)
+	_alpha = 1.0
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 ## Draw a brawler with feet at `pos`.
 static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dictionary) -> void:
 	var d: Dictionary = Progression.palette(id, anim.get("skin", ""))
+	if SPRITES.has(id) and not anim.get("vector", false):
+		_draw_sprite(ci, id, d, pos, s, anim)
+		return
 	shading = not anim.get("cheap", false)
 	var t: float = anim.get("t", 0.0)
 	var moving: bool = anim.get("moving", false)

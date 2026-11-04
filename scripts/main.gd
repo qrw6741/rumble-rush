@@ -102,6 +102,11 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		params.place = 1
 		params.brawler = "vex"
 		params.erase("players")
+	if "--graves" in args:
+		Save.data.selected_brawler = "graves"
+		if not "graves" in Save.data.unlocked:
+			Save.data.unlocked.append("graves")
+		params["brawler"] = "graves"
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
 	if "--demo-champs" in args:
