@@ -150,8 +150,8 @@ func _build_top_bar() -> void:
 		var y := PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(424, 88), Vector2(318, 88)])
 		ci.draw_colored_polygon(y, yc)
 		ci.draw_colored_polygon(PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(434, 16), Vector2(328, 16)]), yc.lightened(0.3))
-		UIKit.draw_icon(ci, "road", Vector2(377, 40), 56.0)
-		SlantButton.text_c(ci, "ROAD", Vector2(375, 82), 15, Color.WHITE)
+		SlantButton.text_c(ci, "TROPHY", Vector2(377, 42), 22, Color.WHITE)
+		SlantButton.text_c(ci, "ROAD", Vector2(377, 70), 22, Color.WHITE)
 	bar.name = "TrophyRoad"
 	bar.pressed.connect(func(): Router.goto("road"))
 	add_child(bar)

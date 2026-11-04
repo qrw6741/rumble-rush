@@ -83,18 +83,23 @@ const ROAD := [
 	{"trophies": 25, "reward": {"type": "gems", "amount": 20}},
 	{"trophies": 50, "reward": {"type": "credits", "amount": 100}},
 	{"trophies": 80, "reward": {"type": "skin", "brawler": "sprig", "skin": "shadow"}},
+	{"trophies": 100, "reward": {"type": "brawler", "brawler": "bruno"}},
 	{"trophies": 120, "reward": {"type": "credits", "amount": 150}},
 	{"trophies": 160, "reward": {"type": "drop", "tier": 2}},
 	{"trophies": 200, "reward": {"type": "credits", "amount": 200}},
 	{"trophies": 250, "reward": {"type": "skin", "brawler": "vex", "skin": "shadow"}},
-	{"trophies": 300, "reward": {"type": "credits", "amount": 250}},
+	{"trophies": 300, "reward": {"type": "brawler", "brawler": "dusty"}},
 	{"trophies": 375, "reward": {"type": "gems", "amount": 40}},
 	{"trophies": 450, "reward": {"type": "credits", "amount": 300}},
 	{"trophies": 550, "reward": {"type": "skin", "brawler": "bront", "skin": "gold"}},
+	{"trophies": 600, "reward": {"type": "brawler", "brawler": "kora"}},
 	{"trophies": 650, "reward": {"type": "credits", "amount": 400}},
 	{"trophies": 800, "reward": {"type": "drop", "tier": 2}},
+	{"trophies": 900, "reward": {"type": "brawler", "brawler": "patch"}},
 	{"trophies": 1000, "reward": {"type": "credits", "amount": 600}},
 ]
+## Trophy values of the old road (claims used to be stored by index).
+const OLD_ROAD_TROPHIES := [10, 25, 50, 80, 120, 160, 200, 250, 300, 375, 450, 550, 650, 800, 1000]
 
 # ------------------------------------------------------------------ trophy changes
 ## Trophy bands: the more trophies a brawler has, the less a win gives and the

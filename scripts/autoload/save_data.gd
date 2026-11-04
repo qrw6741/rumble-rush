@@ -65,6 +65,7 @@ func _default() -> Dictionary:
 		"gold_pass": false,
 		"pass_claimed": {"free": [], "gold": []},
 		"road_claimed": [],
+		"road_claimed_t": [],
 		"rank_claimed": ranks,
 		"skins_owned": [],
 		"gems": 30,
@@ -121,6 +122,15 @@ func load_game() -> void:
 	for track in ["free", "gold"]:
 		data.pass_claimed[track] = data.pass_claimed.get(track, []).map(func(x): return int(x))
 	data.road_claimed = data.road_claimed.map(func(x): return int(x))
+	# road claims are now stored by trophy value (older saves stored list indices)
+	var rt: Array = []
+	for x in data.get("road_claimed_t", []):
+		rt.append(int(x))
+	if rt.is_empty() and not data.road_claimed.is_empty():
+		for i in data.road_claimed:
+			if i >= 0 and i < Progression.OLD_ROAD_TROPHIES.size():
+				rt.append(int(Progression.OLD_ROAD_TROPHIES[i]))
+	data.road_claimed_t = rt
 	for id in Config.BRAWLER_ORDER:
 		data.rank_claimed[id] = data.rank_claimed.get(id, []).map(func(x): return int(x))
 		if not data.skin_selected.has(id):
@@ -551,13 +561,16 @@ func buy_gold_pass() -> bool:
 	save_game()
 	return true
 
+func road_claimed(i: int) -> bool:
+	return i >= 0 and i < Progression.ROAD.size() and int(Progression.ROAD[i].trophies) in data.road_claimed_t
+
 func road_claimable(i: int) -> bool:
-	return i >= 0 and i < Progression.ROAD.size() and total_trophies() >= int(Progression.ROAD[i].trophies) and not i in data.road_claimed
+	return i >= 0 and i < Progression.ROAD.size() and total_trophies() >= int(Progression.ROAD[i].trophies) and not road_claimed(i)
 
 func claim_road(i: int) -> bool:
 	if not road_claimable(i):
 		return false
-	data.road_claimed.append(i)
+	data.road_claimed_t.append(int(Progression.ROAD[i].trophies))
 	grant_reward(Progression.ROAD[i].reward)
 	save_game()
 	return true

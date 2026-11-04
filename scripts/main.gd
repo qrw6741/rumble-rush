@@ -109,7 +109,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		Save.data.pass_tokens = 760
 		Save.data.pass_claimed = {"free": [1, 2, 3], "gold": []}
 		Save.data.brawler_trophies["vex"] = 95
-		Save.data.road_claimed = [0, 1]
+		Save.data.road_claimed_t = [10, 25]
 	Router.goto(screen, params, true)
 	if "--demo-aim" in args or "--demo-super" in args:
 		_demo_inputs(args)
