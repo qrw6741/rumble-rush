@@ -36,11 +36,21 @@ func _ready() -> void:
 	v.add_child(toggle_row("SHOW FPS", "show_fps"))
 	if not OS.has_feature("mobile") and not OS.has_feature("web"):
 		v.add_child(toggle_row("FULLSCREEN", "fullscreen"))
-	var close := UIKit.button("DONE", UIKit.GREEN, 24, Vector2(560, 52))
+	var bottom := HBoxContainer.new()
+	bottom.add_theme_constant_override("separation", 10)
+	v.add_child(bottom)
+	var dbg := UIKit.button("DEBUG", Color("8a3a8f"), 20, Vector2(170, 52))
+	dbg.pressed.connect(func():
+		var dp: Control = preload("res://scripts/ui/debug_panel.gd").new()
+		get_parent().add_child(dp)
+		closed.emit()
+		queue_free())
+	bottom.add_child(dbg)
+	var close := UIKit.button("DONE", UIKit.GREEN, 24, Vector2(380, 52))
 	close.pressed.connect(func():
 		closed.emit()
 		queue_free())
-	v.add_child(close)
+	bottom.add_child(close)
 	p.pivot_offset = Vector2(310, 300)
 	p.scale = Vector2(0.85, 0.85)
 	p.modulate.a = 0.0

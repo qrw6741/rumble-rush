@@ -24,6 +24,8 @@ func _ready() -> void:
 			bg.bottom = Color("141428")
 	add_child(bg)
 	Sfx.play_music("music_menu")
+	if data.get("debug", false):
+		_debug_banner.call_deferred()
 	if int(data.get("place", 0)) == 0 and data.has("players"):
 		_team_layout(result)
 		return
@@ -154,7 +156,7 @@ func _ready() -> void:
 			msg = ("QUALIFIER  %d W - %d L" % [int(c.q_w), int(c.q_l)]) if c.stage == "qualifier" else ("FINALS  %d W - %d L" % [int(c.f_w), int(c.f_l)])
 		btns.add_child(UIKit.label("CHAMPS: " + msg, 18, UIKit.YELLOW, 6, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
-		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
+		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler, "debug": data.get("debug", false)}))
 	btns.add_child(again)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
@@ -392,8 +394,14 @@ func _team_layout(result: String) -> void:
 		again.text = "CHAMPS"
 		again.pressed.connect(func(): Router.goto("champs"))
 	else:
-		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
+		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler, "debug": data.get("debug", false)}))
 	add_child(again)
+
+func _debug_banner() -> void:
+	var l := UIKit.label("TEST MATCH  ·  NOTHING WAS SAVED", 22, Color("ff7ad9"), 6, HORIZONTAL_ALIGNMENT_CENTER)
+	l.position = Vector2(230, 566)
+	l.size = Vector2(520, 34)
+	add_child(l)
 
 func _showdown_layout(result: String) -> void:
 	for c in get_children():
@@ -423,7 +431,7 @@ func _showdown_layout(result: String) -> void:
 	add_child(ex)
 	var again := UIKit.button("PLAY AGAIN", UIKit.YELLOW, 24, Vector2(210, 64))
 	again.position = Vector2(820, 630)
-	again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler}))
+	again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler, "debug": data.get("debug", false)}))
 	add_child(again)
 	var exit := UIKit.button("EXIT", UIKit.BLUE, 26, Vector2(210, 64))
 	exit.position = Vector2(1050, 630)

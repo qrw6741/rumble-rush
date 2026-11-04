@@ -22,6 +22,7 @@ var bush_layer: Node2D
 var fx_layer: Node2D
 var camera: Camera2D
 var hud: MatchHUD
+var debug := false  # test match: nothing is saved
 var touch: TouchControls
 var pause_menu: Control
 var aim: AimIndicator
@@ -50,6 +51,9 @@ func setup(params: Dictionary) -> void:
 	player_brawler = params.get("brawler", Save.data.selected_brawler)
 	difficulty = params.get("difficulty", Config.match_difficulty(player_brawler))
 	champs = params.get("champs", false)
+	debug = params.get("debug", false)
+	if debug:
+		champs = false
 	autoplay = params.get("autoplay", false)
 	quit_after = params.get("quit_after", false)
 	sim_time_scale = params.get("time_scale", 1.0)
@@ -147,6 +151,10 @@ func _ready() -> void:
 	hud = MatchHUD.new()
 	hud.setup(self)
 	ui.add_child(hud)
+	if debug:
+		var tag := UIKit.label("TEST MATCH · NOT SAVED", 16, Color("ff7ad9"), 5)
+		tag.position = Vector2(90, 16)
+		ui.add_child(tag)
 	var want_touch := _want_touch()
 	touch.visible = want_touch and not autoplay
 	if pc:
@@ -495,7 +503,7 @@ func _finish_internal(winner: int, forfeited: bool, place := 0) -> void:
 		result = "win" if place <= 4 else "loss"
 	var mvp := _pick_mvp(winner)
 	var rewards := {}
-	if not autoplay:
+	if not autoplay and not debug:
 		rewards = Save.grant_match_rewards(_match_id, player.id, mode_id, result, player.stats.kos, player.stats.deaths, player.stats.damage, mvp == player, place)
 		if champs:
 			_champs_info = Save.champs_record(result)
@@ -530,7 +538,7 @@ func _finish_internal(winner: int, forfeited: bool, place := 0) -> void:
 		"result": result, "mode": mode_id, "map": map_id, "brawler": player.id,
 		"players": players, "rewards": rewards, "forfeit": forfeited,
 		"score": mode.hud(), "duration": _elapsed, "view_team": view_team, "place": place,
-		"champs": champs, "champs_info": _champs_info,
+		"champs": champs, "champs_info": _champs_info, "debug": debug,
 	}
 	if quit_after:
 		print("AUTOTEST RESULT: ", JSON.stringify({"result": result, "winner": winner, "mode": mode_id, "map": map_id, "duration": snappedf(_elapsed, 0.1), "score": mode.hud(), "players": players}))

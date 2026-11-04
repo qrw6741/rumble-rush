@@ -107,6 +107,8 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		if not "graves" in Save.data.unlocked:
 			Save.data.unlocked.append("graves")
 		params["brawler"] = "graves"
+	if "--debugres" in args:
+		params["debug"] = true
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
 	if "--demo-champs" in args:
@@ -128,6 +130,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	Router.goto(screen, params, true)
 	if "--demo-aim" in args or "--demo-super" in args:
 		_demo_inputs(args)
+	if "--debugmenu" in args:
+		var dp: Control = preload("res://scripts/ui/debug_panel.gd").new()
+		add_child(dp)
 	if "--settings" in args:
 		var sp := SettingsPanel.new()
 		sp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
