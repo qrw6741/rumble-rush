@@ -26,9 +26,9 @@ static func create(brawler_id: String, view_kind: String, px: int, live := true,
 	v.transparent_bg = true
 	v.own_world_3d = true
 	if low:
-		v.msaa_3d = Viewport.MSAA_DISABLED if view_kind == "battle" else Viewport.MSAA_2X
+		v.msaa_3d = Viewport.MSAA_2X
 	else:
-		v.msaa_3d = Viewport.MSAA_2X if view_kind == "battle" else Viewport.MSAA_4X
+		v.msaa_3d = Viewport.MSAA_4X
 	v.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	v._build(brawler_id, skin)
 	return v

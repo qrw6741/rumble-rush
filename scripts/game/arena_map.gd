@@ -138,7 +138,7 @@ func _bake_flat() -> void:
 	var full := size_px + Vector2(pad, pad) * 2.0
 	# phones/browsers have tight memory limits: keep the painted map under 2048 px
 	var phone := OS.has_feature("web") or OS.has_feature("mobile")
-	var k := minf(1.0, 2048.0 / maxf(full.x, full.y)) if phone else clampf(4000.0 / maxf(full.x, full.y), 1.0, 2.0)
+	var k := clampf(2600.0 / maxf(full.x, full.y), 0.9, 1.5) if phone else clampf(4000.0 / maxf(full.x, full.y), 1.0, 2.0)
 	var vp := SubViewport.new()
 	vp.size = Vector2i(int(full.x * k), int(full.y * k))
 	vp.canvas_transform = Transform2D.IDENTITY.scaled(Vector2(k, k))

@@ -8,7 +8,7 @@ extends RefCounted
 ## aim (Vector2 normalized), alpha, blink (bool), skin_hue (optional)
 
 const OUTLINE := Color("1a1028")
-const OW := 3.0
+const OW := 3.4
 
 static var _flash := 0.0
 static var _alpha := 1.0
@@ -38,7 +38,8 @@ static func poly(ci: CanvasItem, pts: PackedVector2Array, fill: Color, outline :
 	if outline and shading and pts.size() >= 4:
 		_shade(ci, pts, fill)
 	if outline:
-		ci.draw_polyline(_closed(pts), _c(OUTLINE), w / sqrt(_s), true)
+		# outline keeps a near-constant on-screen thickness at any draw size
+		ci.draw_polyline(_closed(pts), _c(OUTLINE), w / pow(_s, 0.3), true)
 	else:
 		ci.draw_polyline(_closed(pts), _c(fill), 1.0, true) # anti-alias the fill edge
 

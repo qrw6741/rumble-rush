@@ -31,7 +31,7 @@ const MODES := {
 		"rules": "Crystals spawn from the central mine. If your team carries 10 or more AND more than the enemy, a 15 s countdown starts. Lose crystals and it stops. KO'd brawlers drop everything they carry. If time runs out, the team carrying more wins.",
 		"time_limit": 150.0,
 		"color": Color("b25bff"),
-		"maps": ["crystal_canyon", "neon_district"],
+		"maps": ["crystal_canyon", "neon_district", "sunset_ruins"],
 		"icon": "mode_gem",
 	},
 	"showdown": {
@@ -40,7 +40,7 @@ const MODES := {
 		"rules": "Every brawler for themselves. Smash power boxes to grab POWER CELLS (+health and +damage). Poison clouds close in from the edges, so keep moving toward the centre. No respawns: survive to the end! Top 4 gain trophies.",
 		"time_limit": 240.0,
 		"color": Color("43c463"),
-		"maps": ["bone_desert"],
+		"maps": ["bone_desert", "toxic_marsh"],
 		"icon": "mode_showdown",
 	},
 	"knockout": {
@@ -50,7 +50,7 @@ const MODES := {
 		"time_limit": 150.0,
 		"target": 10,
 		"color": Color("ff7a2b"),
-		"maps": ["neon_district", "crystal_canyon"],
+		"maps": ["neon_district", "crystal_canyon", "frost_yard"],
 		"icon": "mode_knockout",
 	},
 	"duel": {
@@ -60,7 +60,7 @@ const MODES := {
 		"time_limit": 240.0,
 		"target": 2,
 		"color": Color("e8262c"),
-		"maps": ["duel_den"],
+		"maps": ["duel_den", "twin_bridges"],
 		"icon": "mode_knockout",
 		"team_size": 1,
 	},
