@@ -228,7 +228,7 @@ func _update_sprite(delta: float) -> void:
 	_yaw = lerp_angle(_yaw, BrawlerView.yaw_from_aim(aim_dir), clampf(delta * 16.0, 0.0, 1.0)) if delta > 0.0 else BrawlerView.yaw_from_aim(aim_dir)
 	if bank != null:
 		sprite.texture = SpriteBank.frame_for(bank, _yaw, _moving, recoil, anim_t)
-		sprite.scale = Vector2.ONE * SPRITE_SCALE / float(bank.px_scale)
+		sprite.scale = Vector2.ONE * SPRITE_SCALE * VIEW_PX / float(sprite.texture.get_width())
 		sprite.position = -Vector2(bank.feet) * sprite.scale.x + Vector2(0, -air_h + 4.0)
 		_apply_sprite_fx()
 		return

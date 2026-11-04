@@ -182,7 +182,9 @@ func _bake_sprites() -> void:
 		var c := [b.id, b.skin]
 		if not c in combos:
 			combos.append(c)
-	await SpriteBank.bake(self, combos, Brawler.VIEW_PX)
+	# phones: smaller frames (8 directions x 7 poses per brawler adds up fast)
+	var bake_px := int(Brawler.VIEW_PX * (0.65 if (OS.has_feature("web") or OS.has_feature("mobile")) else 1.0))
+	await SpriteBank.bake(self, combos, bake_px)
 	if not is_inside_tree():
 		return
 	for b in targets:

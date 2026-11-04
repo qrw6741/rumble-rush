@@ -74,7 +74,7 @@ func _bake() -> void:
 	vp.size = Vector2i(int(rect.size.x), int(rect.size.y))
 	vp.transparent_bg = true
 	vp.disable_3d = true
-	vp.msaa_2d = Viewport.MSAA_2X
+	vp.msaa_2d = Viewport.MSAA_DISABLED if (OS.has_feature("web") or OS.has_feature("mobile")) else Viewport.MSAA_2X
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	var painter := BushLayer.new()
 	painter.map = map
@@ -91,6 +91,14 @@ func _bake() -> void:
 	_baked.position = rect.position
 	add_child(_baked)
 	_active = false
+	# copy to a plain texture and free the render target (saves lots of memory)
+	await RenderingServer.frame_post_draw
+	if not is_instance_valid(vp):
+		return
+	var img := vp.get_texture().get_image()
+	if img:
+		_baked.texture = ImageTexture.create_from_image(img)
+	vp.queue_free()
 func _process(delta: float) -> void:
 	if _painter:
 		set_process(false)

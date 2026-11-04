@@ -7,6 +7,7 @@ extends RefCounted
 const DIRS := 8
 const FRAMES := 7              # 0 idle | 1-4 walk cycle | 5-6 attack recoil
 const MAX_CACHED := 10
+const MAX_CACHED_PHONE := 5
 
 static var cache: Dictionary = {}   # key -> {"frames": [[Texture2D]], "feet": Vector2, "px_scale": float}
 static var _order: Array = []
@@ -35,7 +36,7 @@ static func bake(host: Node, combos: Array, px: int) -> void:
 		var views: Array[BrawlerView] = []
 		for d in DIRS:
 			var v := BrawlerView.create(combo[0], "battle", px, true, combo[1])
-			v.msaa_3d = Viewport.MSAA_4X # one-off bake: use full smoothing
+			v.msaa_3d = Viewport.MSAA_2X if (OS.has_feature("web") or OS.has_feature("mobile")) else Viewport.MSAA_4X
 			v.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 			host.add_child(v)
 			views.append(v)
@@ -62,7 +63,8 @@ static func bake(host: Node, combos: Array, px: int) -> void:
 		_order.append(k)
 		for v in views:
 			v.queue_free()
-		while _order.size() > MAX_CACHED:
+		var cap := MAX_CACHED_PHONE if (OS.has_feature("web") or OS.has_feature("mobile")) else MAX_CACHED
+		while _order.size() > cap:
 			cache.erase(_order.pop_front())
 	_busy = false
 

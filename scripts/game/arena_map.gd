@@ -136,12 +136,14 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 func _bake_flat() -> void:
 	var pad := T * 3.0
 	var full := size_px + Vector2(pad, pad) * 2.0
-	var k := clampf(4000.0 / maxf(full.x, full.y), 1.0, 2.0) # extra resolution so the map stays crisp when zoomed on phones
+	# phones/browsers have tight memory limits: keep the painted map under 2048 px
+	var phone := OS.has_feature("web") or OS.has_feature("mobile")
+	var k := minf(1.0, 2048.0 / maxf(full.x, full.y)) if phone else clampf(4000.0 / maxf(full.x, full.y), 1.0, 2.0)
 	var vp := SubViewport.new()
 	vp.size = Vector2i(int(full.x * k), int(full.y * k))
 	vp.canvas_transform = Transform2D.IDENTITY.scaled(Vector2(k, k))
 	vp.transparent_bg = false
-	vp.msaa_2d = Viewport.MSAA_4X
+	vp.msaa_2d = Viewport.MSAA_DISABLED if phone else Viewport.MSAA_4X
 	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	vp.disable_3d = true
 	var painter := FlatPainter.new()
@@ -157,6 +159,14 @@ func _bake_flat() -> void:
 	spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	add_child(spr)
 	move_child(spr, 0)
+	# keep only a plain texture: copy the painted result and free the render target
+	await RenderingServer.frame_post_draw
+	if not is_instance_valid(vp):
+		return
+	var img := vp.get_texture().get_image()
+	if img:
+		spr.texture = ImageTexture.create_from_image(img)
+	vp.queue_free()
 
 func _add_border_block(layer: Node2D, c: int, r: int) -> void:
 	if flat:

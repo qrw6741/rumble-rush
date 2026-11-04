@@ -364,6 +364,21 @@ class BrawlerPortrait extends Control:
 		if locked:
 			_rect.modulate = Color(0.2, 0.2, 0.25, 0.8)
 		add_child(_rect)
+		if art_scale < 2.0:
+			_freeze.call_deferred()
+
+	## Still portraits: keep a plain copy of the render and free the 3D viewport
+	## (screens like the shop show dozens of these; each viewport costs memory).
+	func _freeze() -> void:
+		await RenderingServer.frame_post_draw
+		await RenderingServer.frame_post_draw
+		if not is_instance_valid(_view):
+			return
+		var img := _view.get_texture().get_image()
+		if img:
+			_rect.texture = ImageTexture.create_from_image(img)
+			_view.queue_free()
+			_view = null
 
 	func _process(delta: float) -> void:
 		_t += delta
