@@ -16,6 +16,8 @@ func _ready() -> void:
 	if OS.has_feature("web") or OS.has_feature("mobile"):
 		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
 		Save.apply_fps()
+		if OS.has_feature("web"):
+			_setup_web_updates()
 		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
 		_apply_orientation()
 	else:
@@ -200,6 +202,30 @@ func _demo_inputs(args: PackedStringArray) -> void:
 ##   720p   -> drawn at 1280x720 then scaled to the screen (fastest)
 ##   1080p  -> drawn at 1920x1080 then scaled (sharp, still light)
 ##   native -> drawn at the screen's own resolution (sharpest)
+# ------------------------------------------------------------------ web updates
+## The home-screen app caches the game offline. When a newer version has been
+## published, switch to it right away (or as soon as the player is back in the menus).
+var _update_pending := false
+
+func _setup_web_updates() -> void:
+	JavaScriptBridge.pwa_update_available.connect(func():
+		_update_pending = true
+		_try_web_update())
+	# also catch an update that was found before the signal was connected
+	get_tree().create_timer(2.0).timeout.connect(func():
+		if JavaScriptBridge.pwa_needs_update():
+			_update_pending = true
+			_try_web_update())
+	Router.screen_changed.connect(func(_name: String): _try_web_update())
+
+func _try_web_update() -> void:
+	if not _update_pending:
+		return
+	if Router.current_name == "match":
+		return  # never interrupt a match; retried when the next screen opens
+	Save.save_game()
+	JavaScriptBridge.pwa_update()
+
 func apply_resolution() -> void:
 	var root := get_tree().root
 	if _portrait:

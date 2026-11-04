@@ -24,6 +24,8 @@ const SCREENS := {
 var root_container: Node
 var app: Node  # main.gd (handles resolution / orientation)
 var current: Node
+var current_name := ""
+signal screen_changed(name: String)
 var _fade_layer: CanvasLayer
 var _fade: ColorRect
 var _busy := false
@@ -60,7 +62,9 @@ func goto(screen: String, params: Dictionary = {}, instant := false) -> void:
 		node.setup(params)
 	root_container.add_child(node)
 	current = node
+	current_name = screen
 	var tw2 := create_tween()
 	tw2.tween_property(_fade, "modulate:a", 0.0, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_busy = false
+	screen_changed.emit(screen)
