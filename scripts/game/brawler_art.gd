@@ -110,7 +110,9 @@ const SPRITES := {
 		"run": [234, 216, 120.0, 208.4, 216.0, true],
 		"attack": [389, 249, 116.5, 240.3, 249.0, true],
 		"hurt": [192, 237, 93.5, 228.7, 237.0, false],
-		"super": [439, 363, 203.5, 350.3, 250.0, true],
+		"super": [439, 363, 203.5, 350.3, 330.0, true],
+		"front": [186, 274, 87.0, 264.4, 274.0, true],
+		"back": [164, 275, 78.0, 265.4, 275.0, true],
 	},
 }
 const SPRITE_UNITS := 84.0  # drawn height of a sprite character, in art units
@@ -130,46 +132,125 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 	var moving: bool = anim.get("moving", false)
 	var recoil: float = anim.get("recoil", 0.0)
 	var alpha: float = anim.get("alpha", 1.0)
+	var in_match: bool = anim.get("in_match", false)
+	var hurt: float = anim.get("hurt", 0.0)
+	var sup: float = anim.get("super_pose", 0.0)
 	var aim: Vector2 = anim.get("aim", Vector2.RIGHT)
 	var facing := -1.0 if aim.x < -0.05 else 1.0
+	# pose parameters (all smooth functions of time)
+	var lean := 0.0       # shear around the feet, + = forward
+	var sq := 1.0         # vertical squash/stretch
+	var flutter := 1.0    # cloak flutter strength
+	var stride := 0.0     # lower-body swing
+	var lift := 0.0       # pixels up (screen space, before scale)
+	var shake := 0.0
+	var pop := 1.0
 	var frame: String = anim.get("frame", "")
 	if frame == "":
-		if anim.get("blink", false) or alpha < 0.95:
+		if not in_match and (anim.get("blink", false) or alpha < 0.95):
 			frame = "hurt"
-		elif recoil > 0.35 and anim.get("in_match", false):
+			sq = 0.97 + sin(t * 1.6) * 0.01
+			lean = -0.05
+			flutter = 0.4
+		elif sup > 0.0:
+			frame = "super"
+			var k := 1.0 - sup / 0.6
+			pop = 1.0 + 0.25 * sin(minf(1.0, k * 2.5) * PI) * 0.6
+			lift = 10.0 * sin(k * PI)
+			flutter = 2.0
+		elif hurt > 0.0 and in_match:
+			frame = "hurt"
+			shake = sin(t * 70.0) * 2.5 * (hurt / 0.28)
+			lean = -0.12 * (hurt / 0.28)
+		elif recoil > 0.12 and in_match:
 			frame = "attack"
-		elif moving and anim.get("in_match", false):
+			# quick lunge forward that settles back
+			lean = 0.16 * recoil
+			pop = 1.0 + 0.1 * recoil
+			sq = 1.0 - 0.06 * recoil
+			flutter = 1.6
+		elif moving and in_match:
 			frame = "walk"
+			if aim.y > 0.62:
+				frame = "front"
+			elif aim.y < -0.62:
+				frame = "back"
+			var ph := t * 11.0
+			stride = sin(ph)
+			lift = absf(sin(ph)) * 5.0
+			sq = 1.0 + cos(ph * 2.0) * 0.035
+			lean = 0.08 if frame == "walk" else 0.0
+			flutter = 1.8
 		else:
 			frame = "main"
+			if moving:  # celebrating (results)
+				var ph2 := t * 6.4
+				lift = absf(sin(ph2)) * 18.0
+				sq = 1.0 + (0.08 if absf(sin(ph2)) > 0.5 else -0.06) * absf(cos(ph2))
+				lean = sin(ph2 * 0.5) * 0.05
+				flutter = 1.6
+			else:  # breathing idle
+				sq = 1.0 + sin(t * 2.4) * 0.022
+				lean = sin(t * 1.2) * 0.018
+				if in_match and aim.y > 0.62:
+					frame = "front"
+				elif in_match and aim.y < -0.62:
+					frame = "back"
 	var f: Array = SPRITES[id][frame]
-	var k: float = SPRITE_UNITS / float(f[4]) * s  # pixels of screen per texture pixel
-	var lo: bool = float(f[1]) * k < 230.0
+	var k_px: float = SPRITE_UNITS / float(f[4]) * s * pop  # screen px per texture px
+	var lo: bool = float(f[1]) * k_px < 230.0
 	var tex := _sprite_tex(id, frame, lo)
-	var tk: float = k * float(f[1]) / float(tex.get_height())
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	var tk: float = k_px * float(f[1]) / th
 	var flip := facing if f[5] else -facing
-	var bob := 0.0
-	var rot := 0.0
-	var sq := 1.0
-	if moving:
-		bob = -absf(sin(t * 12.0)) * 4.0 * s
-		rot = sin(t * 12.0) * 0.06
-	else:
-		sq = 1.0 + sin(t * 2.6) * 0.018
+	var fx := float(f[2]) * th / float(f[1])
+	var fy := float(f[3]) * th / float(f[1])
 	var tint := Color(1, 1, 1, alpha)
 	match d.get("fx", ""):
 		"frost": tint = Color(0.72, 0.9, 1.0, alpha)
 		"fire": tint = Color(1.0, 0.8, 0.7, alpha)
 	var fl: float = anim.get("flash", 0.0)
-	if fl > 0.0:
-		tint = tint.lerp(Color(1, 1, 1, alpha), fl)
-	ci.draw_set_transform(pos + Vector2(0, bob), rot, Vector2(tk * flip / sq, tk * sq))
-	var off := -Vector2(float(f[2]), float(f[3])) * float(tex.get_height()) / float(f[1])
-	ci.draw_texture(tex, off, tint)
-	if fl > 0.2:
-		ci.draw_texture(tex, off, Color(1, 1, 1, fl * 0.5 * alpha))
+	# deformed grid mesh
+	const COLS := 6
+	const ROWS := 8
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	var cols := PackedColorArray()
+	var fl_tint := tint.lerp(Color(1.6, 1.6, 1.6, alpha), fl * 0.6)
+	for r in ROWS + 1:
+		var v := float(r) / ROWS
+		for c in COLS + 1:
+			var u := float(c) / COLS
+			var x := u * tw - fx
+			var y := v * th - fy
+			var up := -y  # height above feet (texture px)
+			var dx := lean * up
+			# cloak flutter grows towards the hem, travels as a wave
+			var hem := clampf((v - 0.45) / 0.55, 0.0, 1.0)
+			dx += sin(t * 5.2 + v * 5.0 + u * 2.5) * th * 0.012 * flutter * hem * hem
+			# hood sway (top)
+			var top := clampf(1.0 - v / 0.4, 0.0, 1.0)
+			dx += sin(t * 2.0 + 0.6) * th * 0.006 * top
+			# leg stride on the lower body
+			var legs := clampf((v - 0.7) / 0.3, 0.0, 1.0)
+			dx += stride * th * 0.05 * legs
+			var dy := up * (1.0 - sq)
+			pts.append(Vector2(x + dx + shake, y + dy))
+			uvs.append(Vector2(u, v))
+			cols.append(fl_tint)
+	var idx := PackedInt32Array()
+	for r in ROWS:
+		for c in COLS:
+			var i0 := r * (COLS + 1) + c
+			var i1 := i0 + 1
+			var i2 := i0 + COLS + 1
+			var i3 := i2 + 1
+			idx.append_array([i0, i1, i2, i1, i3, i2])
+	ci.draw_set_transform(pos - Vector2(0, lift * s), 0.0, Vector2(tk * flip / sq, tk))
+	RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), idx, pts, cols, uvs, PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
 	# skin effects drawn in art units around the body
-	ci.draw_set_transform(pos + Vector2(0, bob), 0.0, Vector2(s * facing, s))
+	ci.draw_set_transform(pos - Vector2(0, lift * s), 0.0, Vector2(s * facing, s))
 	_alpha = alpha
 	match d.get("fx", ""):
 		"fire": _fx_fire(ci, t, d.accent)
