@@ -37,26 +37,32 @@ func _build(brawler_id: String, skin := "") -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_CLEAR_COLOR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.78, 0.8, 0.95)
-	env.ambient_light_energy = 0.45
+	env.ambient_light_color = Color(0.72, 0.8, 1.0)
+	env.ambient_light_energy = 0.55
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
 
 	var key := DirectionalLight3D.new()
-	key.rotation_degrees = Vector3(-50, 35, 0)
-	key.light_energy = 1.0
+	key.rotation_degrees = Vector3(-42, 30, 0)
+	key.light_energy = 1.05
 	key.light_color = Color(1.0, 0.97, 0.9)
 	add_child(key)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-20, -140, 0)
-	fill.light_energy = 0.3
-	fill.light_color = Color(0.75, 0.85, 1.0)
+	fill.light_energy = 0.45
+	fill.light_color = Color(0.55, 0.75, 1.0)
 	add_child(fill)
+	# soft back/rim light, like a blue studio backdrop bouncing light onto the edges
+	var back := DirectionalLight3D.new()
+	back.rotation_degrees = Vector3(-15, 180, 0)
+	back.light_energy = 0.35
+	back.light_color = Color(0.6, 0.85, 1.0)
+	add_child(back)
 
 	model = BrawlerModel.new()
-	model.outline_width = 0.026 if kind == "battle" else 0.012
+	model.outline_width = 0.014 if kind == "battle" else 0.0
 	model.build(brawler_id, skin)
 	add_child(model)
 

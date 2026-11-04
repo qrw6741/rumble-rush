@@ -109,14 +109,14 @@ func pivot(parent: Node3D, pos: Vector3) -> Node3D:
 # ------------------------------------------------------------------ face / detail helpers
 ## Glossy cartoon eye: sclera, coloured iris, pupil and two highlights.
 func eye(parent: Node3D, pos: Vector3, r: float, iris := Color("3b2a1a"), squint := 0.0) -> void:
-	part(parent, sphere(r), Color.WHITE, pos, Vector3.ZERO, Vector3(1.0, 1.25, 0.55))
-	part(parent, sphere(r * 0.66), iris, pos + Vector3(0, -r * 0.08, r * 0.3), Vector3.ZERO, Vector3(1.0, 1.2, 0.5))
-	part(parent, sphere(r * 0.36), INK, pos + Vector3(0, -r * 0.1, r * 0.42), Vector3.ZERO, Vector3(1.0, 1.2, 0.45))
-	part(parent, sphere(r * 0.2), Color.WHITE, pos + Vector3(-r * 0.25, r * 0.28, r * 0.52), Vector3.ZERO, Vector3.ONE, 1.2)
-	part(parent, sphere(r * 0.1), Color.WHITE, pos + Vector3(r * 0.22, -r * 0.3, r * 0.52), Vector3.ZERO, Vector3.ONE, 1.0)
-	if squint > 0.0:
-		# heavy upper lid for a determined look
-		part(parent, sphere(r * 1.08), parent.get_meta("skin", Color("e8b48f")), pos + Vector3(0, r * (1.15 - squint * 0.6), 0.0), Vector3.ZERO, Vector3(1.05, 0.7, 0.6))
+	# almond-shaped white, coloured iris, dark pupil, one catch-light,
+	# and a dark upper lash line (lower it with squint for a determined look)
+	var lid_drop := squint * 0.45
+	part(parent, sphere(r), Color("fbfbff"), pos, Vector3.ZERO, Vector3(1.0, 1.15 - lid_drop * 0.6, 0.45))
+	part(parent, sphere(r * 0.62), iris, pos + Vector3(0, -r * 0.1, r * 0.26), Vector3.ZERO, Vector3(1.0, 1.15, 0.45))
+	part(parent, sphere(r * 0.34), Color("15101f"), pos + Vector3(0, -r * 0.12, r * 0.36), Vector3.ZERO, Vector3(1.0, 1.15, 0.4))
+	part(parent, sphere(r * 0.16), Color.WHITE, pos + Vector3(-r * 0.22, r * 0.18, r * 0.44), Vector3.ZERO, Vector3.ONE, 0.8)
+	part(parent, capsule(r * 0.13, r * 2.1), Color("1d1426"), pos + Vector3(0, r * (0.95 - lid_drop), r * 0.12), Vector3(0, 0, 90), Vector3(1.0, 1.0, 0.7))
 
 func brow(parent: Node3D, pos: Vector3, length: float, tilt_deg: float, col: Color, thick := 0.035) -> void:
 	part(parent, capsule(thick, length), col, pos, Vector3(0, 0, 90 + tilt_deg), Vector3(1, 1, 0.6))
@@ -127,10 +127,16 @@ func smile(parent: Node3D, pos: Vector3, w: float, open := 0.3, teeth := true) -
 		part(parent, sphere(w * 0.38), Color.WHITE, pos + Vector3(0, w * open * 0.18, w * 0.06), Vector3.ZERO, Vector3(1.0, open * 0.45, 0.3))
 
 func shoe(leg: Node3D, hip_y: float, col: Color, size := 1.0) -> void:
-	size *= 1.2
-	part(leg, cyl(0.1 * size, 0.12 * size, 0.04, 20), col.lightened(0.35), Vector3(0, -hip_y + 0.12 * size, 0.04 * size))
-	part(leg, sphere(0.13 * size), col, Vector3(0, -hip_y + 0.075 * size, 0.05 * size), Vector3.ZERO, Vector3(1.0, 0.62, 1.45))
-	part(leg, box(0.2 * size, 0.035, 0.34 * size), col.darkened(0.45), Vector3(0, -hip_y + 0.02, 0.05 * size))
+	size *= 1.1
+	var y0 := -hip_y
+	# boot shaft + cuff
+	part(leg, cyl(0.095 * size, 0.105 * size, 0.2 * size, 24), col, Vector3(0, y0 + 0.13 * size, 0))
+	part(leg, cyl(0.11 * size, 0.11 * size, 0.045 * size, 24), col.lightened(0.25), Vector3(0, y0 + 0.23 * size, 0))
+	# foot with rounded toe, light toe cap and dark sole
+	part(leg, box(0.2 * size, 0.1 * size, 0.24 * size), col, Vector3(0, y0 + 0.06 * size, 0.05 * size))
+	part(leg, sphere(0.1 * size), col, Vector3(0, y0 + 0.06 * size, 0.17 * size), Vector3.ZERO, Vector3(1.0, 0.62, 0.9))
+	part(leg, sphere(0.085 * size), col.lightened(0.45), Vector3(0, y0 + 0.075 * size, 0.2 * size), Vector3.ZERO, Vector3(1.05, 0.5, 0.7))
+	part(leg, box(0.215 * size, 0.035, 0.36 * size), col.darkened(0.55), Vector3(0, y0 + 0.018, 0.08 * size))
 
 func limb_legs(col: Color, shoe_col: Color, spread: float, hip_y: float, r: float, shoe_size := 1.0) -> void:
 	leg_l = pivot(self, Vector3(-spread, hip_y, 0))
@@ -141,12 +147,22 @@ func limb_legs(col: Color, shoe_col: Color, spread: float, hip_y: float, r: floa
 
 func arm(side: float, shoulder: Vector3, sleeve: Color, hand: Color, upper_r := 0.075, length := 0.34, hand_r := 0.105) -> Node3D:
 	var a := pivot(body, Vector3(shoulder.x * side, shoulder.y, shoulder.z))
-	part(a, sphere(upper_r * 1.35), sleeve, Vector3.ZERO)
-	part(a, capsule(upper_r, length), sleeve, Vector3(0, -length * 0.42, 0))
-	# big chunky mitts read well from the top-down camera
-	part(a, sphere(hand_r * 1.3), hand, Vector3(0, -length * 0.98, 0.02), Vector3.ZERO, Vector3(1.0, 0.95, 1.05))
-	part(a, sphere(hand_r * 0.55), hand, Vector3(-hand_r * 0.95, -length * 0.9, 0.06))
+	part(a, sphere(upper_r * 1.3), sleeve, Vector3.ZERO)
+	part(a, capsule(upper_r * 1.05, length * 0.6), sleeve, Vector3(0, -length * 0.26, 0))
+	part(a, cyl(upper_r * 1.15, upper_r * 1.2, length * 0.1, 20), sleeve.darkened(0.12), Vector3(0, -length * 0.52, 0))
+	part(a, capsule(upper_r * 0.82, length * 0.5), hand, Vector3(0, -length * 0.7, 0.0))
+	_hand(a, Vector3(0, -length * 1.0, 0.0), hand_r, hand, side)
 	return a
+
+## Palm, four fingers and a thumb, slightly curled.
+func _hand(a: Node3D, at: Vector3, r: float, col: Color, side: float) -> void:
+	part(a, box(r * 1.5, r * 1.15, r * 0.7), col, at, Vector3(8, 0, 0))
+	part(a, sphere(r * 0.62), col, at + Vector3(0, r * 0.1, 0), Vector3.ZERO, Vector3(1.25, 1.0, 0.75))
+	for i in 4:
+		var fx := (i - 1.5) * r * 0.36
+		var fl := r * (0.72 if i == 0 or i == 3 else 0.85)
+		part(a, capsule(r * 0.15, fl), col, at + Vector3(fx, -r * 0.62 - fl * 0.35, r * 0.1), Vector3(-22, 0, 0))
+	part(a, capsule(r * 0.17, r * 0.65), col, at + Vector3(-side * r * 0.72, -r * 0.1, r * 0.2), Vector3(-30, 0, side * 40))
 
 # ------------------------------------------------------------------ build
 func build(brawler_id: String, skin := "") -> void:
@@ -251,18 +267,18 @@ func _vex() -> void:
 	arm_r = arm(1.0, Vector3(0.32, 0.96, 0), prim, Color("2b1f3d"), 0.07, 0.34, 0.095)
 	# hooded head with glowing eyes and face mask
 	head = pivot(body, Vector3(0, 1.36, 0))
-	part(head, sphere(0.4), prim, Vector3.ZERO, Vector3.ZERO, Vector3(1.0, 1.05, 1.0))
-	part(head, cyl(0.001, 0.2, 0.46, 20), prim, Vector3(0, 0.3, -0.26), Vector3(-58, 0, 0))
+	part(head, sphere(0.37), prim, Vector3(0, 0.02, -0.04), Vector3.ZERO, Vector3(1.0, 1.06, 0.98))
+	part(head, cyl(0.001, 0.17, 0.4, 20), prim, Vector3(0, 0.27, -0.26), Vector3(-58, 0, 0))
 	# face opening: skin around the eyes, dark cloth mask over nose and mouth
 	var skin: Color = d.skin
 	head.set_meta("skin", skin)
-	part(head, sphere(0.3), sec, Vector3(0, -0.02, 0.2), Vector3.ZERO, Vector3(1.05, 0.95, 0.8))
-	part(head, sphere(0.27), skin, Vector3(0, 0.05, 0.22), Vector3.ZERO, Vector3(1.12, 0.62, 0.8))
-	part(head, sphere(0.27), sec.lightened(0.12), Vector3(0, -0.12, 0.25), Vector3.ZERO, Vector3(1.05, 0.55, 0.78))
+	part(head, sphere(0.3), sec, Vector3(0, -0.02, 0.17), Vector3.ZERO, Vector3(1.0, 0.98, 0.85))
+	part(head, sphere(0.28), skin, Vector3(0, 0.04, 0.2), Vector3.ZERO, Vector3(1.0, 0.72, 0.86))
+	part(head, sphere(0.27), sec.lightened(0.15), Vector3(0, -0.15, 0.22), Vector3.ZERO, Vector3(1.02, 0.48, 0.82))
 	for sx in [-1.0, 1.0]:
 		eye(head, Vector3(0.105 * sx, 0.06, 0.4), 0.07, Color("1f8f80"), 0.15)
 		brow(head, Vector3(0.11 * sx, 0.16, 0.42), 0.11, -20 * sx, sec, 0.026)
-	part(head, torus(0.37, 0.43), prim.darkened(0.12), Vector3(0, 0.0, 0.08), Vector3(80, 0, 0), Vector3(1.0, 1.0, 1.05))
+	part(head, torus(0.34, 0.4), prim.darkened(0.12), Vector3(0, 0.0, 0.06), Vector3(80, 0, 0), Vector3(1.0, 1.0, 1.05))
 	# twin energy blades (curved, glowing)
 	weapon = pivot(arm_r, Vector3(0, -0.34, 0))
 	_blade(weapon, acc)
@@ -446,8 +462,9 @@ static func _vc_mat(ow: float) -> ShaderMaterial:
 		return _vc_mats[ow]
 	var m := ShaderMaterial.new()
 	m.shader = TOON_VC
-	mat(Color.WHITE, 0.0, 0.18, ow) # makes sure the outline material for this width exists
-	m.next_pass = _outline_mats[ow]
+	if ow > 0.0:
+		mat(Color.WHITE, 0.0, 0.18, ow) # makes sure the outline material for this width exists
+		m.next_pass = _outline_mats[ow]
 	_vc_mats[ow] = m
 	return m
 

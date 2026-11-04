@@ -5,7 +5,7 @@ shader_type spatial;
 render_mode specular_disabled;
 
 uniform float rim_strength = 0.18;
-uniform vec3 shadow_tint = vec3(0.62, 0.62, 0.95);
+uniform vec3 shadow_tint = vec3(0.72, 0.74, 1.0);
 
 void fragment() {
 	ALBEDO = COLOR.rgb;
@@ -19,8 +19,9 @@ void fragment() {
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
 	// wrapped, softly banded diffuse
-	float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
-	float soft = smoothstep(0.0, 1.0, wrap);
-	vec3 lit = mix(shadow_tint * 0.55, vec3(1.08, 1.03, 0.95), soft);
+	// smooth half-lambert: no hard bands, gentle cool shadows (studio render look)
+	float wrap = clamp(ndl * 0.5 + 0.5, 0.0, 1.0);
+	float soft = wrap * wrap;
+	vec3 lit = mix(shadow_tint * 0.42, vec3(1.05, 1.02, 0.97), soft);
 	DIFFUSE_LIGHT += LIGHT_COLOR / PI * ATTENUATION * lit;
 }
