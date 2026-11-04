@@ -60,10 +60,11 @@ func _ready() -> void:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.offset_left = 60
-	scroll.offset_top = 104
+	scroll.offset_top = 160
 	scroll.offset_right = -40
 	scroll.offset_bottom = -6
 	add_child(scroll)
+	_build_filters()
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
 	margin.add_theme_constant_override("margin_top", 10)
@@ -77,6 +78,55 @@ func _ready() -> void:
 	_rebuild_grid()
 
 var _list: VBoxContainer
+var _sort_btn: Button
+var _sort_menu: Control
+
+## Filter row: search box + sort button (opens a small list of sort orders).
+func _build_filters() -> void:
+	var search := LineEdit.new()
+	search.name = "Search"
+	search.placeholder_text = "SEARCH BRAWLERS..."
+	search.position = Vector2(70, 104)
+	search.size = Vector2(320, 48)
+	search.add_theme_font_size_override("font_size", 20)
+	search.add_theme_color_override("font_placeholder_color", Color(1, 1, 1, 0.55))
+	search.add_theme_stylebox_override("normal", UIKit.box(Color("1d2438"), 8, 3, UIKit.DARK, 0))
+	search.add_theme_stylebox_override("focus", UIKit.box(Color("27334d"), 8, 3, UIKit.YELLOW, 0))
+	search.text_changed.connect(func(t: String):
+		_search = t.strip_edges().to_upper()
+		_rebuild_grid())
+	add_child(search)
+	_sort_btn = UIKit.button("SORT: " + _sort, Color("2a8cff"), 18, Vector2(360, 48))
+	_sort_btn.position = Vector2(406, 104)
+	_sort_btn.pressed.connect(_toggle_sort_menu)
+	add_child(_sort_btn)
+
+func _toggle_sort_menu() -> void:
+	Sfx.play("ui_click")
+	if _sort_menu and is_instance_valid(_sort_menu):
+		_sort_menu.queue_free()
+		_sort_menu = null
+		return
+	_sort_menu = PanelContainer.new()
+	_sort_menu.add_theme_stylebox_override("panel", UIKit.box(Color("1d2438"), 10, 3, UIKit.DARK, 6))
+	_sort_menu.position = Vector2(406, 156)
+	_sort_menu.z_index = 20
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	_sort_menu.add_child(v)
+	for sname in SORTS:
+		var on: bool = sname == _sort
+		var b := UIKit.button(sname, UIKit.ORANGE if on else Color("3a4a70"), 16, Vector2(340, 42))
+		var nm: String = sname
+		b.pressed.connect(func():
+			_sort = nm
+			_sort_btn.text = "SORT: " + nm
+			Sfx.play("ui_confirm")
+			_sort_menu.queue_free()
+			_sort_menu = null
+			_rebuild_grid())
+		v.add_child(b)
+	add_child(_sort_menu)
 
 func _sorted_ids() -> Array:
 	var ids: Array = Config.BRAWLER_ORDER.filter(func(id): return _search == "" or Config.BRAWLERS[id].name.contains(_search))
