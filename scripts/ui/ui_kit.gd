@@ -379,8 +379,8 @@ class BrawlerPortrait extends Control:
 			var feet: Vector2
 			if view_kind == "bust":
 				# head-and-shoulders crop
-				s = size.y / 34.0
-				feet = Vector2(size.x * 0.5, size.y * 0.42 + 46.0 * s)
+				s = size.y / 46.0
+				feet = Vector2(size.x * 0.5, size.y * 0.58 + 52.0 * s)
 			else:
 				s = minf(size.y / 96.0, size.x / 78.0)
 				feet = Vector2(size.x * 0.5, size.y * 0.95)

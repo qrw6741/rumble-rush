@@ -55,64 +55,28 @@ func _ready() -> void:
 	banner.size = Vector2(420, 80)
 	add_child(banner)
 
-	# left sidebar: search + sort filters
-	var search := LineEdit.new()
-	search.name = "Search"
-	search.placeholder_text = "TYPE TO SEARCH..."
-	search.position = Vector2(26, 130)
-	search.size = Vector2(250, 54)
-	search.add_theme_font_size_override("font_size", 20)
-	search.add_theme_color_override("font_placeholder_color", Color(1, 1, 1, 0.55))
-	search.add_theme_stylebox_override("normal", UIKit.box(Color("27334d"), 6, 3, UIKit.DARK, 0))
-	search.add_theme_stylebox_override("focus", UIKit.box(Color("2f3d5c"), 6, 3, UIKit.YELLOW, 0))
-	search.text_changed.connect(func(t: String):
-		_search = t.strip_edges().to_upper()
-		_rebuild_grid())
-	add_child(search)
-	var ft := Lobby.TitleText.new()
-	ft.text = "SORT BY:"
-	ft.position = Vector2(30, 196)
-	ft.size = Vector2(260, 70)
-	ft.scale = Vector2(0.62, 0.62)
-	add_child(ft)
-	for i in SORTS.size():
-		var sname: String = SORTS[i]
-		var tb := SortToggle.new()
-		tb.label = sname
-		tb.name = "Sort" + str(i)
-		tb.position = Vector2(26, 250 + i * 54)
-		tb.size = Vector2(250, 44)
-		tb.pressed.connect(func():
-			_sort = sname
-			for k in _sort_buttons.keys():
-				_sort_buttons[k].on = k == _sort
-				_sort_buttons[k].queue_redraw()
-			Sfx.play("ui_click")
-			_rebuild_grid())
-		_sort_buttons[sname] = tb
-		add_child(tb)
-	_sort_buttons[_sort].on = true
-
-	# card grid
+	# one long scrolling list: unlocked brawlers first, then a LOCKED section
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.offset_left = 300
-	scroll.offset_top = 110
-	scroll.offset_right = -10
+	scroll.offset_left = 60
+	scroll.offset_top = 104
+	scroll.offset_right = -40
 	scroll.offset_bottom = -6
 	add_child(scroll)
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 16)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 30)
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(margin)
-	_grid = GridContainer.new()
-	_grid.columns = 3
-	_grid.add_theme_constant_override("h_separation", 22)
-	_grid.add_theme_constant_override("v_separation", 26)
-	margin.add_child(_grid)
+	_list = VBoxContainer.new()
+	_list.add_theme_constant_override("separation", 14)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_child(_list)
 	_rebuild_grid()
+
+var _list: VBoxContainer
 
 func _sorted_ids() -> Array:
 	var ids: Array = Config.BRAWLER_ORDER.filter(func(id): return _search == "" or Config.BRAWLERS[id].name.contains(_search))
@@ -136,22 +100,43 @@ func _to_next(id: String) -> int:
 	return 99999 if p.y == 0 else p.y - p.x
 
 func _rebuild_grid() -> void:
-	for c in _grid.get_children():
+	for c in _list.get_children():
 		c.queue_free()
 	_cards.clear()
-	var k := 0
+	var owned: Array = []
+	var locked: Array = []
 	for id in _sorted_ids():
+		if Save.is_unlocked(id):
+			owned.append(id)
+		else:
+			locked.append(id)
+	_section(owned, "", 0)
+	if not locked.is_empty():
+		var h := SectionLabel.new()
+		h.text = "LOCKED  %d" % locked.size()
+		h.custom_minimum_size = Vector2(0, 54)
+		_list.add_child(h)
+		_section(locked, "", owned.size())
+
+func _section(ids: Array, _title: String, delay_from: int) -> void:
+	var g := GridContainer.new()
+	g.columns = 4
+	g.add_theme_constant_override("h_separation", 18)
+	g.add_theme_constant_override("v_separation", 18)
+	_list.add_child(g)
+	var k := delay_from
+	for id in ids:
 		var card := _make_card(id)
 		_cards[id] = card
-		_grid.add_child(card)
-		UIKit.pop_in(card, 0.05 * k)
+		g.add_child(card)
+		UIKit.pop_in(card, 0.03 * k)
 		k += 1
 
 func _make_card(id: String) -> Control:
 	var card := BrawlerCard.new()
 	card.brawler_id = id
 	card.name = "Card_" + id
-	card.custom_minimum_size = Vector2(290, 252)
+	card.custom_minimum_size = Vector2(272, 214)
 	card.pressed.connect(func():
 		Sfx.play("ui_click")
 		_show(id))
@@ -160,10 +145,12 @@ func _make_card(id: String) -> Control:
 	por.art_scale = 1.0
 	por.backdrop = false
 	por.view_kind = "bust"
-	por.position = Vector2(20, 60)
-	por.size = Vector2(212, 140)
-	por.custom_minimum_size = Vector2(212, 140)
+	por.position = Vector2(6, 38)
+	por.size = Vector2(260, 128)
+	por.custom_minimum_size = Vector2(260, 128)
 	por.clip_contents = true
+	if not Save.is_unlocked(id):
+		por.modulate = Color(0.45, 0.45, 0.55)
 	card.add_child(por)
 	var front := CardFront.new()
 	front.brawler_id = id
@@ -435,6 +422,7 @@ class BrawlerCard extends Button:
 		focus_mode = Control.FOCUS_NONE
 		for st in ["normal", "hover", "pressed", "focus"]:
 			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		pivot_offset = custom_minimum_size * 0.5
 		mouse_entered.connect(func(): UIKit._pop(self, 1.03))
 		mouse_exited.connect(func(): UIKit._pop(self, 1.0))
 		button_down.connect(func(): UIKit._pop(self, 0.96))
@@ -444,25 +432,19 @@ class BrawlerCard extends Button:
 		var d: Dictionary = Config.BRAWLERS[brawler_id]
 		var rc: Color = Config.RARITY_COLORS[d.rarity]
 		var w := size.x
+		var h := size.y
 		var ink := UIKit.DARK
 		var sel: bool = Save.data.selected_brawler == brawler_id
-		# portrait window background (rarity colour with rays)
-		var win := Rect2(16, 52, w - 70, 152)
-		draw_rect(Rect2(win.position + Vector2(5, 8), win.size), Color(0, 0, 0, 0.3))
-		draw_rect(win.grow(4), UIKit.YELLOW if sel else ink)
-		draw_rect(win, rc)
-		var c := win.position + Vector2(win.size.x * 0.45, win.size.y * 0.55)
-		for i in 10:
-			var a := i * TAU / 10.0
-			draw_colored_polygon(PackedVector2Array([c, c + Vector2(cos(a), sin(a)) * 220, c + Vector2(cos(a + 0.2), sin(a + 0.2)) * 220]), Color(1, 1, 1, 0.08))
-		draw_rect(Rect2(win.position, Vector2(win.size.x, 30)), Color(1, 1, 1, 0.08))
-		# side column
-		var col := Rect2(w - 54, 52, 40, 152)
-		draw_rect(col.grow(4), ink)
-		draw_rect(col, Color("27334d"))
+		draw_rect(Rect2(4, 8, w, h), Color(0, 0, 0, 0.3))
+		draw_rect(Rect2(0, 0, w, h), UIKit.YELLOW if sel else ink)
+		draw_rect(Rect2(3, 3, w - 6, h - 6), Color("1d2438"))
+		# portrait window: rarity colour with a soft diagonal light
+		var win := Rect2(6, 38, w - 12, 128)
+		draw_rect(win, rc.lerp(Color("bfe4ff"), 0.35))
+		draw_colored_polygon(PackedVector2Array([win.position, win.position + Vector2(win.size.x * 0.55, 0), win.position + Vector2(win.size.x * 0.25, win.size.y), win.position + Vector2(0, win.size.y)]), Color(1, 1, 1, 0.18))
 
 
-## Everything drawn over the portrait: rank, trophies, name, abilities, power bar.
+## Everything drawn over the portrait: rank, trophies, name, power and the upgrade bar.
 class CardFront extends Control:
 	var brawler_id := "bront"
 
@@ -472,93 +454,65 @@ class CardFront extends Control:
 	func _draw() -> void:
 		var S := preload("res://scripts/ui/main_menu.gd").SlantButton
 		var d: Dictionary = Config.BRAWLERS[brawler_id]
-		var rc: Color = Config.RARITY_COLORS[d.rarity]
 		var w := size.x
 		var ink := UIKit.DARK
 		var bt := Save.brawler_trophies(brawler_id)
 		var rank := Progression.rank_for(bt)
-		var rcol := Progression.rank_color(rank)
-		var prog := Progression.rank_progress(bt)
 		var lvl := Save.brawler_level(brawler_id)
-		# top strip: trophies + next-rank target
-		var strip := Rect2(44, 16, w - 92, 34)
-		draw_rect(strip.grow(3), ink)
-		draw_rect(strip, Color("1d2438"))
-		S.trophy(self, Vector2(66, 32), 9.0)
-		S.text_l(self, str(bt), Vector2(80, 43), 22, Color.WHITE)
-		var pill := Rect2(strip.position.x + strip.size.x * 0.52, strip.position.y, strip.size.x * 0.48, strip.size.y)
-		draw_rect(pill, rcol.darkened(0.25))
-		S.text_c(self, "MAX" if prog.y == 0 else "NEXT %d" % Progression.RANK_TROPHIES[rank], pill.get_center() + Vector2(0, 7), 15, Color.WHITE)
-		# rank crest
-		UIKit.draw_rank_badge(self, Vector2(30, 34), 62.0, rank)
-		# rarity star badge (top-right)
-		var bc := Vector2(w - 34, 30)
-		var pts := PackedVector2Array()
-		for i in 10:
-			var rr := 24.0 if i % 2 == 0 else 15.0
-			var a := -PI / 2 + i * PI / 5
-			pts.append(bc + Vector2(cos(a), sin(a)) * rr)
-		draw_colored_polygon(pts, ink)
-		var pts2 := PackedVector2Array()
-		for i in 10:
-			var rr := 19.0 if i % 2 == 0 else 11.0
-			var a := -PI / 2 + i * PI / 5
-			pts2.append(bc + Vector2(cos(a), sin(a)) * rr)
-		draw_colored_polygon(pts2, rc)
-		# ability icons in the side column
-		var cx := w - 34
-		UIKit.draw_icon(self, "ab_%s_attack" % brawler_id, Vector2(cx, 80), 40.0)
-		UIKit.draw_icon(self, "ab_%s_gadget" % brawler_id, Vector2(cx, 124), 40.0)
-		UIKit.draw_icon(self, "ab_%s_super" % brawler_id, Vector2(cx, 168), 40.0)
-		# name, slanted, bottom-right of the portrait
-		var f := UIKit.bold()
-		var nsz := f.get_string_size(d.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30)
-		draw_set_transform_matrix(Transform2D(0.0, Vector2.ONE, -0.18, Vector2(w - 66 - nsz.x, 196)))
-		draw_string_outline(f, Vector2(0, 2), d.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, 9, ink)
-		draw_string_outline(f, Vector2.ZERO, d.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, 9, ink)
-		draw_string(f, Vector2.ZERO, d.name, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color("ffe14d"))
-		draw_set_transform_matrix(Transform2D.IDENTITY)
-		if not Save.is_unlocked(brawler_id):
-			# locked: dim the portrait, padlock, unlock price
-			draw_rect(Rect2(16, 52, w - 70, 152), Color(0.05, 0.04, 0.12, 0.55))
-			UIKit.draw_icon(self, "lock", Vector2((w - 54) * 0.5, 120), 64.0)
-			var lbar := Rect2(16, 208, w - 30, 36)
-			draw_rect(lbar.grow(3), ink)
+		var unlocked := Save.is_unlocked(brawler_id)
+		# top strip with trophies
+		var strip := Rect2(46, 6, w - 52, 28)
+		draw_rect(strip, Color("e8692a"))
+		draw_rect(Rect2(strip.position, Vector2(strip.size.x, 7)), Color("ff9a4a"))
+		S.trophy(self, Vector2(strip.position.x + strip.size.x * 0.42, 20), 8.0)
+		S.text_l(self, str(bt), Vector2(strip.position.x + strip.size.x * 0.42 + 16, 29), 22, Color.WHITE)
+		UIKit.draw_rank_badge(self, Vector2(28, 26), 54.0, rank)
+		# name + power over the bottom of the portrait
+		var band := Rect2(6, 136, w - 12, 30)
+		draw_rect(band, Color(0.05, 0.04, 0.12, 0.55))
+		S.text_l(self, d.name, Vector2(14, 160), 22, Color.WHITE)
+		if unlocked:
+			S.text_r(self, "POWER", Vector2(w - 40, 157), 14, Color(1, 1, 1, 0.85))
+			S.text_r(self, str(lvl), Vector2(w - 14, 161), 24, Color.WHITE)
+		# bottom bar
+		var bar := Rect2(44, 176, w - 56, 28)
+		draw_rect(bar.grow(3), ink)
+		var ic := Vector2(28, 190)
+		if not unlocked:
+			draw_colored_polygon(PackedVector2Array([Vector2(6, 38), Vector2(w - 6, 38), Vector2(w - 6, 166), Vector2(6, 166)]), Color(0.05, 0.04, 0.12, 0.25))
+			UIKit.draw_icon(self, "lock", Vector2(w * 0.5, 92), 54.0)
 			var u: Dictionary = d.get("unlock", {})
 			var cur: String = u.get("currency", "credits")
-			draw_rect(lbar, Color("8e2bd8") if cur == "pass" else Color("2f3d5c"))
+			draw_rect(bar, Color("8e2bd8") if cur == "pass" else Color("2f3d5c"))
+			draw_circle(ic, 18, ink)
+			draw_circle(ic, 15, Color("8e2bd8") if cur == "pass" else Color("3a4a70"))
 			if cur == "pass":
-				S.text_c(self, "RUSH PASS TIER %d" % int(u.cost), lbar.get_center() + Vector2(0, 8), 18, Color.WHITE)
+				UIKit.draw_icon(self, "token", ic, 26.0)
+				S.text_c(self, "RUSH PASS TIER %d" % int(u.cost), bar.get_center() + Vector2(0, 8), 16, Color.WHITE)
 			else:
-				UIKit.draw_icon(self, "gem" if cur == "gems" else "coin", Vector2(lbar.get_center().x - 34, lbar.get_center().y), 30.0)
-				S.text_l(self, str(u.cost), Vector2(lbar.get_center().x - 14, lbar.end.y - 9), 22, Color.WHITE)
+				UIKit.draw_icon(self, "gem" if cur == "gems" else "coin", ic, 26.0)
+				S.text_c(self, str(u.cost), bar.get_center() + Vector2(0, 9), 22, Color.WHITE)
 			return
-		# bottom bar: power level + upgrade cost
 		var cost := Save.upgrade_cost(brawler_id)
-		var can_up: bool = cost >= 0 and Save.data.credits >= cost
-		var bar := Rect2(40, 208, w - 54, 36)
-		draw_rect(bar.grow(3), ink)
-		var bar_col := Color("8e2bd8") if cost < 0 else (Color("3fb94a") if can_up else Color("2f3d5c"))
-		draw_rect(bar, bar_col)
-		draw_rect(Rect2(bar.position, Vector2(bar.size.x, 6)), bar_col.lightened(0.2))
+		draw_circle(ic, 18, ink)
+		draw_circle(ic, 15, Color("d22bd8"))
+		UIKit.draw_icon(self, "coin", ic, 24.0)
 		if cost < 0:
-			S.text_c(self, "MAX POWER", bar.get_center() + Vector2(18, 8), 20, Color.WHITE)
+			draw_rect(bar, Color("8e2bd8"))
+			S.text_c(self, "MAX POWER", bar.get_center() + Vector2(0, 8), 18, Color.WHITE)
+		elif Save.data.credits >= cost:
+			draw_rect(bar, Color("3fc94a"))
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x, 7)), Color("7af07a"))
+			var ac := Vector2(bar.position.x + 18, bar.get_center().y)
+			draw_colored_polygon(PackedVector2Array([ac + Vector2(0, -9), ac + Vector2(8, 0), ac + Vector2(3, 0), ac + Vector2(3, 8), ac + Vector2(-3, 8), ac + Vector2(-3, 0), ac + Vector2(-8, 0)]), Color.WHITE)
+			S.text_c(self, "UPGRADE", bar.get_center() + Vector2(6, 8), 20, Color.WHITE)
 		else:
-			S.coin(self, Vector2(bar.position.x + 112, bar.get_center().y), 11.0)
-			S.text_l(self, str(cost), Vector2(bar.position.x + 130, bar.end.y - 9), 22, Color.WHITE)
-		# power circle
-		var pc := Vector2(40, 226)
-		draw_circle(pc, 27, ink)
-		draw_circle(pc, 23, Color("d22bd8"))
-		draw_circle(pc, 17, Color("8e1a96"))
-		S.text_c(self, str(lvl), pc + Vector2(0, 9), 24, Color.WHITE)
-		if can_up:
-			var ac := pc + Vector2(22, -24)
-			draw_circle(ac, 12, ink)
-			draw_circle(ac, 9, Color("4dff7a"))
-			draw_colored_polygon(PackedVector2Array([ac + Vector2(0, -6), ac + Vector2(6, 1), ac + Vector2(2, 1), ac + Vector2(2, 6), ac + Vector2(-2, 6), ac + Vector2(-2, 1), ac + Vector2(-6, 1)]), Color.WHITE)
+			draw_rect(bar, Color("3a2a50"))
+			var frac := clampf(float(Save.data.credits) / cost, 0.0, 1.0)
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * frac, bar.size.y)), Color("d24bd8"))
+			S.text_c(self, "%d/%d" % [mini(Save.data.credits, cost), cost], bar.get_center() + Vector2(0, 8), 18, Color.WHITE)
 		if Save.data.selected_brawler == brawler_id:
-			S.text_l(self, "SELECTED", Vector2(24, 76), 14, Color("4dff7a"))
+			S.text_l(self, "SELECTED", Vector2(14, 58), 14, Color("4dff7a"))
 
 	func _ability_icon(c: Vector2, col: Color, letter: String) -> void:
 		var S := preload("res://scripts/ui/main_menu.gd").SlantButton
@@ -698,3 +652,16 @@ class RankBar extends Control:
 		var txt := "MAX RANK" if prog.y == 0 else "%d / %d" % [bt, Progression.RANK_TROPHIES[rank]]
 		S.text_c(self, txt, br.get_center() + Vector2(0, 7), 16, Color.WHITE)
 		S.text_l(self, "RANK %d" % rank, Vector2(72, 22), 18, col.lightened(0.3))
+
+
+## "LOCKED" divider between the two groups.
+class SectionLabel extends Control:
+	var text := ""
+	func _draw() -> void:
+		var S := preload("res://scripts/ui/main_menu.gd").SlantButton
+		draw_rect(Rect2(0, 22, size.x, 4), Color(1, 1, 1, 0.2))
+		var f := UIKit.bold()
+		var tw := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
+		draw_rect(Rect2(size.x * 0.5 - tw * 0.5 - 22, 4, tw + 44, 42), Color("1d2438"))
+		UIKit.draw_icon(self, "lock", Vector2(size.x * 0.5 - tw * 0.5 - 2, 24), 30.0)
+		S.text_l(self, text, Vector2(size.x * 0.5 - tw * 0.5 + 18, 36), 30, Color.WHITE)
