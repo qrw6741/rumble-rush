@@ -25,6 +25,15 @@ func _ready() -> void:
 	add_child(bg)
 	Sfx.play_music("music_menu")
 
+	# your brawler, big: celebrating on a win, slumped on a loss
+	var hero := Hero.new()
+	hero.brawler_id = data.get("brawler", "bront")
+	hero.result = result
+	hero.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	hero.position = Vector2(0, -330)
+	hero.size = Vector2(300, 330)
+	add_child(hero)
+
 	var root := VBoxContainer.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.offset_left = 30
@@ -100,6 +109,14 @@ func _ready() -> void:
 	tok.add_child(tic)
 	tok.add_child(UIKit.label("+%d" % int(rewards.get("tokens", 0)), 30, Color("8fd0ff"), 8, HORIZONTAL_ALIGNMENT_CENTER))
 	rh.add_child(tok)
+	if int(rewards.get("mastery_gain", 0)) > 0:
+		var ml := Progression.mastery_level(int(rewards.mastery_points))
+		var mtxt := "+%d MASTERY" % int(rewards.mastery_gain)
+		if rewards.get("mastery_level_up", false):
+			mtxt = "MASTERY: " + Progression.MASTERY_NAMES[ml] + "!"
+		var mlb := UIKit.label(mtxt, 20, Progression.MASTERY_COLORS[ml].lightened(0.2), 6)
+		mlb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		rh.add_child(mlb)
 	if rewards.get("rank_up", false):
 		var ru := UIKit.label("RANK UP!  %d" % int(rewards.new_rank), 22, Progression.rank_color(int(rewards.new_rank)).lightened(0.3), 6)
 		ru.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -236,3 +253,53 @@ func _solo_card(p: Dictionary) -> Control:
 	v.add_child(UIKit.label("KO %d  ·  DMG %d" % [p.kos, p.damage], 12, Color(1, 1, 1, 0.8), 4))
 	h.add_child(v)
 	return panel
+
+
+## The player's brawler on the results screen. Win: happy bouncing with confetti.
+## Loss: slumped, eyes closed, dimmed, with a little rain cloud.
+class Hero extends Control:
+	var brawler_id := "bront"
+	var result := "win"
+	var _t := 0.0
+	var _confetti: Array = []
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if result == "win":
+			for i in 50:
+				_confetti.append([Vector2(randf_range(0, 300), randf_range(-400, 0)), randf_range(60, 140), randf() * TAU,
+					[Color("ffd23a"), Color("ff4d9a"), Color("4fd3ff"), Color("8cff5a"), Color.WHITE][i % 5]])
+
+	func _process(d: float) -> void:
+		_t += d
+		for c in _confetti:
+			c[0].y += c[1] * d
+			c[0].x += sin(_t * 3.0 + c[2]) * 30.0 * d
+			c[2] += d * 4.0
+			if c[0].y > size.y:
+				c[0].y = -20.0
+		queue_redraw()
+
+	func _draw() -> void:
+		var skin := Save.selected_skin(brawler_id)
+		var feet := Vector2(size.x * 0.5, size.y - 30)
+		draw_colored_polygon(PackedVector2Array([feet + Vector2(-70, 0), feet + Vector2(70, 0), feet + Vector2(60, 10), feet + Vector2(-60, 10)]), Color(0, 0, 0, 0.25))
+		if result == "win":
+			var hop := absf(sin(_t * 5.0)) * 26.0
+			BrawlerArt.draw(self, brawler_id, feet - Vector2(0, hop), 3.4, {"t": _t, "aim": Vector2(1, -0.6), "moving": true, "skin": skin, "no_shadow": true, "recoil": 0.5 + 0.5 * sin(_t * 5.0)})
+			for c in _confetti:
+				draw_set_transform(c[0], c[2], Vector2.ONE)
+				draw_rect(Rect2(-4, -2, 8, 4), c[3])
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		else:
+			draw_set_transform(feet, -0.12, Vector2.ONE)
+			BrawlerArt.draw(self, brawler_id, Vector2(0, 8), 3.1, {"t": _t * 0.3, "aim": Vector2(1, 0.9), "moving": false, "skin": skin, "no_shadow": true, "blink": true, "alpha": 0.85})
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			# rain cloud
+			var cc := Vector2(size.x * 0.5, 50)
+			for k in 3:
+				draw_circle(cc + Vector2(-26 + k * 26, sin(_t + k) * 2.0), 22, Color("5a5f78"))
+			for k in 6:
+				var ph := fmod(_t * 1.6 + k * 0.17, 1.0)
+				var p := cc + Vector2(-40 + k * 16, 20 + ph * 110)
+				draw_line(p, p + Vector2(-2, 10), Color(0.6, 0.8, 1, 1.0 - ph), 2.0, true)

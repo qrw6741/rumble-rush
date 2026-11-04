@@ -414,3 +414,28 @@ class BrawlerPortrait extends Control:
 			var col := p
 			col.a = 0.12
 			draw_colored_polygon(PackedVector2Array([c, c + Vector2(cos(a), sin(a)) * r, c + Vector2(cos(a + 0.2), sin(a + 0.2)) * r]), col)
+
+
+## Square profile icon: framed, clipped head-and-shoulders of a brawler.
+class ProfileIcon extends Control:
+	var brawler_id := ""
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		clip_contents = true
+		var id := brawler_id if brawler_id != "" else Save.profile_icon()
+		var pt := UIKit.BrawlerPortrait.new()
+		pt.brawler_id = id
+		pt.backdrop = false
+		pt.view_kind = "bust"
+		pt.art_scale = 1.0
+		pt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		pt.custom_minimum_size = custom_minimum_size
+		add_child(pt)
+		set_meta("bid", id)
+
+	func _draw() -> void:
+		var id: String = get_meta("bid", "bront")
+		var rc: Color = Config.RARITY_COLORS[Config.BRAWLERS[id].rarity]
+		draw_rect(Rect2(Vector2.ZERO, size), rc.lerp(Color("bfe4ff"), 0.3))
+		draw_rect(Rect2(Vector2.ZERO, size), UIKit.DARK, false, 4.0)

@@ -50,6 +50,27 @@ func _ready() -> void:
 	name_edit.text_submitted.connect(commit)
 	name_row.add_child(save_name)
 
+	# identity: profile icon + title, both changeable
+	var idrow := HBoxContainer.new()
+	idrow.add_theme_constant_override("separation", 14)
+	lv.add_child(idrow)
+	var icon := UIKit.ProfileIcon.new()
+	icon.custom_minimum_size = Vector2(96, 96)
+	idrow.add_child(icon)
+	var idv := VBoxContainer.new()
+	idv.add_theme_constant_override("separation", 6)
+	idrow.add_child(idv)
+	idv.add_child(UIKit.label(Save.title_name(Save.data.get("profile_title", "rookie")), 22, Color("ffb84d"), 6))
+	var ib := HBoxContainer.new()
+	ib.add_theme_constant_override("separation", 8)
+	idv.add_child(ib)
+	var ci := UIKit.button("CHANGE ICON", UIKit.BLUE, 15, Vector2(170, 46))
+	ci.pressed.connect(_pick_icon)
+	ib.add_child(ci)
+	var ct := UIKit.button("CHANGE TITLE", Color("c25bff"), 15, Vector2(170, 46))
+	ct.pressed.connect(_pick_title)
+	ib.add_child(ct)
+
 	var prog := Save.level_progress()
 	lv.add_child(UIKit.label("LEVEL %d   ·   %d / %d XP" % [Save.account_level(), prog.x, prog.y], 20, Color("8fd0ff"), 6))
 	lv.add_child(UIKit.label("TROPHIES  %d    (best %d)" % [Save.total_trophies(), int(Save.data.highest_trophies)], 22, UIKit.YELLOW, 6))
@@ -64,20 +85,6 @@ func _ready() -> void:
 			["LOSSES", s.losses], ["DRAWS", s.draws], ["STAR PLAYER", s.mvp],
 			["KOs", s.kos], ["DEATHS", s.deaths], ["DAMAGE", s.damage]]:
 		grid.add_child(_tile(pair[0], str(pair[1])))
-	lv.add_child(UIKit.label("BRAWLER TROPHIES", 18, Color.WHITE, 5))
-	var bt := HBoxContainer.new()
-	bt.add_theme_constant_override("separation", 6)
-	lv.add_child(bt)
-	for id in Config.BRAWLER_ORDER:
-		var v := VBoxContainer.new()
-		v.add_theme_constant_override("separation", -6)
-		var por := UIKit.BrawlerPortrait.new()
-		por.brawler_id = id
-		por.art_scale = 0.85
-		por.custom_minimum_size = Vector2(96, 84)
-		v.add_child(por)
-		v.add_child(UIKit.label("%d" % Save.brawler_trophies(id), 16, UIKit.YELLOW, 5, HORIZONTAL_ALIGNMENT_CENTER))
-		bt.add_child(v)
 	var reset := UIKit.button("RESET PROGRESS", Color("8a3040"), 16, Vector2(220, 46))
 	reset.pressed.connect(_confirm_reset)
 	lv.add_child(reset)
@@ -89,7 +96,20 @@ func _ready() -> void:
 	var rv := VBoxContainer.new()
 	rv.add_theme_constant_override("separation", 8)
 	right.add_child(rv)
-	rv.add_child(UIKit.label("MATCH HISTORY", 24, Color.WHITE, 6))
+	rv.add_child(UIKit.label("BRAWLER MASTERY", 22, Color.WHITE, 6))
+	var mscroll := ScrollContainer.new()
+	mscroll.custom_minimum_size = Vector2(0, 250)
+	mscroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rv.add_child(mscroll)
+	var mg := GridContainer.new()
+	mg.columns = 3
+	mg.add_theme_constant_override("h_separation", 8)
+	mg.add_theme_constant_override("v_separation", 8)
+	mscroll.add_child(mg)
+	for id in Config.BRAWLER_ORDER:
+		if Save.is_unlocked(id):
+			mg.add_child(_mastery_tile(id))
+	rv.add_child(UIKit.label("MATCH HISTORY", 22, Color.WHITE, 6))
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -102,6 +122,110 @@ func _ready() -> void:
 		list.add_child(UIKit.body("No matches yet — go play one!", 16))
 	for h in Save.data.history:
 		list.add_child(_history_row(h))
+
+func _mastery_tile(id: String) -> Control:
+	var pts := Save.mastery_points(id)
+	var lvl := Progression.mastery_level(pts)
+	var col: Color = Progression.MASTERY_COLORS[lvl]
+	var p := PanelContainer.new()
+	var sb := UIKit.box(Color(0, 0, 0, 0.35), 10, 3, col.darkened(0.2), 0)
+	sb.content_margin_left = 6
+	sb.content_margin_right = 8
+	p.add_theme_stylebox_override("panel", sb)
+	p.custom_minimum_size = Vector2(196, 0)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 6)
+	p.add_child(h)
+	var ic := UIKit.ProfileIcon.new()
+	ic.brawler_id = id
+	ic.custom_minimum_size = Vector2(52, 52)
+	h.add_child(ic)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", -4)
+	h.add_child(v)
+	v.add_child(UIKit.label(Config.BRAWLERS[id].name, 15, Color.WHITE, 4))
+	v.add_child(UIKit.label(Progression.MASTERY_NAMES[lvl], 13, col, 4))
+	var nxt: String = "MAX" if lvl >= 9 else "%d / %d" % [pts, int(Progression.MASTERY_POINTS[lvl + 1])]
+	v.add_child(UIKit.label(nxt, 11, Color(1, 1, 1, 0.7), 3))
+	return p
+
+func _overlay_panel(title: String) -> VBoxContainer:
+	var o := Control.new()
+	o.name = "Picker"
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0.03, 0.04, 0.12, 0.85)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(c)
+	var pnl := UIKit.panel()
+	pnl.custom_minimum_size = Vector2(760, 520)
+	c.add_child(pnl)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	pnl.add_child(v)
+	var hh := HBoxContainer.new()
+	v.add_child(hh)
+	var tl := UIKit.label(title, 30, UIKit.YELLOW, 8)
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hh.add_child(tl)
+	var x := UIKit.button("X", UIKit.RED, 22, Vector2(56, 52))
+	x.pressed.connect(o.queue_free)
+	hh.add_child(x)
+	add_child(o)
+	return v
+
+func _pick_icon() -> void:
+	var v := _overlay_panel("CHOOSE ICON")
+	var g := GridContainer.new()
+	g.columns = 6
+	g.add_theme_constant_override("h_separation", 10)
+	g.add_theme_constant_override("v_separation", 10)
+	v.add_child(g)
+	for id in Config.BRAWLER_ORDER:
+		if not Save.is_unlocked(id):
+			continue
+		var b := Button.new()
+		b.flat = true
+		b.custom_minimum_size = Vector2(110, 110)
+		var ic := UIKit.ProfileIcon.new()
+		ic.brawler_id = id
+		ic.custom_minimum_size = Vector2(110, 110)
+		ic.size = Vector2(110, 110)
+		b.add_child(ic)
+		var bid: String = id
+		b.pressed.connect(func():
+			Save.data.profile_icon = bid
+			Save.save_game()
+			Sfx.play("ui_confirm")
+			Router.goto("profile"))
+		g.add_child(b)
+	v.add_child(UIKit.body("Unlock more brawlers to get more icons.", 14))
+
+func _pick_title() -> void:
+	var v := _overlay_panel("CHOOSE TITLE")
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(0, 420)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var list := VBoxContainer.new()
+	list.add_theme_constant_override("separation", 6)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
+	var have := Save.titles_unlocked()
+	for t in Progression.title_list():
+		var ok: bool = t.id in have
+		var b := UIKit.button(t.name if ok else "%s  (%s)" % [t.name, t.how], Color("c25bff") if ok else Color("3a3f58"), 16, Vector2(700, 46))
+		b.disabled = not ok
+		var tid: String = t.id
+		b.pressed.connect(func():
+			Save.data.profile_title = tid
+			Save.save_game()
+			Sfx.play("ui_confirm")
+			Router.goto("profile"))
+		list.add_child(b)
 
 func _tile(title: String, value: String) -> Control:
 	var p := PanelContainer.new()

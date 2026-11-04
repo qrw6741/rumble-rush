@@ -255,6 +255,10 @@ func _show(id: String) -> void:
 	hv.add_child(UIKit.label(d.name, 42, Color.WHITE, 10))
 	hv.add_child(UIKit.label("%s  ·  %s" % [d.rarity, d.role], 17, rc.lightened(0.3), 6))
 	hv.add_child(UIKit.label("POWER LEVEL %d / %d   ·   %d TROPHIES" % [lvl, Config.MAX_LEVEL, Save.brawler_trophies(id)], 15, UIKit.YELLOW, 5))
+	var mp := Save.mastery_points(id)
+	var ml := Progression.mastery_level(mp)
+	var mtxt: String = "MASTERY: %s   ·   %s" % [Progression.MASTERY_NAMES[ml], "MAX" if ml >= 9 else "%d / %d" % [mp, int(Progression.MASTERY_POINTS[ml + 1])]]
+	hv.add_child(UIKit.label(mtxt, 15, Progression.MASTERY_COLORS[ml].lightened(0.2), 5))
 	var tl := UIKit.body('"%s"' % d.tagline, 16, Color(1, 1, 1, 0.95))
 	hv.add_child(tl)
 	# actions

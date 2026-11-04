@@ -73,8 +73,8 @@ func _events() -> Array:
 		var m: Dictionary = Config.MODES[mode_id]
 		if _tab != "ALL" and m.name != _tab:
 			continue
-		for map_id in m.maps:
-			out.append({"mode": mode_id, "map": map_id})
+		# only the map currently in rotation for each mode
+		out.append({"mode": mode_id, "map": Progression.active_map(mode_id)})
 	return out
 
 func _rebuild() -> void:
@@ -152,7 +152,7 @@ class EventCard extends Button:
 		var w := size.x
 		var h := size.y
 		var ink := UIKit.DARK
-		var sel: bool = Save.data.selected_mode == mode_id and Save.data.get("selected_map", "") == map_id
+		var sel: bool = Save.data.selected_mode == mode_id
 		draw_rect(Rect2(6, 10, w, h), Color(0, 0, 0, 0.3))
 		draw_rect(Rect2(0, 0, w, h), UIKit.YELLOW if sel else ink)
 		var inner := Rect2(5, 5, w - 10, h - 10)
@@ -165,7 +165,8 @@ class EventCard extends Button:
 			draw_colored_polygon(PackedVector2Array([Vector2(x, 5), Vector2(x + 18, 5), Vector2(x - 40, h - 5), Vector2(x - 58, h - 5)]), Color(1, 1, 1, 0.06))
 		# header strip
 		draw_rect(Rect2(inner.position, Vector2(inner.size.x, 54)), Color(0, 0, 0, 0.35))
-		S.text_l(self, "ALWAYS ON", Vector2(16, 38), 15, Color("dff4ff"))
+		UIKit.draw_icon(self, "clock", Vector2(24, 30), 26.0)
+		S.text_l(self, "NEW MAP IN " + Progression.map_time_left(), Vector2(42, 38), 15, Color("dff4ff"))
 		# emblem
 		var ec := Vector2(w * 0.5, 120)
 		var bob := sin(_t * 2.0) * 3.0
@@ -196,8 +197,11 @@ class EventCard extends Button:
 					"G": col = Color("b25bff")
 				draw_rect(Rect2(mp + Vector2(c * cell, r * cell * sy), Vector2(cell, cell * sy + 0.5)), col)
 		# names
-		S.text_c(self, m.name, Vector2(w * 0.5, h - 52), 26, Color.WHITE)
-		S.text_c(self, MapData.MAPS[map_id].name, Vector2(w * 0.5, h - 22), 17, Color("ffe14d"))
+		S.text_c(self, m.name, Vector2(w * 0.5, h - 70), 26, Color.WHITE)
+		S.text_c(self, MapData.MAPS[map_id].name, Vector2(w * 0.5, h - 42), 18, Color("ffe14d"))
+		var nm := Progression.next_map(mode_id)
+		if nm != map_id:
+			S.text_c(self, "NEXT: " + MapData.MAPS[nm].name, Vector2(w * 0.5, h - 16), 13, Color(1, 1, 1, 0.7))
 		if sel:
 			draw_rect(Rect2(Vector2(w * 0.5 - 70, 64), Vector2(140, 26)), ink)
 			S.text_c(self, "SELECTED", Vector2(w * 0.5, 84), 16, Color("4dff7a"))

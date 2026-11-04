@@ -390,3 +390,62 @@ static func champs_tier(wins: int) -> Dictionary:
 		if wins >= int(t.wins):
 			return t
 	return CHAMPS_TIERS[CHAMPS_TIERS.size() - 1]
+
+
+# ------------------------------------------------------------------ brawler mastery
+const MASTERY_POINTS := [0, 100, 250, 500, 900, 1400, 2100, 3000, 4200, 6000]
+const MASTERY_NAMES := ["UNRANKED", "BRONZE I", "BRONZE II", "BRONZE III", "SILVER I", "SILVER II", "SILVER III", "GOLD I", "GOLD II", "GOLD III"]
+const MASTERY_COLORS := [Color("6b5f86"), Color("d98a4a"), Color("d98a4a"), Color("d98a4a"), Color("c9d0de"), Color("c9d0de"), Color("c9d0de"), Color("ffd23a"), Color("ffd23a"), Color("ffd23a")]
+
+static func mastery_level(points: int) -> int:
+	var lv := 0
+	for i in MASTERY_POINTS.size():
+		if points >= int(MASTERY_POINTS[i]):
+			lv = i
+	return lv
+
+## Points earned for one match.
+static func mastery_gain(result: String, kos: int, mvp: bool) -> int:
+	return int({"win": 30, "loss": 10, "draw": 15}.get(result, 10)) + mini(kos, 10) * 5 + (10 if mvp else 0)
+
+## Reward for reaching a mastery level (level 9 also gives a title).
+static func mastery_reward(level: int) -> Dictionary:
+	if level >= 9:
+		return {"type": "gems", "amount": 30}
+	if level % 3 == 0:
+		return {"type": "gems", "amount": 5 + level}
+	return {"type": "credits", "amount": 40 * level}
+
+# ------------------------------------------------------------------ map rotation
+## Each mode shows one active map; the map changes every 3 hours.
+const MAP_ROTATION_SECS := 10800
+
+static func _map_slot(mode_id: String) -> int:
+	return int(Time.get_unix_time_from_system()) / MAP_ROTATION_SECS + (abs(hash(mode_id)) % 7)
+
+static func active_map(mode_id: String) -> String:
+	var maps: Array = Config.MODES[mode_id].maps
+	return maps[_map_slot(mode_id) % maps.size()]
+
+static func next_map(mode_id: String) -> String:
+	var maps: Array = Config.MODES[mode_id].maps
+	return maps[(_map_slot(mode_id) + 1) % maps.size()]
+
+static func map_time_left() -> String:
+	var left := MAP_ROTATION_SECS - int(Time.get_unix_time_from_system()) % MAP_ROTATION_SECS
+	return "%dh %dm" % [left / 3600, (left % 3600) / 60]
+
+# ------------------------------------------------------------------ profile titles
+## Every title: id -> [label, how to unlock]. Unlock checks live in Save.titles_unlocked().
+static func title_list() -> Array:
+	var out: Array = [
+		{"id": "rookie", "name": "ROOKIE", "how": "Everyone starts here"},
+		{"id": "brawler", "name": "SEASONED BRAWLER", "how": "Reach account level 5"},
+		{"id": "hunter", "name": "TROPHY HUNTER", "how": "Reach 500 total trophies"},
+		{"id": "collector", "name": "COLLECTOR", "how": "Unlock 10 brawlers"},
+		{"id": "qualifier", "name": "CHAMPS QUALIFIER", "how": "Finish a Champs Finals run"},
+		{"id": "champ1", "name": "CHAMPS LEGEND", "how": "Finish Champs at RANK I"},
+	]
+	for id in Config.BRAWLER_ORDER:
+		out.append({"id": "master_" + id, "name": Config.BRAWLERS[id].name + " MASTER", "how": "Reach GOLD III mastery with " + Config.BRAWLERS[id].name})
+	return out

@@ -55,9 +55,9 @@ func setup(params: Dictionary) -> void:
 	sim_time_scale = params.get("time_scale", 1.0)
 	var maps: Array = Config.MODES[mode_id].maps
 	var fallback: String = maps[randi() % maps.size()]
-	var chosen: String = Save.data.get("selected_map", "")
-	if chosen in maps and not params.has("map") and not params.get("autoplay", false):
-		fallback = chosen
+	# the map in rotation for this mode right now
+	if not params.get("autoplay", false):
+		fallback = Progression.active_map(mode_id)
 	map_id = params.get("map", fallback)
 
 func _ready() -> void:

@@ -69,6 +69,9 @@ func _default() -> Dictionary:
 		"rank_claimed": ranks,
 		"skins_owned": [],
 		"gems": 30,
+		"mastery": {},
+		"profile_icon": "",
+		"profile_title": "rookie",
 		"champs": {"stage": "qualifier", "q_w": 0, "q_l": 0, "f_w": 0, "f_l": 0, "best": "", "runs": 0},
 		"unlocked": Config.STARTER_BRAWLERS.duplicate(),
 		"challenge_kos": {},
@@ -270,6 +273,15 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 		if add > 0:
 			data.quests.progress[q.id] = mini(int(q.goal), int(data.quests.progress.get(q.id, 0)) + add)
 
+	# brawler mastery
+	var m_before := int(data.mastery.get(brawler_id, 0))
+	var m_gain := Progression.mastery_gain(result, kos, mvp)
+	data.mastery[brawler_id] = m_before + m_gain
+	var lv_before := Progression.mastery_level(m_before)
+	var lv_after := Progression.mastery_level(m_before + m_gain)
+	for lvl in range(lv_before + 1, lv_after + 1):
+		grant_reward(Progression.mastery_reward(lvl))
+
 	var bt := brawler_trophies(brawler_id)
 	var trophy_delta := 0
 	trophy_delta = Progression.trophy_change(bt, result, placement)
@@ -302,7 +314,8 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	save_game()
 	return {"duplicate": false, "trophies": trophy_delta, "credits": credits, "xp": xp, "tokens": tokens,
 		"rank_up": Progression.rank_for(bt + trophy_delta) > Progression.rank_for(bt), "new_rank": Progression.rank_for(bt + trophy_delta),
-		"level_up": account_level() > old_level, "new_level": account_level()}
+		"level_up": account_level() > old_level, "new_level": account_level(),
+		"mastery_gain": m_gain, "mastery_points": m_before + m_gain, "mastery_level_up": lv_after > lv_before, "mastery_level": lv_after}
 
 func reset_progress() -> void:
 	var keep_settings: Dictionary = data.settings.duplicate(true)
@@ -494,6 +507,37 @@ func _rank_index(rank: String) -> int:
 		if Progression.CHAMPS_TIERS[i].rank == rank:
 			return i
 	return 99
+
+func mastery_points(id: String) -> int:
+	return int(data.mastery.get(id, 0))
+
+# ------------------------------------------------------------------ profile
+func titles_unlocked() -> Array:
+	var out: Array = ["rookie"]
+	if account_level() >= 5:
+		out.append("brawler")
+	if total_trophies() >= 500:
+		out.append("hunter")
+	if data.unlocked.size() >= 10:
+		out.append("collector")
+	if int(data.champs.get("runs", 0)) > 0:
+		out.append("qualifier")
+	if String(data.champs.get("best", "")) == "RANK I":
+		out.append("champ1")
+	for id in Config.BRAWLER_ORDER:
+		if Progression.mastery_level(mastery_points(id)) >= 9:
+			out.append("master_" + id)
+	return out
+
+func title_name(tid: String) -> String:
+	for t in Progression.title_list():
+		if t.id == tid:
+			return t.name
+	return "ROOKIE"
+
+func profile_icon() -> String:
+	var ic: String = data.get("profile_icon", "")
+	return ic if ic != "" and is_unlocked(ic) else data.selected_brawler
 
 func _quest_roll() -> void:
 	if data.quests.get("day", "") != today_key():

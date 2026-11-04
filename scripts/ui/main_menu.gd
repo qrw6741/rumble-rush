@@ -120,9 +120,14 @@ func _build_top_bar() -> void:
 	prof.position = Vector2(14, 10)
 	prof.size = Vector2(200, 92)
 	prof.custom_draw = func(ci: Control):
-		UIKit.draw_icon(ci, "profile", Vector2(100, 36), 62.0)
-		SlantButton.text_c(ci, Save.data.username, Vector2(100, 84), 18, Color.WHITE)
+		SlantButton.text_l(ci, Save.data.username, Vector2(84, 42), 20, Color.WHITE)
+		SlantButton.text_l(ci, Save.title_name(Save.data.get("profile_title", "rookie")), Vector2(84, 68), 12, Color("ffb84d"))
 	prof.name = "ProfileTile"
+	var pic := UIKit.ProfileIcon.new()
+	pic.custom_minimum_size = Vector2(66, 66)
+	pic.size = Vector2(66, 66)
+	pic.position = Vector2(12, 12)
+	prof.add_child(pic)
 	prof.pressed.connect(func(): Router.goto("profile"))
 	add_child(prof)
 
@@ -289,8 +294,7 @@ func _build_mode_panel() -> void:
 		# mode icon
 		UIKit.draw_icon(ci, m.get("icon", "mode_gem"), Vector2(70, 60), 96.0)
 		SlantButton.text_l(ci, m.name, Vector2(126, 56), 27, Color.WHITE)
-		var sel_map: String = Save.data.get("selected_map", "")
-		var map_txt: String = MapData.MAPS[sel_map].name if sel_map in maps else "RANDOM ARENA"
+		var map_txt: String = MapData.MAPS[Progression.active_map(mid)].name
 		SlantButton.text_l(ci, map_txt, Vector2(128, 90), 17, Color("9dff8a"))
 		# cycle arrow
 		var ar := Rect2(Vector2(368, 34), Vector2(40, 50))
