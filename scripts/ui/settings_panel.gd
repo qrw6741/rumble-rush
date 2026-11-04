@@ -27,6 +27,7 @@ func _ready() -> void:
 	v.add_child(choice_row("TOUCH CONTROLS", "touch_controls", ["auto", "on", "off"], ["AUTO", "ON", "OFF"]))
 	v.add_child(choice_row("BRAWLER VIEW", "view_mode", ["3d", "2d"], ["3D", "2D"]))
 	v.add_child(choice_row("MAP VIEW", "map_view", ["3d", "2d"], ["3D", "2D"]))
+	v.add_child(choice_row("RESOLUTION", "resolution", ["720p", "1080p", "native"], ["720P", "1080P", "NATIVE"]))
 	v.add_child(choice_row("GRAPHICS", "graphics", ["auto", "high", "low"], ["AUTO", "HIGH", "LOW"]))
 	v.add_child(toggle_row("AIM ASSIST", "aim_assist"))
 	v.add_child(toggle_row("SCREEN SHAKE", "screen_shake"))

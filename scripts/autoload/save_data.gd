@@ -79,7 +79,7 @@ func _default() -> Dictionary:
 		"settings": {
 			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "auto",
 			"touch_controls": "auto", "screen_shake": true, "damage_numbers": true,
-			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto", "fps_cap": 60, "view_mode": "3d", "map_view": "3d",
+			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto", "fps_cap": 60, "view_mode": "3d", "map_view": "3d", "resolution": "native",
 		},
 	}
 
@@ -174,6 +174,8 @@ func apply_settings() -> void:
 		if want_fs != is_fs:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if want_fs else DisplayServer.WINDOW_MODE_WINDOWED)
 	apply_fps()
+	if is_instance_valid(Router) and Router.root_container and Router.root_container.has_method("apply_resolution"):
+		Router.root_container.apply_resolution()
 	if is_instance_valid(Sfx) and Sfx.is_node_ready():
 		Sfx.apply_volumes()
 

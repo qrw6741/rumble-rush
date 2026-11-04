@@ -14,6 +14,7 @@ func _ready() -> void:
 		Save.apply_fps()
 		get_tree().root.size_changed.connect(func(): _apply_orientation.call_deferred())
 		_apply_orientation()
+	apply_resolution()
 	# Command line: `-- --autotest` runs an automated bot-vs-bot match (used for QA).
 	var args := OS.get_cmdline_user_args()
 	if "--gallery" in args:
@@ -101,6 +102,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	if "--demo-champs" in args:
 		Save.save_path = "user://demo_save.json"
 		Save.data.champs = {"stage": "finals", "q_w": 5, "q_l": 1, "f_w": 9, "f_l": 3, "best": "RANK IV", "runs": 2}
+	if "--res1080" in args:
+		Save.data.settings.resolution = "1080p"
+		apply_resolution()
 	if "--view2d" in args:
 		Save.data.settings.view_mode = "2d"
 		Save.data.settings.map_view = "2d"
@@ -142,6 +146,31 @@ func _demo_inputs(args: PackedStringArray) -> void:
 		Input.action_press("super")
 
 
+# ------------------------------------------------------------------ resolution
+## RESOLUTION setting. The layout always stays 1280x720 "logical" pixels; only how
+## many real pixels the game is drawn with changes:
+##   720p   -> drawn at 1280x720 then scaled to the screen (fastest)
+##   1080p  -> drawn at 1920x1080 then scaled (sharp, still light)
+##   native -> drawn at the screen's own resolution (sharpest)
+func apply_resolution() -> void:
+	var root := get_tree().root
+	if _portrait:
+		return # the upright-phone wrapper manages its own rendering size
+	var res: String = Save.setting("resolution")
+	match res:
+		"720p":
+			root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+			root.content_scale_size = Vector2i(1280, 720)
+			root.content_scale_factor = 1.0
+		"1080p":
+			root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+			root.content_scale_size = Vector2i(1920, 1080)
+			root.content_scale_factor = 1.5
+		_:
+			root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+			root.content_scale_size = Vector2i(1280, 720)
+			root.content_scale_factor = 1.0
+
 # ------------------------------------------------------------------ always-landscape
 ## iPhone browsers can't lock orientation, so when the screen is held upright we
 ## render the whole game into a landscape viewport and rotate it 90°. Touch input
@@ -155,6 +184,7 @@ func _apply_orientation() -> void:
 		root.content_scale_size = Vector2i(720, 1280) if portrait else Vector2i(1280, 720)
 		# always render the 2D at the screen's full resolution (never a blurry upscale)
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		apply_resolution.call_deferred()
 		if portrait:
 			_wrap = SubViewportContainer.new()
 			_wrap.stretch = false
