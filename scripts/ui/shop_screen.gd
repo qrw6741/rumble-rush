@@ -99,37 +99,28 @@ func _build() -> void:
 	var week := _until_week_end()
 	var day := _until_midnight()
 
-	# OFFERS: starter pack + featured skin
+	# OFFERS: starter pack
 	var offers := _section("OFFERS", "")
 	var sp: Dictionary = Progression.STARTER_PACK.duplicate()
 	sp["timer"] = week
 	sp["flag"] = "NEW"
 	sp["note"] = "One-time offer!"
 	_card(offers, sp, "bundle", Color("ff9d2e"), Vector2(320, 520))
-	for o in Save.shop_offers():
-		if String(o.id).begins_with("deal_skin"):
-			var fo: Dictionary = o.duplicate()
-			fo["timer"] = day
-			fo["title"] = "SPECIAL OFFER"
-			fo["old_cost"] = Progression.skin_price(o.reward.skin)
-			_card(offers, fo, "skin", Color("2a8cff"), Vector2(320, 520))
 
 	# DAILY DEALS: two rows of small cards
 	var daily := _section("DAILY DEALS", day)
 	var grid := _grid(daily, 2)
 	for o in Save.shop_offers():
-		if String(o.id).begins_with("deal_skin"):
-			continue
 		_card(grid, o, "small", Color("8e4dff") if o.currency != "free" else Color("2fb8ec"), Vector2(230, 250))
 
-	# SKINS: tall cards with the 3D model
-	var skins := _section("SKINS", "")
-	for id in Config.BRAWLER_ORDER:
-		for sk in Progression.skins_for(id):
-			var key := "%s:%s" % [id, sk]
-			var so := {"id": "skin_%s_%s" % [id, sk], "title": Config.BRAWLERS[id].name, "reward": {"type": "skin", "brawler": id, "skin": sk},
-				"currency": "gems", "cost": Progression.skin_price(sk), "repeat": true, "owned": key in Save.data.skins_owned}
-			_card(skins, so, "skin", Progression.palette(id, sk).primary.darkened(0.15), Vector2(260, 520))
+	# SKINS: only 3 at a time, rotating every 2 hours
+	var rot_left := Progression.rotation_time_left()
+	var skins := _section("SKINS", rot_left)
+	for so: Dictionary in Progression.skin_rotation():
+		var r: Dictionary = so.reward
+		so["owned"] = ("%s:%s" % [r.brawler, r.skin]) in Save.data.skins_owned
+		so["timer"] = rot_left
+		_card(skins, so, "skin", Progression.palette(r.brawler, r.skin).primary.darkened(0.15), Vector2(280, 520))
 
 	# RESOURCES: drops + credit packs
 	var res := _section("RESOURCES", "")

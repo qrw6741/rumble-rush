@@ -315,12 +315,48 @@ static func daily_offers(day_key: String) -> Array:
 	var offers: Array = [{"id": "daily_gift", "title": "DAILY GIFT", "reward": [{"type": "drop", "tier": 0}, {"type": "credits", "amount": 60}, {"type": "gems", "amount": 3}][rng.randi() % 3], "currency": "free", "cost": 0}]
 	offers.append({"id": "deal_drop", "title": "SUPER DEAL", "reward": {"type": "drop", "tier": 1}, "currency": "credits", "cost": 220 + rng.randi_range(0, 4) * 20, "tag": "-30%"})
 	offers.append({"id": "deal_tokens", "title": "PASS BOOST", "reward": {"type": "tokens", "amount": 200}, "currency": "credits", "cost": 150})
-	var ids: Array = Config.BRAWLER_ORDER.duplicate()
-	var sk_id: String = ids[rng.randi() % ids.size()]
-	var opts: Array = skins_for(sk_id)
-	var sk: String = opts[rng.randi() % opts.size()]
-	offers.append({"id": "deal_skin_%s_%s" % [sk_id, sk], "title": "FEATURED SKIN", "reward": {"type": "skin", "brawler": sk_id, "skin": sk}, "currency": "gems", "cost": int(skin_price(sk) * 0.7), "tag": "-30%"})
 	return offers
+
+# ------------------------------------------------------------------ skin rotation
+## The shop sells only 3 skins at a time; the set changes every 2 hours.
+const SKIN_ROTATION_SECS := 7200
+const SKINS_PER_ROTATION := 3
+
+static func rotation_slot() -> int:
+	return int(Time.get_unix_time_from_system()) / SKIN_ROTATION_SECS
+
+static func rotation_time_left() -> String:
+	var left := SKIN_ROTATION_SECS - int(Time.get_unix_time_from_system()) % SKIN_ROTATION_SECS
+	return "%dh %dm" % [left / 3600, (left % 3600) / 60]
+
+## This rotation's skins as shop offers. The first one is featured at 30% off.
+static func skin_rotation() -> Array:
+	var pool: Array = []
+	for id in Config.BRAWLER_ORDER:
+		for sk in skins_for(id):
+			pool.append([id, sk])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("skins%d" % rotation_slot())
+	# shuffle with the seeded rng so every player sees the same set for 2 hours
+	for i in range(pool.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var tmp = pool[i]
+		pool[i] = pool[j]
+		pool[j] = tmp
+	var out: Array = []
+	for k in mini(SKINS_PER_ROTATION, pool.size()):
+		var id: String = pool[k][0]
+		var sk: String = pool[k][1]
+		var price := skin_price(sk)
+		var o := {"id": "skin_%s_%s" % [id, sk], "title": Config.BRAWLERS[id].name, "reward": {"type": "skin", "brawler": id, "skin": sk},
+			"currency": "gems", "cost": price, "repeat": true}
+		if k == 0:
+			o.cost = int(price * 0.7)
+			o["old_cost"] = price
+			o["tag"] = "-30%"
+			o["flag"] = "FEATURED"
+		out.append(o)
+	return out
 
 
 # ------------------------------------------------------------------ CHAMPS (competitive)
