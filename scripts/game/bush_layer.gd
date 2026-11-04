@@ -27,7 +27,7 @@ var _last_key := ""
 var _acc := 0.0
 
 func _ready() -> void:
-	_low = Save.low_graphics() or (map.w * map.h > 900 and Save.setting("graphics") != "high")
+	_low = Save.low_graphics() or map.flat or (map.w * map.h > 900 and Save.setting("graphics") != "high")
 
 func _process(delta: float) -> void:
 	if not _low:

@@ -54,6 +54,9 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 func _draw() -> void:
+	if map and map.flat:
+		_draw_flat()
+		return
 	var off := Vector2(randf_range(-2, 2), 0) if _shake > 0 else Vector2.ZERO
 	var base: Color = theme.crate.lerp(Color.WHITE, _flash * 0.6)
 	var dark: Color = theme.crate_dark.lerp(Color.WHITE, _flash * 0.4)
@@ -90,3 +93,16 @@ func _draw() -> void:
 		draw_polyline(PackedVector2Array([top.position + Vector2(8, 12), top.position + Vector2(16, 18), top.position + Vector2(13, 27)]), ink, 2.0)
 	if dmg > 0.66:
 		draw_polyline(PackedVector2Array([top.end - Vector2(8, 10), top.end - Vector2(17, 16), top.end - Vector2(12, 26)]), ink, 2.0)
+
+
+func _draw_flat() -> void:
+	var off := Vector2(randf_range(-2, 2), 0) if _shake > 0 else Vector2.ZERO
+	var base: Color = theme.crate.lerp(Color.WHITE, _flash * 0.6)
+	var dark: Color = theme.crate_dark
+	var r := Rect2(Vector2(-T * 0.5 + 3, -T + 3) + off, Vector2(T - 6, T - 6))
+	draw_rect(r, base)
+	draw_line(r.position + Vector2(6, 6), r.end - Vector2(6, 6), dark, 5.0)
+	draw_line(Vector2(r.position.x + 6, r.end.y - 6), Vector2(r.end.x - 6, r.position.y + 6), dark, 5.0)
+	draw_rect(r, Color("1a1028"), false, 3.0)
+	if hp < MAX_HP * 0.5:
+		draw_polyline(PackedVector2Array([r.position + Vector2(8, 12), r.position + Vector2(16, 18), r.position + Vector2(13, 27)]), Color("1a1028"), 2.0)

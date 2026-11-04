@@ -18,7 +18,7 @@ func setup(m: ArenaMap) -> void:
 var _acc := 0.0
 
 func _process(delta: float) -> void:
-	if _cells.is_empty():
+	if _cells.is_empty() or (map.flat and _t > 0.0):
 		return
 	_t += delta
 	_acc += delta

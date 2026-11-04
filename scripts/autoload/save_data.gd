@@ -76,7 +76,7 @@ func _default() -> Dictionary:
 		"settings": {
 			"music_volume": 0.6, "sfx_volume": 0.85, "difficulty": "auto",
 			"touch_controls": "auto", "screen_shake": true, "damage_numbers": true,
-			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto", "fps_cap": 60, "view_mode": "3d",
+			"aim_assist": true, "fullscreen": false, "show_fps": false, "graphics": "auto", "fps_cap": 60, "view_mode": "3d", "map_view": "3d",
 		},
 	}
 

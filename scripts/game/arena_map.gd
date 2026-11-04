@@ -23,8 +23,11 @@ var ffa_spawns: Array[Vector2] = []
 var _decals: Array = []
 var _water_node: Node2D
 
+var flat := false # "2D map" setting: everything drawn flat from straight above, in one pass
+
 func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	map_id = id
+	flat = Save.setting("map_view") == "2d"
 	theme = MapData.MAPS[id].theme
 	grid = MapData.build_grid(id)
 	h = grid.size()
@@ -62,9 +65,10 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 						run += 1
 					_add_rect(walls_body, Vector2(c * T, r * T), Vector2(run * T, T))
 					for k in run:
-						var wb := WallBlock.new()
-						wb.setup(Vector2i(c + k, r), theme, _wall_neighbors(c + k, r))
-						entity_layer.add_child(wb)
+						if not flat:
+							var wb := WallBlock.new()
+							wb.setup(Vector2i(c + k, r), theme, _wall_neighbors(c + k, r))
+							entity_layer.add_child(wb)
 						astar.set_point_solid(Vector2i(c + k, r), true)
 					c += run
 					continue
@@ -126,6 +130,8 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	queue_redraw()
 
 func _add_border_block(layer: Node2D, c: int, r: int) -> void:
+	if flat:
+		return
 	var wb := WallBlock.new()
 	wb.setup(Vector2i(c, r), theme, _wall_neighbors(c, r))
 	if r == h:
@@ -194,6 +200,9 @@ func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 	return astar.get_point_path(a, b)
 
 func _draw() -> void:
+	if flat:
+		_draw_flat()
+		return
 	var th := theme
 	# outside the arena
 	draw_rect(Rect2(-T * 12, -T * 12, size_px.x + T * 24, size_px.y + T * 24), th.bg)
@@ -275,3 +284,53 @@ func _spawn_pad(p: Vector2, col: Color) -> void:
 	draw_circle(p, 24, c)
 	c.a = 0.6
 	draw_arc(p, 24, 0, TAU, 32, c, 3.0, true)
+
+
+## Flat top-down map: plain tiles, flat walls with an inked edge, no shadows.
+## Drawn once (the map never redraws), so it costs almost nothing per frame.
+func _draw_flat() -> void:
+	var th := theme
+	var ink := Color("1a1028")
+	draw_rect(Rect2(-T * 12, -T * 12, size_px.x + T * 24, size_px.y + T * 24), th.bg)
+	for r in h:
+		for c in w:
+			draw_rect(Rect2(c * T, r * T, T, T), th.floor_a if (r + c) % 2 == 0 else th.floor_b)
+	for d in _decals:
+		var p: Vector2 = d[0]
+		var sz: float = d[1]
+		draw_circle(p, sz * 0.8, th.decal)
+	for sp in blue_spawns:
+		_spawn_pad(sp, Config.TEAM_COLORS[0])
+	for sp in red_spawns:
+		_spawn_pad(sp, Config.TEAM_COLORS[1])
+	var hl: Color = th.floor_edge
+	hl.a = 0.5
+	var y := size_px.y * 0.5
+	var x := 0.0
+	while x < size_px.x:
+		draw_line(Vector2(x, y), Vector2(x + 18, y), hl, 3.0)
+		x += 32
+	# walls (incl. the border ring): fill, then ink only on edges facing open floor
+	var top: Color = th.wall_top
+	for r in range(-1, h + 1):
+		for c in range(-1, w + 1):
+			if not is_wall_char(c, r):
+				continue
+			var rect := Rect2(c * T, r * T, T, T)
+			draw_rect(rect, top)
+			draw_rect(rect.grow(-7), top.lightened(0.08))
+	for r in range(-1, h + 1):
+		for c in range(-1, w + 1):
+			if not is_wall_char(c, r):
+				continue
+			var x0 := c * T
+			var y0 := r * T
+			if not is_wall_char(c, r - 1):
+				draw_line(Vector2(x0, y0), Vector2(x0 + T, y0), ink, 4.0)
+			if not is_wall_char(c, r + 1):
+				draw_line(Vector2(x0, y0 + T), Vector2(x0 + T, y0 + T), ink, 4.0)
+				draw_rect(Rect2(x0, y0 + T - 8, T, 6), top.darkened(0.25))
+			if not is_wall_char(c - 1, r):
+				draw_line(Vector2(x0, y0), Vector2(x0, y0 + T), ink, 4.0)
+			if not is_wall_char(c + 1, r):
+				draw_line(Vector2(x0 + T, y0), Vector2(x0 + T, y0 + T), ink, 4.0)
