@@ -116,6 +116,18 @@ func _ready() -> void:
 	_fit_zoom()
 	get_viewport().size_changed.connect(_fit_zoom)
 
+	# soft vignette between the world and the HUD
+	var vl := CanvasLayer.new()
+	vl.layer = 5
+	add_child(vl)
+	var vig := ColorRect.new()
+	vig.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vig.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var vm := ShaderMaterial.new()
+	vm.shader = preload("res://assets/shaders/vignette.gdshader")
+	vig.material = vm
+	vl.add_child(vig)
+
 	var ui := CanvasLayer.new()
 	ui.layer = 10
 	add_child(ui)

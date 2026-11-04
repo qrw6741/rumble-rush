@@ -127,7 +127,32 @@ func build(id: String, entity_layer: Node2D, bush_layer: Node2D) -> void:
 	var bushes := BushLayer.new()
 	bushes.setup(self)
 	bush_layer.add_child(bushes)
+	if flat:
+		_bake_flat()
 	queue_redraw()
+
+## Paints the whole flat map ONCE into a texture: as much detail as we like,
+## and only a single quad to draw every frame afterwards.
+func _bake_flat() -> void:
+	var pad := T * 3.0
+	var vp := SubViewport.new()
+	vp.size = Vector2i(int(size_px.x + pad * 2), int(size_px.y + pad * 2))
+	vp.transparent_bg = false
+	vp.msaa_2d = Viewport.MSAA_4X
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	vp.disable_3d = true
+	var painter := FlatPainter.new()
+	painter.map = self
+	painter.position = Vector2(pad, pad)
+	vp.add_child(painter)
+	add_child(vp)
+	var spr := Sprite2D.new()
+	spr.texture = vp.get_texture()
+	spr.centered = false
+	spr.position = Vector2(-pad, -pad)
+	spr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	add_child(spr)
+	move_child(spr, 0)
 
 func _add_border_block(layer: Node2D, c: int, r: int) -> void:
 	if flat:
@@ -201,8 +226,7 @@ func find_path(from: Vector2, to: Vector2) -> PackedVector2Array:
 
 func _draw() -> void:
 	if flat:
-		_draw_flat()
-		return
+		return # the painted map texture (see _bake_flat) does all the work
 	var th := theme
 	# outside the arena
 	draw_rect(Rect2(-T * 12, -T * 12, size_px.x + T * 24, size_px.y + T * 24), th.bg)
@@ -286,39 +310,120 @@ func _spawn_pad(p: Vector2, col: Color) -> void:
 	draw_arc(p, 24, 0, TAU, 32, c, 3.0, true)
 
 
-## Flat top-down map: plain tiles, flat walls with an inked edge, no shadows.
-## Drawn once (the map never redraws), so it costs almost nothing per frame.
-func _draw_flat() -> void:
+## Draws the detailed flat map onto `ci` (called once by FlatPainter).
+func paint_flat(ci: CanvasItem) -> void:
 	var th := theme
 	var ink := Color("1a1028")
-	draw_rect(Rect2(-T * 12, -T * 12, size_px.x + T * 24, size_px.y + T * 24), th.bg)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(map_id) + 7
+	var pad := T * 3.0
+	# surroundings: darker ground with soft blobs
+	ci.draw_rect(Rect2(-pad, -pad, size_px.x + pad * 2, size_px.y + pad * 2), th.bg)
+	for i in 60:
+		var p := Vector2(rng.randf_range(-pad, size_px.x + pad), rng.randf_range(-pad, size_px.y + pad))
+		ci.draw_circle(p, rng.randf_range(10, 34), th.bg.lightened(rng.randf_range(-0.06, 0.06)))
+	# floor tiles: soft per-tile tint, speckles and rounded grout
 	for r in h:
 		for c in w:
-			draw_rect(Rect2(c * T, r * T, T, T), th.floor_a if (r + c) % 2 == 0 else th.floor_b)
+			var base: Color = th.floor_a if (r + c) % 2 == 0 else th.floor_b
+			base = base.lightened(rng.randf_range(-0.025, 0.035))
+			var rect := Rect2(c * T, r * T, T, T)
+			ci.draw_rect(rect, base.darkened(0.07))
+			ci.draw_rect(rect.grow(-1.5), base)
+			ci.draw_rect(Rect2(rect.position + Vector2(2, 2), Vector2(T - 4, 6)), base.lightened(0.05))
+			for k in 4:
+				var sp := rect.position + Vector2(rng.randf_range(5, T - 5), rng.randf_range(5, T - 5))
+				ci.draw_circle(sp, rng.randf_range(0.8, 2.0), base.darkened(rng.randf_range(0.05, 0.12)))
+	# decals: pebbles, cracks, bones
 	for d in _decals:
 		var p: Vector2 = d[0]
 		var sz: float = d[1]
-		draw_circle(p, sz * 0.8, th.decal)
-	for sp in blue_spawns:
-		_spawn_pad(sp, Config.TEAM_COLORS[0])
-	for sp in red_spawns:
-		_spawn_pad(sp, Config.TEAM_COLORS[1])
+		var col: Color = th.decal
+		match int(d[2]):
+			0:
+				ci.draw_circle(p + Vector2(1, 2), sz, col.darkened(0.25))
+				ci.draw_circle(p, sz, col)
+				ci.draw_circle(p - Vector2(sz * 0.3, sz * 0.3), sz * 0.35, col.lightened(0.25))
+			1:
+				ci.draw_polyline(PackedVector2Array([p, p + Vector2(sz, sz * 0.6), p + Vector2(sz * 1.6, -sz * 0.3), p + Vector2(sz * 2.6, sz * 0.4)]), col.darkened(0.2), 2.0, true)
+			3:
+				var rot: float = d[3]
+				var dir := Vector2(cos(rot), sin(rot)) * sz * 1.6
+				ci.draw_line(p - dir + Vector2(2, 3), p + dir + Vector2(2, 3), Color(0, 0, 0, 0.18), 7.0, true)
+				ci.draw_line(p - dir, p + dir, Color("fff6e0"), 4.0, true)
+				for e in [p - dir, p + dir]:
+					for o in [-1, 1]:
+						ci.draw_circle(e + dir.orthogonal().normalized() * 3.0 * o, 3.2, Color("fff6e0"))
+			_:
+				ci.draw_circle(p, sz * 0.7, col)
+	# grass tufts along the floor edge of grassy maps
+	if th.get("grass", false):
+		for i in 140:
+			var gp := Vector2(rng.randf_range(0, size_px.x), rng.randf_range(0, size_px.y))
+			if is_wall_char(int(gp.x / T), int(gp.y / T)):
+				continue
+			var gc := Color("9fbf5a").lerp(th.floor_a, 0.35)
+			for b in 3:
+				var tip := gp + Vector2(-4 + b * 4, -6 - (b % 2) * 3)
+				ci.draw_line(gp + Vector2(-2 + b * 2, 0), tip, gc, 1.6, true)
+	# spawn pads + half line
+	for sp2 in blue_spawns:
+		_spawn_pad_on(ci, sp2, Config.TEAM_COLORS[0])
+	for sp2 in red_spawns:
+		_spawn_pad_on(ci, sp2, Config.TEAM_COLORS[1])
 	var hl: Color = th.floor_edge
-	hl.a = 0.5
+	hl.a = 0.45
 	var y := size_px.y * 0.5
 	var x := 0.0
 	while x < size_px.x:
-		draw_line(Vector2(x, y), Vector2(x + 18, y), hl, 3.0)
+		ci.draw_line(Vector2(x, y), Vector2(x + 18, y), hl, 3.0, true)
 		x += 32
-	# walls (incl. the border ring): fill, then ink only on edges facing open floor
+	# soft drop shadows from walls (down-right), layered for a smooth falloff
+	for layer in 4:
+		var off := 4.0 + layer * 4.0
+		var sh := Color(0.1, 0.05, 0.15, 0.07)
+		for r in range(-1, h + 1):
+			for c in range(-1, w + 1):
+				if is_wall_char(c, r):
+					ci.draw_rect(Rect2(c * T + off * 0.6, r * T + off, T, T), sh)
+	# ambient occlusion: floor darkens softly right next to walls
+	for r in h:
+		for c in w:
+			if is_wall_char(c, r):
+				continue
+			var x0 := c * T
+			var y0 := r * T
+			for k in 4:
+				var a := 0.09 - k * 0.02
+				var o := k * 3.0
+				if is_wall_char(c, r - 1):
+					ci.draw_rect(Rect2(x0, y0 + o, T, 3), Color(0, 0, 0, a))
+				if is_wall_char(c - 1, r):
+					ci.draw_rect(Rect2(x0 + o, y0, 3, T), Color(0, 0, 0, a))
+				if is_wall_char(c + 1, r):
+					ci.draw_rect(Rect2(x0 + T - 3 - o, y0, 3, T), Color(0, 0, 0, a))
+	# walls: bevelled stone tops with block pattern
 	var top: Color = th.wall_top
+	var line_c: Color = th.wall_line
 	for r in range(-1, h + 1):
 		for c in range(-1, w + 1):
 			if not is_wall_char(c, r):
 				continue
 			var rect := Rect2(c * T, r * T, T, T)
-			draw_rect(rect, top)
-			draw_rect(rect.grow(-7), top.lightened(0.08))
+			ci.draw_rect(rect, top)
+			# gentle vertical gradient
+			for k in 6:
+				ci.draw_rect(Rect2(rect.position.x, rect.position.y + k * T / 6.0, T, T / 6.0 + 0.5), Color(1, 1, 1, 0.07 - k * 0.018))
+			# stone blocks: offset rows
+			var stone := top.darkened(0.12)
+			ci.draw_line(Vector2(rect.position.x, rect.position.y + T * 0.5), Vector2(rect.end.x, rect.position.y + T * 0.5), stone, 2.0)
+			var ox := T * (0.5 if (r + 100) % 2 == 0 else 0.25)
+			ci.draw_line(Vector2(rect.position.x + ox, rect.position.y + 2), Vector2(rect.position.x + ox, rect.position.y + T * 0.5), stone, 2.0)
+			ci.draw_line(Vector2(rect.position.x + fmod(ox + T * 0.5, T), rect.position.y + T * 0.5), Vector2(rect.position.x + fmod(ox + T * 0.5, T), rect.end.y - 2), stone, 2.0)
+			if rng.randf() < 0.25:
+				var cp := rect.position + Vector2(rng.randf_range(8, T - 8), rng.randf_range(8, T - 8))
+				ci.draw_polyline(PackedVector2Array([cp, cp + Vector2(5, 4), cp + Vector2(3, 10)]), stone.darkened(0.1), 1.5, true)
+	# bevel + ink only where a wall meets open floor
 	for r in range(-1, h + 1):
 		for c in range(-1, w + 1):
 			if not is_wall_char(c, r):
@@ -326,11 +431,28 @@ func _draw_flat() -> void:
 			var x0 := c * T
 			var y0 := r * T
 			if not is_wall_char(c, r - 1):
-				draw_line(Vector2(x0, y0), Vector2(x0 + T, y0), ink, 4.0)
+				ci.draw_rect(Rect2(x0, y0 + 2, T, 5), line_c.lerp(top, 0.4))
+				ci.draw_line(Vector2(x0, y0), Vector2(x0 + T, y0), ink, 4.0, true)
 			if not is_wall_char(c, r + 1):
-				draw_line(Vector2(x0, y0 + T), Vector2(x0 + T, y0 + T), ink, 4.0)
-				draw_rect(Rect2(x0, y0 + T - 8, T, 6), top.darkened(0.25))
+				ci.draw_rect(Rect2(x0, y0 + T - 10, T, 10), th.wall_side)
+				ci.draw_rect(Rect2(x0, y0 + T - 10, T, 2), th.wall_side.lightened(0.2))
+				ci.draw_line(Vector2(x0, y0 + T), Vector2(x0 + T, y0 + T), ink, 4.0, true)
 			if not is_wall_char(c - 1, r):
-				draw_line(Vector2(x0, y0), Vector2(x0, y0 + T), ink, 4.0)
+				ci.draw_rect(Rect2(x0 + 2, y0, 4, T), line_c.lerp(top, 0.6))
+				ci.draw_line(Vector2(x0, y0), Vector2(x0, y0 + T), ink, 4.0, true)
 			if not is_wall_char(c + 1, r):
-				draw_line(Vector2(x0 + T, y0), Vector2(x0 + T, y0 + T), ink, 4.0)
+				ci.draw_rect(Rect2(x0 + T - 6, y0, 4, T), top.darkened(0.15))
+				ci.draw_line(Vector2(x0 + T, y0), Vector2(x0 + T, y0 + T), ink, 4.0, true)
+
+func _spawn_pad_on(ci: CanvasItem, p: Vector2, col: Color) -> void:
+	var c2 := col
+	c2.a = 0.22
+	ci.draw_circle(p, 30, c2)
+	ci.draw_arc(p, 30, 0, TAU, 40, Color(col.r, col.g, col.b, 0.7), 3.0, true)
+	ci.draw_arc(p, 20, 0, TAU, 32, Color(col.r, col.g, col.b, 0.4), 2.0, true)
+
+
+class FlatPainter extends Node2D:
+	var map: ArenaMap
+	func _draw() -> void:
+		map.paint_flat(self)
