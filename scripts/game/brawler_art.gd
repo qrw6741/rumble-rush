@@ -118,6 +118,7 @@ static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dicti
 		"nova": _nova(ci, d, t, aim_l, recoil, step, blink)
 		"mira": _mira(ci, d, t, aim_l, recoil, step, blink)
 		"sprig": _sprig(ci, d, t, aim_l, recoil, step, blink)
+		"rio": _rio(ci, d, t, aim_l, recoil, step, blink)
 		_: _nova(ci, d, t, aim_l, recoil, step, blink)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	_flash = 0.0
@@ -245,6 +246,61 @@ static func _vex_blade(ci: CanvasItem, at: Vector2, ang: float, acc: Color, sc: 
 		pts.append(at + (Vector2(cos(a) * 11.0, sin(a) * 14.0) + Vector2(1, 0)).rotated(ang) * sc)
 	glow(ci, at + Vector2(14, 0).rotated(ang) * sc, 10 * sc, acc, 3)
 	poly(ci, pts, acc.lightened(0.25), true, 2.5)
+
+# ------------------------------------------------------------------ RIO (skater)
+static func _rio(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:
+	var prim: Color = d.primary
+	var sec: Color = d.secondary
+	var acc: Color = d.accent
+	var skin: Color = d.skin
+	var hair := Color("3a2416")
+	var hand := Vector2(11, -24)
+	var behind := aim.y < -0.4
+	if behind:
+		_rio_blaster(ci, hand, aim, recoil, acc)
+	# backpack with spray cans and the strapped board
+	rrect(ci, Vector2(-15, -26), Vector2(12, 22), 4, sec.darkened(0.15))
+	for k in 3:
+		rrect(ci, Vector2(-19 + k * 4.5, -40), Vector2(4, 9), 1.5, [acc, Color("4fc3ff"), Color("8cff5a")][k], true, 1.6)
+	# legs: shorts, socks, sneakers
+	_legs(ci, Color.WHITE, step, 6.5, -6.0, Vector2(11, 8))
+	rrect(ci, Vector2(-6.5, -11 + step * 2.0), Vector2(9, 6), 2, skin, false)
+	rrect(ci, Vector2(6.5, -11 - step * 2.0), Vector2(9, 6), 2, skin, false)
+	rrect(ci, Vector2(0, -15), Vector2(24, 8), 3, sec)
+	# hoodie with pocket and paint splats
+	rrect(ci, Vector2(0, -25), Vector2(30, 22), 9, prim)
+	rrect(ci, Vector2(1, -20), Vector2(16, 7), 3, prim.darkened(0.12), false)
+	circ(ci, Vector2(-6, -29), 3.0, acc, false)
+	circ(ci, Vector2(7, -24), 2.0, Color("4fc3ff"), false)
+	line(ci, Vector2(-2, -34), Vector2(-2, -28), Color.WHITE, 1.4, false)
+	line(ci, Vector2(3, -34), Vector2(3, -28), Color.WHITE, 1.4, false)
+	circ(ci, Vector2(-15, -21 + step), 5.0, prim.darkened(0.08))
+	# head: curls, backwards cap, freckles, grin
+	circ(ci, Vector2(0, -45), 14.5, skin)
+	for k in 5:
+		circ(ci, Vector2(-13 + k * 2.0, -43 + k * 1.2), 4.0, hair, false)
+	ell(ci, Vector2(-1, -52), 15, 9, sec)
+	rrect(ci, Vector2(-15, -50), Vector2(10, 4), 2, sec.darkened(0.2), true, OW, 0.3)
+	circ(ci, Vector2(2, -58), 2.2, acc, false)
+	if not blink:
+		ell(ci, Vector2(1 + aim.x * 2, -45), 2.6, 3.2, OUTLINE, false)
+		ell(ci, Vector2(9 + aim.x * 2, -45), 2.6, 3.2, OUTLINE, false)
+	else:
+		line(ci, Vector2(-1, -45), Vector2(3, -45), OUTLINE, 1.6, false)
+		line(ci, Vector2(7, -45), Vector2(11, -45), OUTLINE, 1.6, false)
+	for f in [Vector2(-3, -40), Vector2(-1, -39), Vector2(11, -40), Vector2(13, -39)]:
+		ci.draw_circle(f, 0.8, _c(skin.darkened(0.35)))
+	line(ci, Vector2(2, -37), Vector2(9, -38), OUTLINE, 1.8, false)
+	if not behind:
+		_rio_blaster(ci, hand, aim, recoil, acc)
+
+static func _rio_blaster(ci: CanvasItem, hand: Vector2, aim: Vector2, recoil: float, acc: Color) -> void:
+	var a := aim.angle()
+	var back := hand - aim * (recoil * 6.0)
+	rrect(ci, back + aim * 6.0, Vector2(14, 10), 3, Color("2b2f3e"), true, OW, a)
+	rrect(ci, back + aim * 16.0 + Vector2(0, -3).rotated(a), Vector2(20, 6), 3, acc, true, 2.0, a)
+	rrect(ci, back + aim * 16.0 + Vector2(0, 3).rotated(a), Vector2(20, 6), 3, Color("4fc3ff"), true, 2.0, a)
+	circ(ci, back + aim * 28.0, 3.0, acc)
 
 # ------------------------------------------------------------------ NOVA (marksman)
 static func _nova(ci: CanvasItem, d: Dictionary, t: float, aim: Vector2, recoil: float, step: float, blink: bool) -> void:

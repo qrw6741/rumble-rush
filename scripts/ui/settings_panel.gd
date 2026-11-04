@@ -25,6 +25,7 @@ func _ready() -> void:
 	v.add_child(slider_row("SOUND EFFECTS", "sfx_volume"))
 	v.add_child(choice_row("BOT DIFFICULTY", "difficulty", ["auto", "easy", "normal", "hard", "extreme"], ["AUTO", "EASY", "MED", "HARD", "EXTRM"], 66))
 	v.add_child(choice_row("TOUCH CONTROLS", "touch_controls", ["auto", "on", "off"], ["AUTO", "ON", "OFF"]))
+	v.add_child(choice_row("GAMEPLAY VIEW", "view_mode", ["3d", "2d"], ["3D", "2D"]))
 	v.add_child(choice_row("GRAPHICS", "graphics", ["auto", "high", "low"], ["AUTO", "HIGH", "LOW"]))
 	v.add_child(toggle_row("AIM ASSIST", "aim_assist"))
 	v.add_child(toggle_row("SCREEN SHAKE", "screen_shake"))

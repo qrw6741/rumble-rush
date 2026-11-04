@@ -100,6 +100,8 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			]}
 	if "--touch" in args:
 		Save.data.settings.touch_controls = "on"
+	if "--view2d" in args:
+		Save.data.settings.view_mode = "2d"
 	if "--demo-progress" in args:
 		Save.save_path = "user://demo_save.json"
 		Save.data.pass_tokens = 760

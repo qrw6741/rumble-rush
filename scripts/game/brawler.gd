@@ -79,6 +79,7 @@ var skin := ""
 var _yaw := 0.0
 const VIEW_PX := 256
 const SPRITE_SCALE := 0.6
+var flat := false
 var _walk_vel := Vector2.ZERO
 const FLASH_SHADER := preload("res://assets/shaders/sprite_flash.gdshader")
 
@@ -105,6 +106,13 @@ func setup(brawler_id: String, team_id: int, player: bool, name_text: String, lv
 	gadget_max_cd = d.gadget.cooldown
 	gadget_cd = 3.0 # short lock at match start
 
+func _ready_rest() -> void:
+	overhead = BrawlerOverhead.new()
+	overhead.b = self
+	add_child(overhead)
+	anim_t = randf() * 10.0
+
+# ------------------------------------------------------------------ main loop
 func _ready() -> void:
 	add_to_group("brawlers")
 	motion_mode = CharacterBody2D.MOTION_MODE_FLOATING
@@ -115,8 +123,16 @@ func _ready() -> void:
 	shape.radius = radius * 0.72
 	cs.shape = shape
 	add_child(cs)
-	# 3D model rendered into a texture and shown as a sprite
 	skin = Save.selected_skin(id) if is_player else ""
+	# 2D gameplay view: flat vector art drawn in _draw (much cheaper, very smooth)
+	flat = Save.setting("view_mode") == "2d"
+	if flat:
+		var st := BrawlerStatus.new()
+		st.b = self
+		add_child(st)
+		_ready_rest()
+		return
+	# 3D model rendered into a texture and shown as a sprite
 	# bots render slightly smaller on phones so every brawler can animate every frame
 	var vpx := VIEW_PX if (is_player or not Save.low_graphics()) else int(VIEW_PX * 0.82)
 	view = BrawlerView.create(id, "battle", vpx, true, skin)
@@ -133,12 +149,8 @@ func _ready() -> void:
 	var status := BrawlerStatus.new()
 	status.b = self
 	add_child(status)
-	overhead = BrawlerOverhead.new()
-	overhead.b = self
-	add_child(overhead)
-	anim_t = randf() * 10.0
+	_ready_rest()
 
-# ------------------------------------------------------------------ main loop
 func _physics_process(delta: float) -> void:
 	anim_t += delta
 	flash = max(0.0, flash - delta * 7.0)
@@ -209,6 +221,8 @@ func use_bank(set: Dictionary) -> void:
 	_update_sprite(0.0)
 
 func _update_sprite(delta: float) -> void:
+	if flat:
+		return
 	_yaw = lerp_angle(_yaw, BrawlerView.yaw_from_aim(aim_dir), clampf(delta * 16.0, 0.0, 1.0)) if delta > 0.0 else BrawlerView.yaw_from_aim(aim_dir)
 	if bank != null:
 		sprite.texture = SpriteBank.frame_for(bank, _yaw, _moving, recoil, anim_t)
@@ -485,6 +499,10 @@ func _draw() -> void:
 	# ground shadow (the 3D model itself is a child sprite drawn on top)
 	var sh := 1.0 - clampf(air_h / 160.0, 0.0, 0.6)
 	_draw_ellipse(Vector2(0, 2), 24.0 * sh, 9.0 * sh, Color(0, 0, 0, 0.3 * alpha))
+	if flat:
+		var anim := {"t": anim_t, "moving": _moving, "flash": flash, "recoil": recoil,
+			"aim": aim_dir, "alpha": alpha, "blink": blink_t < 0.0}
+		BrawlerArt.draw(self, id, Vector2(0, -air_h), 1.25, anim)
 
 func _draw_ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
 	var pts := PackedVector2Array()
