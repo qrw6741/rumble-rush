@@ -79,6 +79,7 @@ var skin := ""
 var _yaw := 0.0
 const VIEW_PX := 256
 const SPRITE_SCALE := 0.6
+var _walk_vel := Vector2.ZERO
 const FLASH_SHADER := preload("res://assets/shaders/sprite_flash.gdshader")
 
 var stats := {"kos": 0, "deaths": 0, "damage": 0, "healing": 0, "gems": 0}
@@ -116,7 +117,9 @@ func _ready() -> void:
 	add_child(cs)
 	# 3D model rendered into a texture and shown as a sprite
 	skin = Save.selected_skin(id) if is_player else ""
-	view = BrawlerView.create(id, "battle", VIEW_PX, true, skin)
+	# bots render slightly smaller on phones so every brawler can animate every frame
+	var vpx := VIEW_PX if (is_player or not Save.low_graphics()) else int(VIEW_PX * 0.82)
+	view = BrawlerView.create(id, "battle", vpx, true, skin)
 	add_child(view)
 	sprite = Sprite2D.new()
 	sprite.texture = view.get_texture()
@@ -186,7 +189,9 @@ func _physics_process(delta: float) -> void:
 			var mv := move_input.limit_length(1.0)
 			var spd := speed * (1.0 - (slow_amt if slow_t > 0.0 else 0.0))
 			v = mv * spd
-		velocity = v + knock_vel
+		# very short ramp (~0.06 s) so starts, stops and turns feel smooth but still snappy
+		_walk_vel = _walk_vel.move_toward(v, speed * 16.0 * delta)
+		velocity = _walk_vel + knock_vel
 		move_and_slide()
 	knock_vel = knock_vel.move_toward(Vector2.ZERO, 2200.0 * delta)
 	_moving = velocity.length() > 30.0 and leap_t <= 0.0
@@ -222,10 +227,6 @@ func _update_sprite(delta: float) -> void:
 		# big free-for-all: the player's own brawler renders every frame, others share the load
 		var every := 3 if Save.low_graphics() else 2
 		if (Engine.get_process_frames() + get_instance_id()) % every == 0:
-			view.render_target_update_mode = SubViewport.UPDATE_ONCE
-	elif Save.low_graphics() and not is_player:
-		# phones: each brawler re-renders every other frame (staggered), halving 3D cost
-		if (Engine.get_process_frames() + get_instance_id()) % 2 == 0:
 			view.render_target_update_mode = SubViewport.UPDATE_ONCE
 	elif view.render_target_update_mode != SubViewport.UPDATE_ALWAYS:
 		view.render_target_update_mode = SubViewport.UPDATE_ALWAYS

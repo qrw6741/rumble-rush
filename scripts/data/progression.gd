@@ -161,6 +161,7 @@ static func reward_text(r: Dictionary) -> String:
 		"xp": return "%d XP" % r.amount
 		"skin": return "%s %s" % [SKINS[r.skin].name, Config.BRAWLERS[r.brawler].name]
 		"gems": return "%d GEMS" % r.amount
+		"bundle": return "BUNDLE"
 		"drop": return "%s DROP" % DROP_TIERS[int(r.get("tier", 0))].name
 	return ""
 
@@ -214,6 +215,11 @@ static func roll_drop(tier: int, rng: RandomNumberGenerator, owned_skins: Array)
 	return prize
 
 # ------------------------------------------------------------------ Shop
+## One-time starter bundle (in-game currency only).
+const STARTER_PACK := {"id": "starter_pack", "title": "STARTER PACK",
+	"reward": {"type": "bundle", "items": [{"type": "gems", "amount": 30}, {"type": "credits", "amount": 600}, {"type": "drop", "tier": 2}]},
+	"currency": "credits", "cost": 349, "tag": "4x VALUE"}
+
 const DROP_PRICES := [{"currency": "credits", "cost": 120}, {"currency": "gems", "cost": 12}, {"currency": "gems", "cost": 35}]
 const SKIN_PRICE := {"gold": 79, "shadow": 49} # gems
 const GEM_TO_CREDITS := [

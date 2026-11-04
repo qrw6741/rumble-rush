@@ -297,6 +297,9 @@ func grant_reward(r: Dictionary) -> void:
 				data.gems += 25 # duplicate skins turn into gems
 		"gems":
 			data.gems += int(r.amount)
+		"bundle":
+			for it in r.items:
+				grant_reward(it)
 		"drop":
 			data.drops.append(int(r.get("tier", 0)))
 

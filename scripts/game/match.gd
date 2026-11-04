@@ -104,7 +104,7 @@ func _ready() -> void:
 
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
-	camera.position_smoothing_speed = 7.0
+	camera.position_smoothing_speed = 8.5
 	camera.limit_left = int(-T * 1.5)
 	camera.limit_right = int(map.size_px.x + T * 1.5)
 	camera.limit_top = int(-T * 3)
@@ -317,6 +317,8 @@ func _physics_process(delta: float) -> void:
 		var target := player.global_position + Vector2(0, -20)
 		if player.alive and pc and not pc.using_touch():
 			target += player.aim_dir * 50.0
+		elif player.alive:
+			target += player.velocity * 0.12 # look a little ahead of where you're running
 		camera.global_position = target
 		Sfx.listener_pos = player.global_position
 	if state != "playing":
