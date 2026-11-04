@@ -194,7 +194,6 @@ func _build_top_bar() -> void:
 func _build_left_buttons() -> void:
 	var items := [
 		["SHOP", "shop", func(): Router.goto("shop")],
-		["CHAMPS", "trophy", func(): Router.goto("champs")],
 		["BRAWLERS", "brawlers", func(): Router.goto("select")],
 		["PROFILE", "profile", func(): Router.goto("profile")],
 		["GUIDE", "guide", _open_how_to],
@@ -204,13 +203,13 @@ func _build_left_buttons() -> void:
 		var b := SlantButton.new()
 		b.color = Color("27334d")
 		b.set_anchors_preset(Control.PRESET_CENTER_LEFT)
-		b.position = Vector2(22, -238 + i * 86)
-		b.size = Vector2(150, 78)
+		b.position = Vector2(22, -196 + i * 100)
+		b.size = Vector2(150, 90)
 		var icon_kind: String = it[1]
 		var label: String = it[0]
 		b.custom_draw = func(ci: Control):
-			SlantButton.menu_icon(ci, icon_kind, Vector2(75, 28))
-			SlantButton.text_c(ci, label, Vector2(75, 70), 19, Color.WHITE)
+			SlantButton.menu_icon(ci, icon_kind, Vector2(75, 34))
+			SlantButton.text_c(ci, label, Vector2(75, 80), 20, Color.WHITE)
 		b.name = label.capitalize()
 		b.pressed.connect(it[2])
 		add_child(b)
@@ -328,6 +327,29 @@ func _build_play() -> void:
 		Sfx.play("ui_confirm")
 		Router.goto("match", {"mode": Save.data.selected_mode, "brawler": Save.data.selected_brawler}))
 	add_child(play)
+	# CHAMPS entry on the right side, above PLAY
+	var ch := SlantButton.new()
+	ch.color = Color("3a1a12")
+	ch.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	ch.position = Vector2(-372, -262)
+	ch.size = Vector2(340, 96)
+	ch.name = "Champs"
+	ch.custom_draw = func(ci: Control):
+		ci.draw_rect(Rect2(0, 0, 340, 6), Color("e0a050"))
+		UIKit.draw_icon(ci, "trophy", Vector2(52, 48), 70.0)
+		SlantButton.text_l(ci, "CHAMPS", Vector2(98, 46), 34, Color("ffd98a"))
+		var c := Save.champs()
+		var st := ""
+		match c.stage:
+			"qualifier": st = "QUALIFIER  %d W - %d L" % [int(c.q_w), int(c.q_l)]
+			"finals": st = "FINALS  %d W - %d L" % [int(c.f_w), int(c.f_l)]
+			_: st = "REWARDS READY!"
+		SlantButton.text_l(ci, st, Vector2(98, 76), 17, Color(1, 1, 1, 0.85))
+	ch.pressed.connect(func():
+		Sfx.play("ui_click")
+		Router.goto("champs"))
+	add_child(ch)
+	UIKit.pop_in(ch, 0.3, Vector2(60, 0))
 	# idle pulse to draw the eye (starts after the entrance animation)
 	UIKit.pop_in(play, 0.25, Vector2(60, 0))
 	var tw := create_tween().set_loops()

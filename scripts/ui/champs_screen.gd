@@ -1,22 +1,21 @@
 extends Control
 ## CHAMPS: the competitive mode. Qualify (5 wins before 3 losses), then play the
-## 15-match Finals. Your Finals win count decides your Champs rank and rewards.
+## 15-match Finals. Your Finals wins decide your Champs rank (X up to I).
+## Layout: title + timer, a row of rank shields, entry requirements, rank rewards
+## and performance cards, and one big action button.
 
 const Lobby := preload("res://scripts/ui/main_menu.gd")
 const S := preload("res://scripts/ui/main_menu.gd").SlantButton
 
-var _status: StatusPanel
-
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
-	var bg := UIKit.MenuBackground.new()
-	bg.top = Color("4a1f8a")
-	bg.bottom = Color("120a2e")
+	var bg := Backdrop.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	Lobby.build_header(self, "CHAMPS", func(): Router.goto("menu"))
+	Lobby.build_header(self, "", func(): Router.goto("menu"))
 	var home := S.new()
-	home.color = Color("27334d")
+	home.color = Color("2a1a14")
 	home.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	home.position = Vector2(-118, 6)
 	home.size = Vector2(104, 72)
@@ -25,29 +24,39 @@ func _ready() -> void:
 	home.pressed.connect(func(): Router.goto("menu"))
 	add_child(home)
 
-	_status = StatusPanel.new()
-	_status.position = Vector2(40, 100)
-	_status.size = Vector2(640, 470)
-	add_child(_status)
-
-	var ladder := Ladder.new()
-	ladder.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	ladder.position = Vector2(-560, 100)
-	ladder.size = Vector2(520, 600)
-	add_child(ladder)
+	var head := Header.new()
+	head.position = Vector2(40, 92)
+	head.size = Vector2(900, 120)
+	add_child(head)
+	var track := RankTrack.new()
+	track.position = Vector2(30, 222)
+	track.size = Vector2(1220, 110)
+	add_child(track)
+	var req := Requirements.new()
+	req.position = Vector2(40, 400)
+	req.size = Vector2(330, 160)
+	add_child(req)
+	var rw := RewardsCard.new()
+	rw.position = Vector2(420, 380)
+	rw.size = Vector2(380, 250)
+	add_child(rw)
+	var perf := PerformanceCard.new()
+	perf.position = Vector2(830, 380)
+	perf.size = Vector2(380, 250)
+	add_child(perf)
 
 	var c := Save.champs()
 	var btn: Button
 	if c.stage == "rewards":
-		btn = UIKit.button("CLAIM REWARDS", UIKit.GREEN, 30, Vector2(400, 84))
+		btn = UIKit.button("CLAIM REWARDS", UIKit.GREEN, 24, Vector2(330, 64))
 		btn.pressed.connect(_claim)
 	else:
-		btn = UIKit.button("PLAY QUALIFIER" if c.stage == "qualifier" else "PLAY FINALS MATCH", UIKit.YELLOW, 30, Vector2(400, 84))
+		btn = UIKit.button("PLAY QUALIFIER" if c.stage == "qualifier" else "PLAY FINALS MATCH", Color("e0a050"), 24, Vector2(330, 64))
 		btn.pressed.connect(_play)
-	btn.position = Vector2(160, 596)
+	btn.position = Vector2(40, 580)
 	add_child(btn)
-	UIKit.pop_in(_status)
-	UIKit.pop_in(ladder, 0.08)
+	for n in [head, track, req, rw, perf, btn]:
+		UIKit.pop_in(n, 0.04 * [head, track, req, rw, perf, btn].find(n))
 
 func _play() -> void:
 	var c := Save.champs()
@@ -69,95 +78,160 @@ func _claim() -> void:
 		await get_tree().create_timer(0.8).timeout
 		Router.goto("champs")
 
-
-## Left panel: stage, win/loss pips, record and projected rank.
-class StatusPanel extends Control:
+# ====================================================================== pieces
+class Backdrop extends Control:
 	var _t := 0.0
-
-	func _process(delta: float) -> void:
-		_t += delta
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _process(d: float) -> void:
+		_t += d
 		queue_redraw()
+	func _draw() -> void:
+		var top := Color("3a1a12")
+		var bot := Color("0e0605")
+		var n := 24
+		for i in n:
+			var k := float(i) / n
+			draw_rect(Rect2(0, size.y * k, size.x, size.y / n + 1), top.lerp(bot, k))
+		# big faint crest shapes on the right
+		var c := Vector2(size.x * 0.82, size.y * 0.42)
+		for k in 3:
+			var r := 220.0 + k * 90.0
+			var pts := PackedVector2Array()
+			for i in 6:
+				var a := -PI / 2 + i * TAU / 6.0 + _t * 0.02 * (k + 1)
+				pts.append(c + Vector2.from_angle(a) * r)
+			pts.append(pts[0])
+			draw_polyline(pts, Color(0.9, 0.55, 0.25, 0.07), 18.0, true)
+		draw_rect(Rect2(0, 0, size.x, 84), Color(0, 0, 0, 0.35))
 
+
+class Header extends Control:
 	func _draw() -> void:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
-		var c := Save.champs()
-		var w := size.x
-		var h := size.y
-		draw_rect(Rect2(6, 10, w, h), Color(0, 0, 0, 0.3))
-		draw_rect(Rect2(0, 0, w, h), UIKit.DARK)
-		draw_rect(Rect2(4, 4, w - 8, h - 8), Color("241a4a"))
-		# trophy crest
-		var cc := Vector2(110, 140)
-		for k in 10:
-			var a := _t * 0.3 + k * TAU / 10.0
-			draw_colored_polygon(PackedVector2Array([cc, cc + Vector2.from_angle(a - 0.12) * 120.0, cc + Vector2.from_angle(a + 0.12) * 120.0]), Color(1, 0.8, 0.2, 0.06))
-		UIKit.draw_icon(self, "trophy", cc, 150.0)
-		var stage_name: String = {"qualifier": "QUALIFIER", "finals": "FINALS", "rewards": "FINALS COMPLETE"}.get(c.stage, "")
-		S2.text_l(self, stage_name, Vector2(220, 70), 38, UIKit.YELLOW)
-		match c.stage:
-			"qualifier":
-				S2.text_l(self, "Win %d before you lose %d to reach the Finals." % [Progression.CHAMPS_Q_WINS, Progression.CHAMPS_Q_LOSSES], Vector2(220, 104), 16, Color(1, 1, 1, 0.8))
-				S2.text_l(self, "WINS", Vector2(220, 160), 20, Color("8dff9a"))
-				for i in Progression.CHAMPS_Q_WINS:
-					_pip(Vector2(310 + i * 54, 152), i < int(c.q_w), Color("4fd36a"))
-				S2.text_l(self, "LOSSES", Vector2(220, 222), 20, Color("ff9a9a"))
-				for i in Progression.CHAMPS_Q_LOSSES:
-					_pip(Vector2(310 + i * 54, 214), i < int(c.q_l), Color("ff4d5e"))
-			_:
-				var played := int(c.f_w) + int(c.f_l)
-				S2.text_l(self, "Play all %d matches. More wins, better rank." % Progression.CHAMPS_F_MATCHES, Vector2(220, 104), 16, Color(1, 1, 1, 0.8))
-				S2.text_l(self, "%d W  -  %d L" % [int(c.f_w), int(c.f_l)], Vector2(220, 168), 44, Color.WHITE)
-				S2.text_l(self, "MATCH %d / %d" % [mini(played + 1, Progression.CHAMPS_F_MATCHES), Progression.CHAMPS_F_MATCHES], Vector2(220, 206), 20, Color("c9d3f0"))
-				# match strip
-				for i in Progression.CHAMPS_F_MATCHES:
-					var p := Vector2(40 + i * 38, 290)
-					var col := Color("3a3060")
-					if i < int(c.f_w):
-						col = Color("4fd36a")
-					elif i < played:
-						col = Color("ff4d5e")
-					draw_rect(Rect2(p - Vector2(15, 15), Vector2(30, 30)), UIKit.DARK)
-					draw_rect(Rect2(p - Vector2(12, 12), Vector2(24, 24)), col)
-		# projected rank
-		var tier := Progression.champs_tier(int(c.f_w))
-		var box := Rect2(30, 340, w - 60, 100)
-		draw_rect(box, UIKit.DARK)
-		draw_rect(box.grow(-4), tier.color.darkened(0.55))
-		var label := "CURRENT RANK" if c.stage != "qualifier" else "BEST RANK"
-		S2.text_l(self, label, box.position + Vector2(22, 34), 18, Color(1, 1, 1, 0.75))
-		var shown: String = tier.rank if c.stage != "qualifier" else (c.best if c.best != "" else "-")
-		S2.text_l(self, shown, box.position + Vector2(22, 80), 40, tier.color.lightened(0.2) if c.stage != "qualifier" else Color.WHITE)
-		S2.text_r(self, "RUNS PLAYED  %d" % int(c.runs), box.end - Vector2(22, 20), 16, Color(1, 1, 1, 0.7))
-
-	func _pip(c: Vector2, on: bool, col: Color) -> void:
-		draw_circle(c, 20, UIKit.DARK)
-		draw_circle(c, 16, col if on else Color("3a3060"))
-		if on:
-			draw_circle(c + Vector2(-5, -5), 5, Color(1, 1, 1, 0.35))
+		S2.text_l(self, "CHAMPS", Vector2(0, 46), 52, Color.WHITE)
+		UIKit.draw_icon(self, "clock", Vector2(14, 78), 24.0)
+		S2.text_l(self, "Event ends in  " + Progression.season_time_left(), Vector2(32, 86), 18, Color("e0c27a"))
+		S2.text_l(self, "Qualify, then play the Finals: every win climbs you toward a higher rank and better rewards.", Vector2(0, 114), 16, Color(1, 1, 1, 0.8))
 
 
-## Right panel: every Champs rank, the wins it needs and its rewards.
-class Ladder extends Control:
+## Crest + the row of rank shields from X to I; a marker sits over your rank.
+class RankTrack extends Control:
 	func _draw() -> void:
-		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
 		var c := Save.champs()
+		var tiers: Array = Progression.CHAMPS_TIERS.duplicate()
+		tiers.reverse() # X ... I, left to right
+		var y := 56.0
+		draw_line(Vector2(80, y), Vector2(size.x - 20, y), Color(0.9, 0.6, 0.3, 0.35), 4.0)
+		# our crest on the left
+		var cc := Vector2(40, y)
+		var cp := PackedVector2Array()
+		for i in 6:
+			cp.append(cc + Vector2.from_angle(-PI / 2 + i * TAU / 6.0) * 38.0)
+		draw_colored_polygon(cp, Color("120806"))
+		var cp2 := PackedVector2Array()
+		for i in 6:
+			cp2.append(cc + Vector2.from_angle(-PI / 2 + i * TAU / 6.0) * 32.0)
+		draw_colored_polygon(cp2, Color("c8642a"))
+		UIKit.draw_icon(self, "trophy", cc, 44.0)
 		var cur := Progression.champs_tier(int(c.f_w))
-		var row_h := 56.0
-		S2.text_l(self, "FINALS REWARDS", Vector2(10, 26), 24, Color.WHITE)
-		for i in Progression.CHAMPS_TIERS.size():
-			var t: Dictionary = Progression.CHAMPS_TIERS[i]
-			var r := Rect2(0, 40 + i * row_h, size.x, row_h - 6)
+		var step := (size.x - 150.0) / tiers.size()
+		for i in tiers.size():
+			var t: Dictionary = tiers[i]
+			var p := Vector2(120 + step * (i + 0.5), y)
+			var reached: bool = c.stage != "qualifier" and int(c.f_w) >= int(t.wins)
 			var is_cur: bool = c.stage != "qualifier" and t.rank == cur.rank
-			draw_rect(r, UIKit.YELLOW if is_cur else UIKit.DARK)
-			draw_rect(r.grow(-3), t.color.darkened(0.5))
-			draw_rect(Rect2(r.position + Vector2(3, 3), Vector2(8, r.size.y - 6)), t.color)
-			S2.text_l(self, t.rank, r.position + Vector2(22, 34), 22, Color.WHITE)
-			S2.text_l(self, "%d+ W" % int(t.wins), r.position + Vector2(140, 34), 18, Color(1, 1, 1, 0.75))
-			var x := r.end.x - 40
-			var rws: Array = t.rewards
-			for k in range(rws.size() - 1, -1, -1):
-				var rw: Dictionary = rws[k]
-				RewardTile.draw_icon(self, rw, Vector2(x, r.get_center().y - 4), 16.0)
-				if rw.has("amount"):
-					S2.text_c(self, str(rw.amount), Vector2(x, r.end.y - 4), 12, Color.WHITE, 4)
-				x -= 64
+			var roman: String = String(t.rank).replace("RANK ", "")
+			ChampsShield.draw_shield(self, p, 56.0 if is_cur else 46.0, t.color, roman, reached)
+			if is_cur:
+				draw_colored_polygon(PackedVector2Array([p + Vector2(-9, -50), p + Vector2(9, -50), p + Vector2(0, -38)]), Color("4fd3a0"))
+
+
+## Small static helper so inner classes can draw shields.
+class ChampsShield:
+	static func draw_shield(ci: CanvasItem, c: Vector2, h: float, col: Color, label: String, lit: bool) -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var u := h / 60.0
+		var pts := [Vector2(-20, -28), Vector2(20, -28), Vector2(22, 4), Vector2(0, 30), Vector2(-22, 4)]
+		var outer := PackedVector2Array()
+		var inner := PackedVector2Array()
+		for p: Vector2 in pts:
+			outer.append(c + p * u * 1.12)
+			inner.append(c + p * u)
+		ci.draw_colored_polygon(outer, Color("120806"))
+		ci.draw_colored_polygon(inner, col if lit else col.darkened(0.6))
+		ci.draw_colored_polygon(PackedVector2Array([inner[0], inner[1], c + Vector2(20, -18) * u, c + Vector2(-20, -18) * u]), Color(1, 1, 1, 0.2 if lit else 0.06))
+		S2.text_c(ci, label, c + Vector2(0, 8 * u), int(18 * u), Color.WHITE if lit else Color(1, 1, 1, 0.5), maxi(3, int(5 * u)))
+
+
+## Card shell shared by the panels.
+class Card extends Control:
+	func panel_bg() -> void:
+		draw_rect(Rect2(0, 0, size.x, size.y), Color(0.12, 0.07, 0.06, 0.92))
+		draw_rect(Rect2(0, 0, size.x, size.y), Color(0.9, 0.6, 0.3, 0.25), false, 2.0)
+
+
+class Requirements extends Card:
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var c := Save.champs()
+		S2.text_l(self, "ENTRY REQUIREMENTS", Vector2(0, 20), 18, Color("4fd3a0"))
+		var rows := [
+			["Qualifier wins", "%d / %d" % [mini(int(c.q_w) if c.stage == "qualifier" else Progression.CHAMPS_Q_WINS, Progression.CHAMPS_Q_WINS), Progression.CHAMPS_Q_WINS], c.stage != "qualifier"],
+			["Losses allowed", "%d / %d" % [int(c.q_l) if c.stage == "qualifier" else 0, Progression.CHAMPS_Q_LOSSES], c.stage != "qualifier"],
+		]
+		for i in rows.size():
+			var r: Array = rows[i]
+			var y := 40.0 + i * 50.0
+			draw_rect(Rect2(0, y, size.x, 42), Color(0.12, 0.07, 0.06, 0.92))
+			UIKit.draw_icon(self, "trophy" if i == 0 else "lock", Vector2(22, y + 21), 24.0)
+			S2.text_l(self, r[0], Vector2(42, y + 28), 16, Color.WHITE)
+			S2.text_r(self, r[1], Vector2(size.x - 40, y + 28), 16, Color(1, 1, 1, 0.85))
+			draw_circle(Vector2(size.x - 18, y + 21), 8, Color("4fd3a0") if r[2] else Color(1, 1, 1, 0.15))
+		var status: String = "Qualified" if c.stage != "qualifier" else "Not qualified"
+		S2.text_l(self, status, Vector2(0, 160), 18, Color("4fd3a0") if c.stage != "qualifier" else Color(1, 1, 1, 0.6))
+
+
+class RewardsCard extends Card:
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		panel_bg()
+		var c := Save.champs()
+		S2.text_l(self, "RANK REWARDS", Vector2(18, 34), 20, Color.WHITE)
+		S2.text_l(self, "Win Finals matches to unlock better rewards", Vector2(18, 58), 14, Color(1, 1, 1, 0.65))
+		# next rank to reach (or the rank you finished on)
+		var wins := int(c.f_w) if c.stage != "qualifier" else 0
+		var target: Dictionary = Progression.CHAMPS_TIERS[Progression.CHAMPS_TIERS.size() - 1]
+		for t in Progression.CHAMPS_TIERS:
+			if int(t.wins) > wins:
+				target = t
+		if c.stage == "rewards":
+			target = Progression.champs_tier(wins)
+		ChampsShield.draw_shield(self, Vector2(70, 150), 72.0, target.color, String(target.rank).replace("RANK ", ""), true)
+		S2.text_l(self, target.rank, Vector2(130, 120), 24, target.color.lightened(0.3))
+		S2.text_l(self, "%d / %d wins" % [mini(wins, int(target.wins)), int(target.wins)], Vector2(130, 152), 22, Color("6ad0ff"))
+		var x := 140.0
+		for rw: Dictionary in target.rewards:
+			RewardTile.draw_icon(self, rw, Vector2(x, 200), 16.0)
+			if rw.has("amount"):
+				S2.text_c(self, str(rw.amount), Vector2(x, 232), 13, Color.WHITE, 4)
+			x += 56.0
+
+
+class PerformanceCard extends Card:
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		panel_bg()
+		var c := Save.champs()
+		var fin: bool = c.stage != "qualifier"
+		var w := int(c.f_w) if fin else int(c.q_w)
+		var l := int(c.f_l) if fin else int(c.q_l)
+		var remaining := (Progression.CHAMPS_F_MATCHES - w - l) if fin else (Progression.CHAMPS_Q_WINS - w)
+		S2.text_l(self, "PERFORMANCE" + ("" if fin else "  ·  QUALIFIER"), Vector2(18, 34), 20, Color.WHITE)
+		S2.text_c(self, str(w), Vector2(size.x * 0.5, 120), 56, Color.WHITE, 8)
+		S2.text_c(self, "Points", Vector2(size.x * 0.5, 146), 16, Color(1, 1, 1, 0.75))
+		var cols := [["Wins", w], ["Losses", l], ["Remaining" if fin else "Wins needed", maxi(0, remaining)]]
+		for i in cols.size():
+			var x := size.x * (0.2 + i * 0.3)
+			S2.text_c(self, cols[i][0], Vector2(x, 196), 16, Color.WHITE)
+			S2.text_c(self, str(cols[i][1]), Vector2(x, 228), 26, Color("6ad0ff"), 5)
