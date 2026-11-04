@@ -472,8 +472,11 @@ class StreakBadge extends Control:
 			inner.append(c + Vector2(0, h * 0.12) + (p - c) * 0.55)
 		ci.draw_colored_polygon(inner, col.lightened(0.55))
 	func _draw() -> void:
-		var col := Progression.streak_color(streak)
+		var col := Progression.streak_color(streak) if streak > 0 else Color("8a93a8")
 		var h := size.y
+		if show_label and size.x > h * 1.4:
+			var bg := PackedVector2Array([Vector2(h * 0.5, h * 0.12), Vector2(size.x, h * 0.12), Vector2(size.x - 10, h * 0.92), Vector2(h * 0.5, h * 0.92)])
+			draw_colored_polygon(bg, Color(0.06, 0.07, 0.14, 0.72))
 		var c := Vector2(h * 0.5, h * 0.55)
 		flame(self, c, h, col, t)
 		var f: Font = UIKit.bold()
@@ -484,12 +487,14 @@ class StreakBadge extends Control:
 		draw_string_outline(f, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 6, Color("1a1020"))
 		draw_string(f, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 		if show_label and size.x > h * 1.4:
-			var ls := int(h * 0.26)
+			var ls := int(h * 0.3)
 			var lp := Vector2(h * 1.02, h * 0.42)
 			draw_string_outline(f, lp, "WIN STREAK", HORIZONTAL_ALIGNMENT_LEFT, -1, ls, 5, Color("1a1020"))
 			draw_string(f, lp, "WIN STREAK", HORIZONTAL_ALIGNMENT_LEFT, -1, ls, col.lightened(0.3))
 			var b := Progression.streak_bonus(streak + 1)
-			var sub := "NEXT WIN +%d  +%d COINS" % [int(b.trophies), int(b.credits)] if streak + 1 >= 2 else "WIN AGAIN FOR BONUS"
+			var sub := "NEXT WIN  +%d TROPHIES  +%d COINS" % [int(b.trophies), int(b.credits)]
+			if streak == 0:
+				sub = "WIN 2 IN A ROW FOR BONUSES"
 			var lp2 := Vector2(h * 1.02, h * 0.78)
 			draw_string_outline(f, lp2, sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(ls * 0.75), 4, Color("1a1020"))
 			draw_string(f, lp2, sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(ls * 0.75), Color.WHITE)

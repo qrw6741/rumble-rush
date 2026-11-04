@@ -83,7 +83,8 @@ func _ready() -> void:
 	var win_rate: float = 0.0 if s.matches == 0 else 100.0 * s.wins / s.matches
 	for pair in [["MATCHES", s.matches], ["WINS", s.wins], ["WIN RATE", "%d%%" % int(win_rate)],
 			["LOSSES", s.losses], ["DRAWS", s.draws], ["STAR PLAYER", s.mvp],
-			["KOs", s.kos], ["DEATHS", s.deaths], ["DAMAGE", s.damage]]:
+			["KOs", s.kos], ["DEATHS", s.deaths], ["DAMAGE", s.damage],
+			["WIN STREAK", int(Save.data.get("win_streak", 0))], ["BEST STREAK", maxi(int(Save.data.get("best_streak", 0)), int(Save.data.get("win_streak", 0)))]]:
 		grid.add_child(_tile(pair[0], str(pair[1])))
 	var reset := UIKit.button("RESET PROGRESS", Color("8a3040"), 16, Vector2(220, 46))
 	reset.pressed.connect(_confirm_reset)
