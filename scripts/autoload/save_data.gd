@@ -70,7 +70,7 @@ func _default() -> Dictionary:
 		"skins_owned": [],
 		"gems": 30,
 		"win_streak": 0,
-		"ranked": {"points": 0, "best": 0, "wins": 0, "losses": 0, "streak": 0, "claimed": [0]},
+		"ranked": {"points": 0, "best": 0, "wins": 0, "losses": 0, "streak": 0, "claimed": [0], "mode": "gem_grab"},
 		"best_streak": 0,
 		"mastery": {},
 		"profile_icon": "",

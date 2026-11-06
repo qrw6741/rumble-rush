@@ -435,18 +435,27 @@ func _showdown_layout(result: String) -> void:
 	# exit icon (top right corner)
 	var ex := UIKit.button("", UIKit.BLUE, 18, Vector2(76, 52))
 	ex.position = Vector2(1186, 12)
-	ex.pressed.connect(func(): Router.goto("champs" if data.get("champs", false) else "menu"))
+	ex.pressed.connect(func(): Router.goto("champs" if data.get("champs", false) else ("ranked" if data.get("ranked", false) else "menu")))
 	var arrow := ExitArrow.new()
 	arrow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ex.add_child(arrow)
 	add_child(ex)
 	var again := UIKit.button("PLAY AGAIN", UIKit.YELLOW, 24, Vector2(210, 64))
 	again.position = Vector2(820, 630)
-	again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler, "debug": data.get("debug", false)}))
+	if data.get("ranked", false):
+		again.text = "RANKED"
+		again.pressed.connect(func(): Router.goto("ranked"))
+		var rb := RankedBanner.new()
+		rb.info = data.get("ranked_info", {})
+		rb.position = Vector2(30, 290)
+		rb.size = Vector2(540, 96)
+		add_child(rb)
+	else:
+		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler, "debug": data.get("debug", false)}))
 	add_child(again)
 	var exit := UIKit.button("EXIT", UIKit.BLUE, 26, Vector2(210, 64))
 	exit.position = Vector2(1050, 630)
-	exit.pressed.connect(func(): Router.goto("menu"))
+	exit.pressed.connect(func(): Router.goto("ranked" if data.get("ranked", false) else "menu"))
 	add_child(exit)
 
 func _streak_banner(rewards: Dictionary, pos: Vector2) -> void:

@@ -473,7 +473,7 @@ const RANKED_IDS := ["bronze", "silver", "gold", "platinum", "diamond", "netheri
 const RANKED_COLORS := [Color("e07a2a"), Color("aeb8d8"), Color("ffc21a"), Color("4fd8f0"), Color("3a9cff"), Color("a44cff"), Color("ff7a1a")]
 const RANKED_DIVS := ["I", "II", "III"]
 const RANKED_DIV_PTS := 100
-const RANKED_MODES := ["gem_grab", "knockout"]
+const RANKED_MODES := ["gem_grab", "knockout", "showdown", "duel"]
 const RANKED_WIN := 25
 const RANKED_LOSS := 15
 ## First time reaching each rank (index = rank).
@@ -503,6 +503,8 @@ static func ranked_info(points: int) -> Dictionary:
 		"top": step == RANKED_NAMES.size() * 3 - 1}
 
 ## Bot strength follows your rank.
+const RANKED_MODE_ICONS := {"gem_grab": "mode_gem", "knockout": "mode_knockout", "showdown": "mode_showdown", "duel": "ko"}
+
 static func ranked_difficulty(points: int) -> String:
 	var r: int = ranked_info(points).rank
 	if r == 0: return "easy"

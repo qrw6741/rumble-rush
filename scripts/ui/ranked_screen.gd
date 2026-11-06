@@ -40,17 +40,35 @@ func _ready() -> void:
 	ladder.size = Vector2(1220, 170)
 	add_child(ladder)
 	var info := InfoCard.new()
-	info.position = Vector2(640, 110)
-	info.size = Vector2(600, 210)
+	info.position = Vector2(640, 100)
+	info.size = Vector2(600, 150)
 	add_child(info)
+	# mode picker: any mode can be played in Ranked
+	var modes := HBoxContainer.new()
+	modes.position = Vector2(640, 262)
+	modes.add_theme_constant_override("separation", 8)
+	add_child(modes)
+	var cur: String = String(Save.ranked().get("mode", "gem_grab"))
+	for m in Progression.RANKED_MODES:
+		var sel: bool = m == cur
+		var b := UIKit.button("", Color("8a3cff") if sel else Color("3a3166"), 14, Vector2(144, 58))
+		var ic := ModeChip.new()
+		ic.mode = m
+		ic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		b.add_child(ic)
+		b.pressed.connect(func():
+			Save.ranked()["mode"] = m
+			Save.save_game()
+			Router.goto("ranked", {}, true))
+		modes.add_child(b)
 
 	var btn := UIKit.button("PLAY RANKED", Color("8a3cff"), 30, Vector2(330, 76))
 	btn.position = Vector2(910, 626) - Vector2(0, 0)
-	btn.position = Vector2(900, 330)
+	btn.position = Vector2(900, 336)
 	btn.pressed.connect(_play)
 	add_child(btn)
 	var note := UIKit.label("PLAYING AS: " + String(Config.BRAWLERS[Save.data.selected_brawler].name), 16, Color("d8c8ff"), 5)
-	note.position = Vector2(904, 410)
+	note.position = Vector2(904, 414)
 	add_child(note)
 	var i := 0
 	for n in [hero, info, ladder, btn]:
@@ -59,7 +77,9 @@ func _ready() -> void:
 
 func _play() -> void:
 	var r := Save.ranked()
-	var mid: String = Progression.RANKED_MODES[(int(r.wins) + int(r.losses)) % Progression.RANKED_MODES.size()]
+	var mid: String = String(r.get("mode", "gem_grab"))
+	if not mid in Progression.RANKED_MODES:
+		mid = "gem_grab"
 	Sfx.play("ui_confirm")
 	Router.goto("match", {"mode": mid, "brawler": Save.data.selected_brawler, "ranked": true,
 		"difficulty": Progression.ranked_difficulty(int(r.points))})
@@ -136,15 +156,13 @@ class InfoCard extends Control:
 		draw_rect(Rect2(0, 0, size.x, 4), Color("a46bff"))
 		S2.text_l(self, "HOW RANKED WORKS", Vector2(20, 38), 24, Color.WHITE)
 		var lines := [
-			"3v3 Gem Rush and Knockout Rush, taking turns",
-			"Win: +25 RP  (+5 more for every win in a row, up to +15)",
-			"Lose: -15 RP.  You never drop out of a rank once reached",
-			"100 RP per division:  I  >  II  >  III  >  next rank",
-			"Enemies get tougher the higher you climb",
-			"No trophies are won or lost in Ranked",
+			"Pick any mode below.  Showdown: top 4 counts as a win",
+			"Win: +25 RP (+5 per extra win in a row, up to +15).  Lose: -15 RP",
+			"100 RP per division (I > II > III), never drop out of a rank",
+			"Tougher enemies as you climb.  No trophies won or lost",
 		]
 		for i in lines.size():
-			S2.text_l(self, "•  " + lines[i], Vector2(24, 72 + i * 23), 16, Color(1, 1, 1, 0.85))
+			S2.text_l(self, "•  " + lines[i], Vector2(24, 68 + i * 22), 15, Color(1, 1, 1, 0.85))
 
 
 ## Row of all seven badges with first-time rewards underneath.
@@ -179,3 +197,14 @@ class Ladder extends Control:
 					x += 52.0
 				if claimed:
 					UIKit.draw_icon(self, "check", Vector2(cx + 46, 150), 22.0)
+
+
+class ModeChip extends Control:
+	var mode := "gem_grab"
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		UIKit.draw_icon(self, Progression.RANKED_MODE_ICONS.get(mode, "play"), Vector2(28, size.y * 0.5 - 2), 40.0)
+		var nm: String = String(Config.MODES[mode].name).replace(" RUSH", "")
+		S2.text_l(self, nm, Vector2(52, size.y * 0.5 + 4), 15 if nm.length() > 7 else 17, Color.WHITE)
