@@ -149,31 +149,6 @@ const SPRITES := {
 		"attack": [115, 80, 24.5, 78.0, 81.0, true],
 		"hurt": [62, 66, 30.5, 64.3, 81.0, true],
 	},
-	"bront": {
-		"attack": [96, 76, 42.5, 74.1, 68.0, true],
-		"front": [53, 66, 28.0, 64.3, 68.0, true],
-		"hurt": [54, 47, 22.0, 45.8, 68.0, true],
-		"main": [315, 347, 171.0, 338.3, 347.0, false],
-		"walk1": [57, 72, 26.5, 70.2, 68.0, true],
-		"walk2": [52, 71, 24.0, 69.2, 68.0, true],
-		"walk3": [52, 74, 24.5, 72.1, 68.0, true],
-		"walk4": [55, 73, 24.5, 71.2, 68.0, true],
-		"walk5": [56, 72, 23.0, 70.2, 68.0, true],
-		"walk6": [56, 72, 23.0, 70.2, 68.0, true],
-	},
-	"bruno": {
-		"attack": [65, 54, 23.5, 52.6, 64.0, true],
-		"back": [52, 51, 27.0, 49.7, 64.0, true],
-		"front": [54, 64, 26.0, 62.4, 64.0, true],
-		"hurt": [55, 50, 24.5, 48.8, 64.0, true],
-		"main": [252, 293, 142.5, 285.7, 293.0, true],
-		"walk1": [55, 51, 21.0, 49.7, 64.0, true],
-		"walk2": [51, 51, 24.0, 49.7, 64.0, true],
-		"walk3": [55, 51, 22.5, 49.7, 64.0, true],
-		"walk4": [60, 51, 23.0, 49.7, 64.0, true],
-		"walk5": [58, 51, 24.5, 49.7, 64.0, true],
-		"walk6": [57, 51, 23.5, 49.7, 64.0, true],
-	},
 	"graves": {
 		"main": [553, 643, 260.0, 620.5, 643.0, true],
 		"idle": [172, 216, 86.0, 208.4, 216.0, false],
@@ -188,9 +163,9 @@ const SPRITES := {
 }
 const SPRITE_UNITS := 84.0
 ## Trail / slash colour per sprite brawler.
-const SPRITE_FX := {"graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b"), "bront": Color("ffb030"), "bruno": Color("ff4a3a")}
+const SPRITE_FX := {"graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b")}
 ## Size of each sprite brawler relative to the others.
-const SPRITE_SIZE := {"king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0, "bront": 1.08, "bruno": 1.1}
+const SPRITE_SIZE := {"king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0}
 ## Missing frames fall back to these.
 const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side", "win": "main"}  # drawn height of a sprite character, in art units
 static var _tex_cache := {}

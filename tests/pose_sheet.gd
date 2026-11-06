@@ -27,5 +27,5 @@ func _draw() -> void:
 			var a: Dictionary = poses[i][1].duplicate()
 			a["t"] = _t + float(a.get("t_add", 0.0))
 			a["aim"] = a.get("aim_override", Vector2(1, 0.2))
-			BrawlerArt.draw(self, ["bront", "bruno", "graves", "templar", "monk", "gunslinger"][j], Vector2(60 + i * 105, 128 + j * 116), 0.78, a)
+			BrawlerArt.draw(self, ["graves", "cyber", "king", "templar", "monk", "gunslinger"][j], Vector2(60 + i * 105, 128 + j * 116), 0.78, a)
 		draw_string(ThemeDB.fallback_font, Vector2(20 + i * 105, 30), poses[i][0], HORIZONTAL_ALIGNMENT_LEFT, -1, 16)
