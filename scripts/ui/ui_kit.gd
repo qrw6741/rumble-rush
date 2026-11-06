@@ -90,6 +90,67 @@ static func _circle_icon(size: int, col: Color) -> ImageTexture:
 				img.set_pixel(x, y, DARK if dd > size * 0.5 - 4.0 else col)
 	return ImageTexture.create_from_image(img)
 
+## Glossy 3D button skin: vertical gradient, shine on the top half, light inner rim,
+## dark outline and a chunky bottom lip. Generated once per colour and cached.
+static var _skins := {}
+
+static func glossy(col: Color, radius := 18, lip := 6, pressed := false) -> StyleBoxTexture:
+	var key := "%s|%d|%d|%s" % [col.to_html(), radius, lip, pressed]
+	if _skins.has(key):
+		return _skins[key]
+	var S := 96
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	var r := float(radius)
+	var lp := float(lip if not pressed else 2)
+	var top_col := col.lightened(0.28)
+	var bot_col := col.darkened(0.18)
+	var lip_col := col.darkened(0.55)
+	for y in S:
+		for x in S:
+			var p := Vector2(x + 0.5, y + 0.5)
+			var d_out := _rr_dist(p, Vector2(0, 0), Vector2(S, S), r)
+			if d_out > 0.5:
+				continue
+			var a := clampf(0.5 - d_out, 0.0, 1.0)
+			var c := DARK
+			# face (above the lip), inset by the outline
+			var face_d := _rr_dist(p, Vector2(4, 4), Vector2(S - 4, S - 4 - lp), maxf(2.0, r - 4.0))
+			var lip_d := _rr_dist(p, Vector2(4, 4), Vector2(S - 4, S - 4), maxf(2.0, r - 4.0))
+			if face_d <= 0.0:
+				var t := clampf((p.y - 4.0) / float(S - 8 - lp), 0.0, 1.0)
+				c = top_col.lerp(col, smoothstep(0.0, 0.5, t)).lerp(bot_col, smoothstep(0.5, 1.0, t))
+				# shine on the top half
+				if t < 0.46:
+					c = c.lerp(Color.WHITE, 0.16 * (1.0 - t / 0.46) + 0.06)
+				# light rim just inside the top edge
+				if face_d > -3.0 and p.y < S * 0.5:
+					c = c.lerp(Color.WHITE, 0.35)
+			elif lip_d <= 0.0:
+				c = lip_col
+			c.a *= a
+			img.set_pixel(x, y, c)
+	var tex := ImageTexture.create_from_image(img)
+	var sb := StyleBoxTexture.new()
+	sb.texture = tex
+	var m := float(maxi(radius, 12) + 2)
+	sb.texture_margin_left = m
+	sb.texture_margin_right = m
+	sb.texture_margin_top = m
+	sb.texture_margin_bottom = m + lp
+	sb.content_margin_left = 18
+	sb.content_margin_right = 18
+	sb.content_margin_top = 8 + (4 if pressed else 0)
+	sb.content_margin_bottom = 10 + lp
+	_skins[key] = sb
+	return sb
+
+## Signed distance to a rounded rectangle (negative inside).
+static func _rr_dist(p: Vector2, a: Vector2, b: Vector2, r: float) -> float:
+	var c := (a + b) * 0.5
+	var h := (b - a) * 0.5 - Vector2(r, r)
+	var q := (p - c).abs() - h
+	return Vector2(maxf(q.x, 0.0), maxf(q.y, 0.0)).length() + minf(maxf(q.x, q.y), 0.0) - r
+
 static func box(col: Color, radius := 18, border := 4, border_col := DARK, shadow := 6) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = col
@@ -122,12 +183,10 @@ static func button(text: String, col := ORANGE, font_size := 26, min_size := Vec
 	b.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.5))
 	b.add_theme_color_override("font_outline_color", DARK)
 	b.add_theme_constant_override("outline_size", 8)
-	b.add_theme_stylebox_override("normal", box(col))
-	b.add_theme_stylebox_override("hover", box(col.lightened(0.12)))
-	var pressed := box(col.darkened(0.1), 18, 4, DARK, 2)
-	pressed.content_margin_top = 12
-	b.add_theme_stylebox_override("pressed", pressed)
-	b.add_theme_stylebox_override("disabled", box(Color("5a5470")))
+	b.add_theme_stylebox_override("normal", glossy(col))
+	b.add_theme_stylebox_override("hover", glossy(col.lightened(0.1)))
+	b.add_theme_stylebox_override("pressed", glossy(col.darkened(0.08), 18, 6, true))
+	b.add_theme_stylebox_override("disabled", glossy(Color("5a5470")))
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	b.pressed.connect(func(): Sfx.play("ui_click", -2.0, 0.04))
 	b.mouse_entered.connect(func(): _pop(b, 1.04))

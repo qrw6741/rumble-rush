@@ -115,6 +115,40 @@ const SPRITES := {
 		"side": [69, 196, 32.5, 190.1, 196.0, false],
 		"back": [106, 216, 56.5, 209.5, 216.0, true],
 	},
+	"templar": {
+		"main": [480, 612, 236.5, 596.7, 560.0, true],
+		"front": [97, 148, 53.0, 144.3, 148.0, true],
+		"side": [89, 148, 44.0, 144.3, 148.0, true],
+		"back": [97, 148, 49.0, 144.3, 148.0, true],
+		"walk1": [67, 115, 34.0, 112.1, 116.0, true],
+		"walk2": [69, 113, 34.0, 110.2, 116.0, true],
+		"walk3": [70, 116, 36.0, 113.1, 116.0, true],
+		"walk4": [76, 114, 40.5, 111.1, 116.0, true],
+		"attack": [147, 121, 51.0, 118.0, 124.0, true],
+		"hurt": [78, 80, 37.0, 78.0, 112.0, true],
+	},
+	"monk": {
+		"main": [470, 570, 276.5, 555.8, 570.0, true],
+		"front": [95, 139, 46.5, 135.5, 139.0, true],
+		"side": [86, 132, 39.5, 128.7, 132.0, true],
+		"back": [94, 136, 44.5, 132.6, 136.0, true],
+		"walk1": [72, 112, 32.5, 109.2, 113.0, true],
+		"walk2": [72, 113, 34.5, 110.2, 113.0, true],
+		"walk3": [73, 112, 32.5, 109.2, 113.0, true],
+		"hurt": [157, 172, 98.5, 167.7, 200.0, true],
+	},
+	"gunslinger": {
+		"main": [410, 429, 331.0, 418.3, 429.0, false],
+		"front": [77, 132, 38.0, 128.7, 132.0, true],
+		"side": [78, 132, 52.0, 128.7, 132.0, true],
+		"back": [103, 132, 51.0, 128.7, 132.0, true],
+		"walk1": [57, 81, 27.5, 79.0, 81.0, true],
+		"walk2": [67, 80, 26.5, 78.0, 81.0, true],
+		"walk3": [65, 80, 26.0, 78.0, 81.0, true],
+		"walk4": [65, 79, 32.5, 77.0, 81.0, true],
+		"attack": [115, 80, 24.5, 78.0, 81.0, true],
+		"hurt": [62, 66, 30.5, 64.3, 81.0, true],
+	},
 	"graves": {
 		"main": [553, 643, 260.0, 620.5, 643.0, true],
 		"idle": [172, 216, 86.0, 208.4, 216.0, false],
@@ -129,11 +163,11 @@ const SPRITES := {
 }
 const SPRITE_UNITS := 84.0
 ## Trail / slash colour per sprite brawler.
-const SPRITE_FX := {"graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff")}
+const SPRITE_FX := {"graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b")}
 ## Size of each sprite brawler relative to the others.
-const SPRITE_SIZE := {"king": 1.12, "cyber": 0.98}
+const SPRITE_SIZE := {"king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0}
 ## Missing frames fall back to these.
-const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side"}  # drawn height of a sprite character, in art units
+const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side", "win": "main"}  # drawn height of a sprite character, in art units
 static var _tex_cache := {}
 
 static func has_sprites(id: String) -> bool:
@@ -194,6 +228,21 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 		elif aim.y < -0.62:
 			frame = "back"
 		var ph := t * 10.0
+		var nwalk := _walk_frames(id)
+		if frame == "walk" and nwalk > 0:
+			# real hand-drawn walk cycle: step through the frames, keep a light bob
+			frame = "walk%d" % (int(t * 9.0) % nwalk + 1)
+			P.stride = 0.0
+			P.scissor = 0.0
+			P.lift = absf(sin(ph)) * 3.0
+			P.sq = 1.0 + cos(ph * 2.0) * 0.02
+			P.lean = 0.03
+			P.flutter = 1.2
+			_wisps(ci, pos, s, t, facing, glow_c, alpha)
+			_dust(ci, pos, s, t, ph, facing, alpha)
+			_mesh(ci, id, frame, pos, s, P, tint)
+			_fx_after(ci, d, pos, s, facing, t, alpha)
+			return
 		P.stride = sin(ph)
 		P.scissor = sin(ph) if frame == "walk" else 0.0
 		P.lift = absf(sin(ph)) * 6.0
@@ -210,7 +259,7 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 			P.sq = 1.0 + (0.08 if absf(sin(ph2)) > 0.5 else -0.06) * absf(cos(ph2))
 			P.lean = sin(ph2 * 0.5) * 0.05
 			P.flutter = 1.6
-			_mesh(ci, id, "main", pos, s, P, tint)
+			_mesh(ci, id, "win" if SPRITES[id].has("win") else "main", pos, s, P, tint)
 		else:
 			P.sq = 1.0 + sin(t * 2.4) * 0.022
 			P.lean = sin(t * 1.2) * 0.018
@@ -246,6 +295,23 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 	_alpha = 1.0
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+static func _walk_frames(id: String) -> int:
+	var n := 0
+	while SPRITES[id].has("walk%d" % (n + 1)):
+		n += 1
+	return n
+
+static func _fx_after(ci: CanvasItem, d: Dictionary, pos: Vector2, s: float, facing: float, t: float, alpha: float) -> void:
+	ci.draw_set_transform(pos, 0.0, Vector2(s * facing, s))
+	_alpha = alpha
+	match d.get("fx", ""):
+		"fire": _fx_fire(ci, t, d.accent)
+		"frost": _fx_frost(ci, t, d.accent)
+		"neon": _fx_neon(ci, t, d.secondary, d.accent)
+		"stars": _fx_stars(ci, t, d.accent)
+	_alpha = 1.0
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 ## Three-stage scythe swing: wind-up (scythe raised), strike (slash pose + sweeping arc), follow-through.
 static func _swing(ci: CanvasItem, id: String, pos: Vector2, s: float, P: Dictionary, tint: Color, k: float, glow_c: Color) -> void:
 	var facing: float = P.facing
@@ -258,15 +324,19 @@ static func _swing(ci: CanvasItem, id: String, pos: Vector2, s: float, P: Dictio
 		_mesh(ci, id, "idle", pos, s, P, tint)
 		return
 	var st := (k - 0.2) / 0.8  # 0..1 strike -> recover
-	# strike: lunge forward fast, then settle
+	var melee: bool = str(Config.BRAWLERS.get(id, {}).get("attack", {}).get("kind", "")) == "melee_cone"
+	# strike: lunge forward fast (melee) or kick back from the shot (ranged), then settle
 	var lunge := sin(minf(1.0, st * 3.0) * PI * 0.5) * (1.0 - smoothstep(0.45, 1.0, st))
+	if not melee:
+		lunge *= -0.45
 	P.lean = 0.18 * lunge
 	P.sq = 1.0 - 0.07 * lunge
 	P.pop = 1.0 + 0.08 * lunge
 	P.flutter = 2.4
 	var off := Vector2(facing * 10.0 * lunge * s, 0)
 	# sweeping slash arc behind the body
-	_slash_arc(ci, pos + off, s, facing, st, glow_c, tint.a)
+	if melee:
+		_slash_arc(ci, pos + off, s, facing, st, glow_c, tint.a)
 	var a_main := smoothstep(0.62, 1.0, st)
 	if a_main < 1.0:
 		_mesh(ci, id, "attack", pos + off, s, P, Color(tint.r, tint.g, tint.b, tint.a * (1.0 - a_main)))

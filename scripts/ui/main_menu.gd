@@ -506,13 +506,24 @@ class SlantButton extends Button:
 			var outer := PackedVector2Array([Vector2(s, 0), Vector2(w, 0), Vector2(w - s, h), Vector2(0, h)])
 			draw_colored_polygon(outer, UIKit.DARK)
 			var inset := 4.0
-			var inner := PackedVector2Array([Vector2(s + inset, inset), Vector2(w - inset, inset), Vector2(w - s - inset, h - inset - 5), Vector2(inset, h - inset - 5)])
-			draw_colored_polygon(inner, color)
+			var inner := PackedVector2Array([Vector2(s + inset, inset), Vector2(w - inset, inset), Vector2(w - s - inset, h - inset - 6), Vector2(inset, h - inset - 6)])
 			if color.a > 0.9:
-				var hi := color.lightened(0.18)
-				draw_colored_polygon(PackedVector2Array([inner[0], inner[1], inner[1] + Vector2(-1, 8), inner[0] + Vector2(-1, 8)]), hi)
-				var lo := color.darkened(0.25)
-				draw_colored_polygon(PackedVector2Array([Vector2(inset, h - inset - 5), Vector2(w - s - inset, h - inset - 5), Vector2(w - s - inset, h - inset), Vector2(inset, h - inset)]), lo)
+				# bottom lip
+				var lo := color.darkened(0.5)
+				draw_colored_polygon(PackedVector2Array([Vector2(inset, h - inset - 7), Vector2(w - s - inset, h - inset - 7), Vector2(w - s - inset, h - inset), Vector2(inset, h - inset)]), lo)
+				# vertical gradient face
+				var top_c := color.lightened(0.25)
+				var bot_c := color.darkened(0.16)
+				draw_polygon(inner, PackedColorArray([top_c, top_c, bot_c, bot_c]))
+				# shine across the top half
+				var mid := lerpf(inner[0].y, inner[3].y, 0.46)
+				var fx := func(y: float) -> float: return s * (1.0 - (y - 0.0) / h)
+				var gl := PackedVector2Array([inner[0], inner[1], Vector2(w - inset - (s - fx.call(mid)), mid), Vector2(inset + fx.call(mid), mid)])
+				draw_polygon(gl, PackedColorArray([Color(1, 1, 1, 0.22), Color(1, 1, 1, 0.22), Color(1, 1, 1, 0.04), Color(1, 1, 1, 0.04)]))
+				# rim light on the top edge
+				draw_line(inner[0] + Vector2(2, 2), inner[1] + Vector2(-2, 2), Color(1, 1, 1, 0.45), 2.5, true)
+			else:
+				draw_colored_polygon(inner, color)
 		if custom_draw.is_valid():
 			custom_draw.call(self)
 

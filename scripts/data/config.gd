@@ -258,6 +258,45 @@ const BRAWLERS := {
 			"damage": 1300, "range": 6.0, "radius": 2.4, "stun": 0.8, "air_time": 0.6},
 		"gadget": {"kind": "iron_skin", "name": "Spirit Aegis", "desc": "A spectral shield blocks 50% of damage for 3 seconds.", "cooldown": 14.0, "duration": 3.0, "reduction": 0.5},
 	},
+	"templar": {
+		"name": "VOID TEMPLAR", "role": "CONTROLLER", "rarity": "MYTHIC", "unlock": {"currency": "gems", "cost": 249},
+		"tagline": "Order is a cage. I hold the key.",
+		"bio": "A guardian of the void who reads from a book of black stars. Where he points, the chaos goes.",
+		"health": 3400, "speed": 175.0, "radius": 23.0,
+		"ammo": 3, "reload": 1.5,
+		"primary": Color("3a1f6a"), "secondary": Color("140a26"), "accent": Color("c060ff"), "skin": Color("e6dcf2"),
+		"attack": {"kind": "lob", "name": "Void Sphere", "desc": "Hurls a sphere of void energy over walls that bursts on landing.",
+			"damage": 880, "range": 7.0, "radius": 1.5, "flight": 0.7, "super_per_hit": 0.3, "sfx": "shoot_lob"},
+		"super": {"kind": "bramble", "name": "Chaos Rift", "desc": "Tears open a rift of void flame that slows and burns enemies for 4 seconds.",
+			"damage": 320, "range": 7.5, "radius": 2.7, "duration": 4.0, "tick": 0.5, "slow": 0.5, "flight": 0.7},
+		"gadget": {"kind": "snare", "name": "Void Chains", "desc": "Sets a hidden void sigil that chains the first enemy to step on it.", "cooldown": 12.0, "root": 1.8, "life": 12.0},
+	},
+	"monk": {
+		"name": "CELESTIAL MONK", "role": "SUPPORT", "rarity": "LEGENDARY", "unlock": {"currency": "gems", "cost": 179},
+		"tagline": "The heavens are on my side.",
+		"bio": "A wandering monk who bends the light of the heavens into orbs that mend allies and scatter foes.",
+		"health": 3600, "speed": 200.0, "radius": 22.0,
+		"ammo": 3, "reload": 1.4,
+		"primary": Color("1f2f6e"), "secondary": Color("0d1230"), "accent": Color("5fc4ff"), "skin": Color("e8e8f5"),
+		"attack": {"kind": "orb", "name": "Heaven Orb", "desc": "A glowing orb that damages the first enemy it hits, or heals the first ally it touches.",
+			"damage": 720, "heal": 760, "range": 7.2, "speed": 560.0, "super_per_hit": 0.26, "sfx": "shoot_heal"},
+		"super": {"kind": "sanctuary", "name": "Heavenly Seal", "desc": "Lays down sacred talismans that heal allies and burn enemies for 5 seconds.",
+			"heal": 320, "damage": 220, "range": 7.0, "radius": 2.7, "duration": 5.0, "tick": 0.5},
+		"gadget": {"kind": "mend", "name": "Blessing", "desc": "Instantly heals himself and nearby allies.", "cooldown": 15.0, "heal": 1000, "radius": 3.2},
+	},
+	"gunslinger": {
+		"name": "DEMON GUNSLINGER", "role": "MARKSMAN", "rarity": "LEGENDARY", "unlock": {"currency": "gems", "cost": 179},
+		"tagline": "A deal's a deal.",
+		"bio": "A cursed gunslinger with a hand cannon and a debt to settle. His bullets burn with hellfire.",
+		"health": 3000, "speed": 205.0, "radius": 21.0,
+		"ammo": 3, "reload": 1.35,
+		"primary": Color("3a1418"), "secondary": Color("140608"), "accent": Color("ff3b3b"), "skin": Color("d9c8c8"),
+		"attack": {"kind": "rifle", "name": "Hellfire Shot", "desc": "A long-range hellfire bullet that hits harder the farther it flies.",
+			"damage": 960, "max_bonus": 0.4, "range": 9.5, "speed": 980.0, "super_per_hit": 0.32, "sfx": "shoot_rifle"},
+		"super": {"kind": "lance_beam", "name": "Devil's Due", "desc": "Takes aim and fires a cursed round that pierces every enemy in a line.",
+			"damage": 2100, "range": 13.0, "width": 0.8, "charge": 0.3},
+		"gadget": {"kind": "overclock", "name": "Quick Reload", "desc": "Instantly reloads every shot.", "cooldown": 14.0},
+	},
 	"dusty": {
 		"name": "DUSTY", "role": "SHARPSHOOTER", "rarity": "RARE", "unlock": {"currency": "credits", "cost": 600},
 		"tagline": "Fastest draw this side of the arena.",
@@ -337,7 +376,7 @@ const BRAWLERS := {
 		"gadget": {"kind": "shadow_step", "name": "Smoke Veil", "desc": "Disappears in a puff of smoke for 2.5 seconds.", "cooldown": 16.0, "duration": 2.5},
 	},
 }
-const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig", "rio", "graves", "dusty", "kora", "patch", "bruno", "skye", "ember", "cyber", "king"]
+const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig", "rio", "graves", "dusty", "kora", "patch", "bruno", "skye", "ember", "cyber", "king", "templar", "monk", "gunslinger"]
 const STARTER_BRAWLERS := ["bront", "vex", "nova", "mira", "sprig", "rio"]
 
 const BOT_NAMES := ["Pixel", "Zapper", "Moxie", "Rook", "Tango", "Bolt", "Juno", "Kiwi", "Rumble", "Echo", "Sparx", "Blitz", "Nimbus", "Fuse"]
