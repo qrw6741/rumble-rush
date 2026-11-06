@@ -136,7 +136,7 @@ func _ready() -> void:
 	var abil := AbilityRow.new()
 	abil.id = id
 	abil.position = Vector2(880, 96)
-	abil.size = Vector2(390, 190)
+	abil.size = Vector2(394, 180)
 	abil.clicked.connect(_open_abilities)
 	add_child(abil)
 	var pw := PowerPanel.new()
@@ -231,6 +231,38 @@ func _open_abilities() -> void:
 			h.add_child(bb)
 		v.add_child(h)
 	var speed_name := "VERY FAST" if d.speed >= 200 else ("NORMAL" if d.speed >= 168 else "SLOW")
+	var spd: Dictionary = Config.STAR_POWERS.get(id, {})
+	if not spd.is_empty():
+		var h2 := HBoxContainer.new()
+		h2.add_theme_constant_override("separation", 14)
+		var ic2 := TextureRect.new()
+		ic2.texture = UIKit.icon("star")
+		ic2.custom_minimum_size = Vector2(64, 64)
+		ic2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic2.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		h2.add_child(ic2)
+		var vv2 := VBoxContainer.new()
+		vv2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vv2.add_child(UIKit.label("STAR POWER  ·  %s" % String(spd.name), 19, Color("ffc04a"), 6))
+		vv2.add_child(UIKit.body(String(spd.desc), 15))
+		h2.add_child(vv2)
+		if not Save.has_star(id):
+			ic2.modulate = Color(0.5, 0.5, 0.55)
+			var blk2 := Save.star_block(id)
+			var sb := UIKit.button("BUY  %d COINS" % Config.STAR_COST, Color("ff9d1f"), 17, Vector2(190, 56))
+			match blk2:
+				"level": sb.text = "NEEDS POWER %d" % Config.STAR_LEVEL
+				"locked": sb.text = "UNLOCK BRAWLER"
+				"coins": sb.text = "NEED %d COINS" % Config.STAR_COST
+			sb.disabled = blk2 != ""
+			sb.pressed.connect(func():
+				if Save.buy_star(id):
+					Sfx.play("victory", -2.0, 0.0)
+					Router.goto("brawler", {"id": id}, true)
+				else:
+					Sfx.play("ui_error"))
+			h2.add_child(sb)
+		v.add_child(h2)
 	if not Save.has_gadget(id):
 		v.add_child(UIKit.label("Gadgets unlock at POWER %d and cost %d coins." % [Config.GADGET_LEVEL, Config.GADGET_COST], 15, Color("ffd23a"), 5, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("RANGE %.1f tiles   ·   AMMO %d (%.2fs reload)   ·   SPEED %s" % [a.range, d.ammo, d.reload, speed_name], 15, Color("8fd0ff"), 5, HORIZONTAL_ALIGNMENT_CENTER))
@@ -418,30 +450,34 @@ class AbilityRow extends Button:
 	func _draw() -> void:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
 		var d: Dictionary = Config.BRAWLERS[id]
-		var slots := [["attack", Color("ff7a2a"), String(d.attack.name)], ["gadget", Color("3fcf4a"), String(d.gadget.name)], ["super", Color("ffc21a"), String(d.super.name)]]
-		for k in 3:
-			var c := Vector2(66 + k * 128, 64)
+		var sp: Dictionary = Config.STAR_POWERS.get(id, {"name": "-"})
+		var slots := [["attack", Color("ff7a2a"), String(d.attack.name)], ["gadget", Color("3fcf4a"), String(d.gadget.name)], ["super", Color("ffc21a"), String(d.super.name)], ["star", Color("ff9d1f"), String(sp.name)]]
+		for k in 4:
+			var c := Vector2(48 + k * 98, 60)
 			var col: Color = slots[k][1]
 			var hexo := PackedVector2Array()
 			var hexi := PackedVector2Array()
 			for i in 8:
 				var a := PI / 8 + i * TAU / 8.0
-				hexo.append(c + Vector2.from_angle(a) * 56.0)
-				hexi.append(c + Vector2.from_angle(a) * 49.0)
+				hexo.append(c + Vector2.from_angle(a) * 46.0)
+				hexi.append(c + Vector2.from_angle(a) * 40.0)
 			draw_colored_polygon(hexo, UIKit.DARK)
 			draw_polygon(hexi, PackedColorArray([col.lightened(0.3), col.lightened(0.3), col, col.darkened(0.2), col.darkened(0.3), col.darkened(0.2), col, col.lightened(0.15)]))
-			draw_circle(c + Vector2(-14, -18), 10, Color(1, 1, 1, 0.25))
-			var locked_g: bool = k == 1 and not Save.has_gadget(id)
-			UIKit.draw_icon(self, "ab_%s_%s" % [id, slots[k][0]], c, 74.0 + 3.0 * sin(_t * 2.0 + k), Color(0.45, 0.45, 0.5) if locked_g else Color.WHITE)
-			S2.text_c(self, String(slots[k][0]).to_upper(), c + Vector2(0, 76), 13, col.lightened(0.4))
+			draw_circle(c + Vector2(-12, -15), 8, Color(1, 1, 1, 0.25))
+			var locked := (k == 1 and not Save.has_gadget(id)) or (k == 3 and not Save.has_star(id))
+			var icn: String = "star" if k == 3 else "ab_%s_%s" % [id, slots[k][0]]
+			UIKit.draw_icon(self, icn, c, 60.0 + 3.0 * sin(_t * 2.0 + k), Color(0.45, 0.45, 0.5) if locked else Color.WHITE)
+			var lab: String = "STAR POWER" if k == 3 else String(slots[k][0]).to_upper()
+			S2.text_c(self, lab, c + Vector2(0, 64), 12, col.lightened(0.4))
 			var nm: String = slots[k][2]
-			if locked_g:
-				UIKit.draw_icon(self, "lock", c + Vector2(26, 24), 34.0)
-				var blk := Save.gadget_block(id)
-				nm = "TAP TO BUY" if blk == "" or blk == "coins" else ("POWER %d NEEDED" % Config.GADGET_LEVEL)
-				S2.text_c(self, nm, c + Vector2(0, 96), 12, Color("ffd23a"))
+			if locked:
+				UIKit.draw_icon(self, "lock", c + Vector2(22, 20), 28.0)
+				var blk := Save.gadget_block(id) if k == 1 else Save.star_block(id)
+				var need := Config.GADGET_LEVEL if k == 1 else Config.STAR_LEVEL
+				nm = "TAP TO BUY" if blk == "" or blk == "coins" else ("POWER %d" % need)
+				S2.text_c(self, nm, c + Vector2(0, 82), 12, Color("ffd23a"))
 			else:
-				S2.text_c(self, nm, c + Vector2(0, 96), 14 if nm.length() < 14 else 12, Color.WHITE)
+				S2.text_c(self, nm, c + Vector2(0, 82), 12 if nm.length() < 13 else 10, Color.WHITE)
 
 
 class PowerPanel extends Control:

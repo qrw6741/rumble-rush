@@ -394,7 +394,13 @@ func deal_damage(src: Brawler, target: Brawler, amount: float, super_gain: float
 		return 0.0
 	if src and src.team == target.team:
 		return 0.0
+	if src and src.star == "berserk" and src.hp < src.max_hp * 0.5:
+		amount *= 1.0 + src.star_v
+	if src and src.star == "super_boost":
+		super_gain *= 1.0 + src.star_v
 	var dealt := target.take_damage(amount, src)
+	if dealt > 0.0 and src and src.star == "lifesteal" and src.alive:
+		src.heal(dealt * src.star_v)
 	if dealt > 0.0 and src:
 		src.stats.damage += int(dealt)
 		src.add_super(super_gain)
@@ -415,6 +421,8 @@ func on_brawler_died(victim: Brawler, killer: Brawler) -> void:
 	victim.respawn_t = mode.respawn_delay(victim)
 	if killer and killer != victim:
 		killer.stats.kos += 1
+		if killer.star == "ko_heal" and killer.alive:
+			killer.heal(killer.max_hp * killer.star_v)
 	hud.add_feed(killer, victim)
 	if victim == player:
 		shake(10.0)

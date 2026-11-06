@@ -63,6 +63,14 @@ func _ready() -> void:
 		print("GADGETTEST lvl5=", a, " buy@6=", ok, " coins=", Save.data.credits, " owned=", Save.has_gadget("vex"), " again=", Save.buy_gadget("vex"))
 		get_tree().quit()
 		return
+	if "--startest" in args:
+		Save.data.credits = 9000
+		Save.data.brawler_levels["graves"] = 7
+		if not "graves" in Save.data.unlocked:
+			Save.data.unlocked.append("graves")
+		print("STARTEST lvl6blk=", Save.star_block("bront"), " buy=", Save.buy_star("graves"), " coins=", Save.data.credits, " has=", Save.has_star("graves"))
+		get_tree().quit()
+		return
 	if "--check" in args:
 		_check_scripts()
 		return

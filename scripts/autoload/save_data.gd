@@ -72,6 +72,7 @@ func _default() -> Dictionary:
 		"win_streak": 0,
 		"champs_tokens": 0,
 		"gadgets": [],
+		"star_powers": [],
 		"champs_bought": [],
 		"ranked": {"points": 0, "best": 0, "wins": 0, "losses": 0, "streak": 0, "claimed": [0], "mode": "gem_grab"},
 		"best_streak": 0,
@@ -669,6 +670,29 @@ func buy_gadget(id: String) -> bool:
 		return false
 	data.credits = int(data.credits) - Config.GADGET_COST
 	data.gadgets.append(id)
+	save_game()
+	return true
+
+# ------------------------------------------------------------------ star powers
+func has_star(id: String) -> bool:
+	return id in data.get("star_powers", [])
+
+func star_block(id: String) -> String:
+	if has_star(id):
+		return "owned"
+	if not is_unlocked(id):
+		return "locked"
+	if brawler_level(id) < Config.STAR_LEVEL:
+		return "level"
+	if int(data.credits) < Config.STAR_COST:
+		return "coins"
+	return ""
+
+func buy_star(id: String) -> bool:
+	if star_block(id) != "":
+		return false
+	data.credits = int(data.credits) - Config.STAR_COST
+	data.star_powers.append(id)
 	save_game()
 	return true
 

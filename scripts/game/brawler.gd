@@ -29,6 +29,8 @@ var super_charge := 0.0
 var gadget_cd := 0.0
 var gadget_max_cd := 12.0
 var has_gadget := true
+var star := ""      # star power kind ('' = none)
+var star_v := 0.0
 
 # state
 var alive := true
@@ -111,6 +113,13 @@ func setup(brawler_id: String, team_id: int, player: bool, name_text: String, lv
 	gadget_cd = 3.0 # short lock at match start
 	# gadgets must be bought at power 6; bots get theirs from power 6
 	has_gadget = Save.has_gadget(id) if player else level >= Config.GADGET_LEVEL
+	var sp: Dictionary = Config.STAR_POWERS.get(id, {})
+	if not sp.is_empty() and (Save.has_star(id) if player else level >= Config.STAR_LEVEL):
+		star = String(sp.kind)
+		star_v = float(sp.v)
+		match star:
+			"swift": speed *= 1.0 + star_v
+			"fast_reload": reload_time *= 1.0 - star_v
 
 func _ready_rest() -> void:
 	overhead = BrawlerOverhead.new()
@@ -191,7 +200,7 @@ func _physics_process(delta: float) -> void:
 	# regeneration
 	regen_block += delta
 	if regen_block >= Config.REGEN_DELAY and hp < max_hp:
-		hp = min(max_hp, hp + max_hp * Config.REGEN_PERCENT_PER_SEC * delta)
+		hp = min(max_hp, hp + max_hp * Config.REGEN_PERCENT_PER_SEC * delta * (1.0 + star_v if star == "regen" else 1.0))
 
 	# beam charge (Nova super)
 	if beam_charge_t > 0.0:
@@ -372,6 +381,8 @@ func take_damage(amount: float, source: Brawler) -> float:
 		return 0.0
 	if shield_t > 0.0:
 		amount *= 1.0 - float(d.gadget.get("reduction", 0.0))
+	if star == "tough":
+		amount *= 1.0 - star_v
 	amount = round(amount)
 	if amount <= 0.0:
 		return 0.0

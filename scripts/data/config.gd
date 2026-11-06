@@ -24,6 +24,28 @@ const MAX_LEVEL := 7
 ## Gadgets are bought per brawler once it reaches this power level.
 const GADGET_LEVEL := 6
 const GADGET_COST := 1500
+## Star Powers: one passive per brawler, bought at max power.
+const STAR_LEVEL := 7
+const STAR_COST := 2000
+const STAR_POWERS := {
+	"bront": {"name": "Rock Solid", "kind": "tough", "v": 0.15, "desc": "Takes 15% less damage from everything."},
+	"vex": {"name": "Shadow Feet", "kind": "swift", "v": 0.12, "desc": "Moves 12% faster."},
+	"nova": {"name": "Overcharged", "kind": "super_boost", "v": 0.3, "desc": "Super charges 30% faster."},
+	"sprig": {"name": "Sapling Soup", "kind": "regen", "v": 1.5, "desc": "Heals 150% faster when out of combat."},
+	"rio": {"name": "Spray Rush", "kind": "fast_reload", "v": 0.2, "desc": "Reloads 20% faster."},
+	"graves": {"name": "Soul Harvest", "kind": "ko_heal", "v": 0.35, "desc": "Every KO heals 35% of his health."},
+	"dusty": {"name": "Last Stand", "kind": "berserk", "v": 0.25, "desc": "Deals 25% more damage while below half health."},
+	"kora": {"name": "Deep Freeze", "kind": "super_boost", "v": 0.25, "desc": "Super charges 25% faster."},
+	"patch": {"name": "Field Repairs", "kind": "regen", "v": 1.5, "desc": "Heals 150% faster when out of combat."},
+	"bruno": {"name": "Iron Chin", "kind": "tough", "v": 0.18, "desc": "Takes 18% less damage from everything."},
+	"skye": {"name": "Tailwind", "kind": "swift", "v": 0.12, "desc": "Moves 12% faster."},
+	"ember": {"name": "Hot Hands", "kind": "lifesteal", "v": 0.15, "desc": "Heals for 15% of the damage she deals."},
+	"cyber": {"name": "Blade Dance", "kind": "fast_reload", "v": 0.22, "desc": "Reloads 22% faster."},
+	"king": {"name": "Royal Blood", "kind": "lifesteal", "v": 0.18, "desc": "Heals for 18% of the damage he deals."},
+	"templar": {"name": "Void Hunger", "kind": "ko_heal", "v": 0.3, "desc": "Every KO heals 30% of his health."},
+	"monk": {"name": "Inner Peace", "kind": "regen", "v": 2.0, "desc": "Heals twice as fast when out of combat."},
+	"gunslinger": {"name": "Devil's Luck", "kind": "berserk", "v": 0.3, "desc": "Deals 30% more damage while below half health."},
+}
 const UPGRADE_COSTS := [0, 60, 120, 200, 300, 420, 560] # cost to go from level i to i+1
 
 # ------------------------------------------------------------------ modes
