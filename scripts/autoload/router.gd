@@ -14,6 +14,7 @@ const SCREENS := {
 	"art2d": "res://tests/art2d_sheet.gd",
 	"skins": "res://tests/skin_sheet.gd",
 	"poses": "res://tests/pose_sheet.gd",
+	"duo": "res://tests/duo_sheet.gd",
 	"pass": "res://scripts/ui/pass_screen.gd",
 	"road": "res://scripts/ui/road_screen.gd",
 	"events": "res://scripts/ui/events_screen.gd",
