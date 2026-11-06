@@ -557,9 +557,10 @@ static func ranked_difficulty(points: int) -> String:
 
 
 # ------------------------------------------------------------------ RANKED SEASONS
-## Seasons last 4 weeks, starting from a fixed date so every device agrees.
-const RANKED_SEASON_EPOCH := 1793750400  # 2026-11-01 00:00 UTC
-const RANKED_SEASON_SECS := 28 * 86400
+## Seasons last one week and reset every Thursday 00:00 Dubai time (Wed 20:00 UTC),
+## counted from a fixed Thursday so every device agrees.
+const RANKED_SEASON_EPOCH := 1793822400  # Thu 2026-11-05 00:00 UTC+4
+const RANKED_SEASON_SECS := 7 * 86400
 ## End-of-season rewards by the best rank reached that season.
 const RANKED_SEASON_REWARDS := [
 	[{"type": "credits", "amount": 300}],

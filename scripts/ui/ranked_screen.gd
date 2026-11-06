@@ -265,7 +265,7 @@ class TitleBar extends Control:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
 		S2.text_l(self, "RANKED", Vector2(0, 50), 50, Color.WHITE)
 		UIKit.draw_icon(self, "clock", Vector2(236, 38), 26.0)
-		S2.text_l(self, "SEASON %d ENDS IN  %s" % [Progression.ranked_season_now(), Progression.ranked_season_left()], Vector2(254, 34), 16, Color("e0d0ff"))
+		S2.text_l(self, "SEASON %d ENDS IN  %s  (resets every Thursday)" % [Progression.ranked_season_now(), Progression.ranked_season_left()], Vector2(254, 34), 16, Color("e0d0ff"))
 		var secs := Save.ranked_next_payout_secs()
 		S2.text_l(self, "NEXT RANK REWARD IN  %dh %02dm  (auto-collected)" % [secs / 3600, (secs % 3600) / 60], Vector2(254, 58), 16, Color("ffd23a"))
 	func _process(_d: float) -> void:
