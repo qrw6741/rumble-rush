@@ -154,6 +154,8 @@ func _ready() -> void:
 		else:
 			var c := Save.champs()
 			msg = ("QUALIFIER  %d W - %d L" % [int(c.q_w), int(c.q_l)]) if c.stage == "qualifier" else ("FINALS  %d W - %d L" % [int(c.f_w), int(c.f_l)])
+		if int(ci.get("tokens", 0)) > 0:
+			msg += "   ·   +%d CHAMPS TOKENS" % int(ci.tokens)
 		btns.add_child(UIKit.label("CHAMPS: " + msg, 18, UIKit.YELLOW, 6, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
 		again.pressed.connect(func(): Router.goto("match", {"mode": data.mode, "brawler": data.brawler, "debug": data.get("debug", false)}))
@@ -390,6 +392,13 @@ func _team_layout(result: String) -> void:
 	else:
 		proceed.pressed.connect(func(): Router.goto("menu"))
 	add_child(proceed)
+	var cinfo: Dictionary = data.get("champs_info", {})
+	if data.get("champs", false) and int(cinfo.get("tokens", 0)) > 0:
+		var tb := TokenBanner.new()
+		tb.amount = int(cinfo.tokens)
+		tb.position = Vector2(760, 96)
+		tb.size = Vector2(440, 84)
+		add_child(tb)
 	if data.get("ranked", false):
 		var rb := RankedBanner.new()
 		rb.info = data.get("ranked_info", {})
@@ -807,3 +816,17 @@ class RankedBanner extends Control:
 			sub = "WIN STREAK x%d" % int(info.streak)
 		if sub != "" and _t > 1.4:
 			S2.text_l(self, sub, Vector2(112, 90), 16, Color("ffd23a"))
+
+
+class TokenBanner extends Control:
+	var amount := 0
+	var _t := 0.0
+	func _process(d: float) -> void:
+		_t += d
+		queue_redraw()
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		draw_colored_polygon(PackedVector2Array([Vector2(20, 0), Vector2(size.x, 0), Vector2(size.x - 20, size.y), Vector2(0, size.y)]), Color(0.2, 0.03, 0.05, 0.82))
+		var pop := 1.0 + 0.12 * sin(clampf((_t - 0.5) * 5.0, 0.0, PI))
+		UIKit.draw_icon(self, "champs_token", Vector2(60, 42), 74.0 * pop)
+		S2.text_l(self, "+%d CHAMPS TOKENS" % amount, Vector2(110, 52), 28, Color("ffd98a"))

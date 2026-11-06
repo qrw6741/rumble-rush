@@ -142,6 +142,10 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		Save.data.settings.touch_controls = "on"
 	if "--demo-champs" in args:
 		Save.save_path = "user://demo_save.json"
+		Save.data.champs_tokens = 85
+		if screen == "results":
+			params["champs"] = true
+			params["champs_info"] = {"tokens": 6, "stage": "finals", "won": true}
 		Save.data.champs = {"stage": "finals", "q_w": 5, "q_l": 1, "f_w": 9, "f_l": 3, "best": "RANK IV", "runs": 2}
 	if "--res720" in args:
 		Save.data.settings.resolution = "720p"
@@ -188,6 +192,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			ev.global_position = at
 			Input.parse_input_event(ev)
 			await get_tree().process_frame
+	if "--openstore" in args:
+		await get_tree().create_timer(0.8).timeout
+		Router.current._open_store()
 	if "--settings" in args:
 		var sp := SettingsPanel.new()
 		sp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

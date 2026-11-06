@@ -255,6 +255,7 @@ static func reward_text(r: Dictionary) -> String:
 	match r.get("type", ""):
 		"credits": return "%d CREDITS" % r.amount
 		"tokens": return "%d PASS TOKENS" % r.amount
+		"champs_tokens": return "%d CHAMPS TOKENS" % r.amount
 		"xp": return "%d XP" % r.amount
 		"skin": return "%s %s" % [skin_info(r.skin).name, Config.BRAWLERS[r.brawler].name]
 		"gems": return "%d GEMS" % r.amount
@@ -387,16 +388,27 @@ const CHAMPS_F_MATCHES := 15
 const CHAMPS_MODES := ["duel"]
 ## min wins -> rank and rewards (best first)
 const CHAMPS_TIERS := [
-	{"wins": 14, "rank": "RANK I", "color": Color("ffd23a"), "rewards": [{"type": "gems", "amount": 60}, {"type": "credits", "amount": 1500}, {"type": "drop", "tier": 2}, {"type": "drop", "tier": 2}]},
-	{"wins": 12, "rank": "RANK II", "color": Color("ff9d2e"), "rewards": [{"type": "gems", "amount": 40}, {"type": "credits", "amount": 1100}, {"type": "drop", "tier": 2}]},
-	{"wins": 10, "rank": "RANK III", "color": Color("c25bff"), "rewards": [{"type": "gems", "amount": 30}, {"type": "credits", "amount": 800}, {"type": "drop", "tier": 1}]},
-	{"wins": 8, "rank": "RANK IV", "color": Color("4fe3d0"), "rewards": [{"type": "gems", "amount": 20}, {"type": "credits", "amount": 600}, {"type": "drop", "tier": 1}]},
-	{"wins": 7, "rank": "RANK V", "color": Color("3ea2ff"), "rewards": [{"type": "gems", "amount": 15}, {"type": "credits", "amount": 450}]},
-	{"wins": 6, "rank": "RANK VI", "color": Color("4fd36a"), "rewards": [{"type": "gems", "amount": 10}, {"type": "credits", "amount": 350}]},
-	{"wins": 5, "rank": "RANK VII", "color": Color("c9d0de"), "rewards": [{"type": "credits", "amount": 300}, {"type": "drop", "tier": 0}]},
-	{"wins": 4, "rank": "RANK VIII", "color": Color("d98a4a"), "rewards": [{"type": "credits", "amount": 220}]},
-	{"wins": 2, "rank": "RANK IX", "color": Color("8a6a5a"), "rewards": [{"type": "credits", "amount": 150}]},
-	{"wins": 0, "rank": "RANK X", "color": Color("6b5f86"), "rewards": [{"type": "credits", "amount": 80}]},
+	{"wins": 14, "rank": "RANK I", "color": Color("ffd23a"), "rewards": [{"type": "champs_tokens", "amount": 120}, {"type": "gems", "amount": 60}, {"type": "credits", "amount": 1500}, {"type": "drop", "tier": 2}, {"type": "drop", "tier": 2}]},
+	{"wins": 12, "rank": "RANK II", "color": Color("ff9d2e"), "rewards": [{"type": "champs_tokens", "amount": 90}, {"type": "gems", "amount": 40}, {"type": "credits", "amount": 1100}, {"type": "drop", "tier": 2}]},
+	{"wins": 10, "rank": "RANK III", "color": Color("c25bff"), "rewards": [{"type": "champs_tokens", "amount": 70}, {"type": "gems", "amount": 30}, {"type": "credits", "amount": 800}, {"type": "drop", "tier": 1}]},
+	{"wins": 8, "rank": "RANK IV", "color": Color("4fe3d0"), "rewards": [{"type": "champs_tokens", "amount": 55}, {"type": "gems", "amount": 20}, {"type": "credits", "amount": 600}, {"type": "drop", "tier": 1}]},
+	{"wins": 7, "rank": "RANK V", "color": Color("3ea2ff"), "rewards": [{"type": "champs_tokens", "amount": 40}, {"type": "gems", "amount": 15}, {"type": "credits", "amount": 450}]},
+	{"wins": 6, "rank": "RANK VI", "color": Color("4fd36a"), "rewards": [{"type": "champs_tokens", "amount": 30}, {"type": "gems", "amount": 10}, {"type": "credits", "amount": 350}]},
+	{"wins": 5, "rank": "RANK VII", "color": Color("c9d0de"), "rewards": [{"type": "champs_tokens", "amount": 22}, {"type": "credits", "amount": 300}, {"type": "drop", "tier": 0}]},
+	{"wins": 4, "rank": "RANK VIII", "color": Color("d98a4a"), "rewards": [{"type": "champs_tokens", "amount": 15}, {"type": "credits", "amount": 220}]},
+	{"wins": 2, "rank": "RANK IX", "color": Color("8a6a5a"), "rewards": [{"type": "champs_tokens", "amount": 10}, {"type": "credits", "amount": 150}]},
+	{"wins": 0, "rank": "RANK X", "color": Color("6b5f86"), "rewards": [{"type": "champs_tokens", "amount": 5}, {"type": "credits", "amount": 80}]},
+]
+
+## Champs Tokens per match (qualifier / finals, win / loss).
+const CHAMPS_TOKEN_MATCH := {"qualifier": [3, 1], "finals": [6, 2]}
+## Spend Champs Tokens here (Champs screen).
+const CHAMPS_STORE := [
+	{"id": "mega", "name": "MEGA DROP", "cost": 60, "reward": {"type": "drop", "tier": 2}},
+	{"id": "gems", "name": "30 GEMS", "cost": 45, "reward": {"type": "gems", "amount": 30}},
+	{"id": "coins", "name": "800 COINS", "cost": 30, "reward": {"type": "credits", "amount": 800}},
+	{"id": "pass", "name": "150 PASS TOKENS", "cost": 25, "reward": {"type": "tokens", "amount": 150}},
+	{"id": "elite", "name": "TITLE: CHAMPS ELITE", "cost": 150, "once": true, "reward": {"type": "title", "id": "elite"}},
 ]
 
 static func champs_tier(wins: int) -> Dictionary:
@@ -459,6 +471,7 @@ static func title_list() -> Array:
 		{"id": "collector", "name": "COLLECTOR", "how": "Unlock 10 brawlers"},
 		{"id": "qualifier", "name": "CHAMPS QUALIFIER", "how": "Finish a Champs Finals run"},
 		{"id": "champ1", "name": "CHAMPS LEGEND", "how": "Finish Champs at RANK I"},
+		{"id": "elite", "name": "CHAMPS ELITE", "how": "Buy it in the Champs Store"},
 	]
 	for id in Config.BRAWLER_ORDER:
 		out.append({"id": "master_" + id, "name": Config.BRAWLERS[id].name + " MASTER", "how": "Reach GOLD III mastery with " + Config.BRAWLERS[id].name})

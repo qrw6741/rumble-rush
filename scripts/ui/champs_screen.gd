@@ -23,6 +23,16 @@ func _ready() -> void:
 		UIKit.draw_icon(ci, "home", Vector2(52, 34), 58.0)
 	home.pressed.connect(func(): Router.goto("menu"))
 	add_child(home)
+	var tok := S.new()
+	tok.color = Color(0, 0, 0, 0.6)
+	tok.interactive = false
+	tok.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	tok.position = Vector2(-330, 14)
+	tok.size = Vector2(196, 58)
+	tok.custom_draw = func(ci: Control):
+		UIKit.draw_icon(ci, "champs_token", Vector2(36, 29), 50.0)
+		S.text_l(ci, str(int(Save.data.get("champs_tokens", 0))), Vector2(68, 41), 28, Color("ffd98a"))
+	add_child(tok)
 
 	var head := Header.new()
 	head.position = Vector2(40, 92)
@@ -55,6 +65,13 @@ func _ready() -> void:
 		btn.pressed.connect(_play)
 	btn.position = Vector2(40, 580)
 	add_child(btn)
+	var store := UIKit.button("", Color("b8232f"), 22, Vector2(220, 64))
+	store.position = Vector2(1030, 640)
+	var sl := StoreLabel.new()
+	sl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	store.add_child(sl)
+	store.pressed.connect(_open_store)
+	add_child(store)
 	if c.stage != "rewards":
 		var bid: String = Save.champs_brawler() if c.stage == "finals" else Save.data.selected_brawler
 		var note := UIKit.label(("LOCKED: " if c.stage == "finals" else "PLAYING AS: ") + Config.BRAWLERS[bid].name, 16, Color("ffd98a"), 5)
@@ -68,6 +85,95 @@ func _play() -> void:
 	var mid: String = Progression.CHAMPS_MODES[(int(c.q_w) + int(c.q_l) + int(c.f_w) + int(c.f_l)) % Progression.CHAMPS_MODES.size()]
 	Sfx.play("ui_confirm")
 	Router.goto("match", {"mode": mid, "brawler": Save.champs_brawler(), "champs": true, "difficulty": Save.champs_difficulty()})
+
+func _open_store() -> void:
+	var o := Control.new()
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0.08, 0.02, 0.03, 0.85)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(c)
+	var p := UIKit.panel(Color("3a1418"))
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	p.add_child(v)
+	var head := HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 10)
+	var hi := TextureRect.new()
+	hi.texture = UIKit.icon("champs_token")
+	hi.custom_minimum_size = Vector2(56, 56)
+	hi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	head.add_child(hi)
+	head.add_child(UIKit.label("CHAMPS STORE   ·   %d TOKENS" % int(Save.data.get("champs_tokens", 0)), 30, Color("ffd98a"), 8))
+	v.add_child(head)
+	v.add_child(UIKit.label("Earn tokens from every Champs match (more for wins and in the Finals) and from your Finals rank.", 15, Color(1, 1, 1, 0.75), 4, HORIZONTAL_ALIGNMENT_CENTER))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	v.add_child(row)
+	for item in Progression.CHAMPS_STORE:
+		var bought: bool = item.get("once", false) and String(item.id) in Save.data.get("champs_bought", [])
+		var card := VBoxContainer.new()
+		card.add_theme_constant_override("separation", 6)
+		var art := StoreArt.new()
+		art.reward = item.reward
+		art.custom_minimum_size = Vector2(190, 130)
+		card.add_child(art)
+		card.add_child(UIKit.label(String(item.name), 15, Color.WHITE, 5, HORIZONTAL_ALIGNMENT_CENTER))
+		var b := UIKit.button("OWNED" if bought else str(int(item.cost)), UIKit.GREEN, 22, Vector2(190, 54))
+		if not bought:
+			var ic := TokenIcon.new()
+			ic.position = Vector2(24, 4)
+			ic.size = Vector2(40, 40)
+			b.add_child(ic)
+		b.disabled = bought or int(Save.data.get("champs_tokens", 0)) < int(item.cost)
+		b.pressed.connect(func():
+			if Save.champs_buy(item):
+				Sfx.play("victory", -4.0, 0.0)
+				o.queue_free()
+				if item.reward.type == "drop":
+					var d := DropOpener.new()
+					add_child(d)
+					d.finished.connect(func(): Router.goto("champs", {}, true))
+				else:
+					Router.goto("champs", {}, true)
+			else:
+				Sfx.play("ui_error"))
+		card.add_child(b)
+		row.add_child(card)
+	var close := UIKit.button("CLOSE", Color("6b5f86"), 20, Vector2(200, 54))
+	close.pressed.connect(o.queue_free)
+	var cc := CenterContainer.new()
+	cc.add_child(close)
+	v.add_child(cc)
+	add_child(o)
+	UIKit.pop_in(p)
+
+class TokenIcon extends Control:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		UIKit.draw_icon(self, "champs_token", size * 0.5, size.x)
+
+class StoreLabel extends Control:
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _draw() -> void:
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		UIKit.draw_icon(self, "champs_token", Vector2(42, size.y * 0.5 - 3), 50.0)
+		S2.text_l(self, "STORE", Vector2(78, size.y * 0.5 + 8), 26, Color.WHITE)
+
+class StoreArt extends Control:
+	var reward: Dictionary = {}
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), UIKit.DARK)
+		draw_rect(Rect2(Vector2(3, 3), size - Vector2(6, 6)), Color("6a1a22"))
+		draw_rect(Rect2(Vector2(3, 3), Vector2(size.x - 6, size.y * 0.4)), Color(1, 1, 1, 0.06))
+		RewardTile.draw_icon(self, reward, size * 0.5, 34.0)
 
 func _claim() -> void:
 	var tier := Save.champs_claim()

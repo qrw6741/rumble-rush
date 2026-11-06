@@ -70,6 +70,8 @@ func _default() -> Dictionary:
 		"skins_owned": [],
 		"gems": 30,
 		"win_streak": 0,
+		"champs_tokens": 0,
+		"champs_bought": [],
 		"ranked": {"points": 0, "best": 0, "wins": 0, "losses": 0, "streak": 0, "claimed": [0], "mode": "gem_grab"},
 		"best_streak": 0,
 		"mastery": {},
@@ -394,6 +396,11 @@ func grant_reward(r: Dictionary) -> void:
 			data.credits += int(r.amount)
 		"tokens":
 			data.pass_tokens += int(r.amount)
+		"champs_tokens":
+			data.champs_tokens = int(data.get("champs_tokens", 0)) + int(r.amount)
+		"title":
+			if not String(r.id) in data.champs_bought:
+				data.champs_bought.append(String(r.id))
 		"xp":
 			data.xp += int(r.amount)
 		"skin":
@@ -557,6 +564,16 @@ func ranked_next_payout_secs() -> int:
 		return Progression.RANKED_PAYOUT_SECS
 	return maxi(0, last + Progression.RANKED_PAYOUT_SECS - int(Time.get_unix_time_from_system()))
 
+func champs_buy(item: Dictionary) -> bool:
+	if item.get("once", false) and String(item.id) in data.champs_bought:
+		return false
+	if int(data.get("champs_tokens", 0)) < int(item.cost):
+		return false
+	data.champs_tokens = int(data.champs_tokens) - int(item.cost)
+	grant_reward(item.reward)
+	save_game()
+	return true
+
 func champs() -> Dictionary:
 	return data.champs
 
@@ -572,6 +589,10 @@ func champs_record(result: String) -> Dictionary:
 	var c := champs()
 	var won := result == "win"
 	var out := {"stage": c.stage, "won": won}
+	var tk: Array = Progression.CHAMPS_TOKEN_MATCH.get(String(c.stage), [0, 0])
+	var gain: int = int(tk[0]) if won else int(tk[1])
+	data.champs_tokens = int(data.get("champs_tokens", 0)) + gain
+	out["tokens"] = gain
 	if c.stage == "qualifier":
 		if won:
 			c.q_w = int(c.q_w) + 1
@@ -649,6 +670,8 @@ func titles_unlocked() -> Array:
 		out.append("qualifier")
 	if String(data.champs.get("best", "")) == "RANK I":
 		out.append("champ1")
+	if "elite" in data.get("champs_bought", []):
+		out.append("elite")
 	for id in Config.BRAWLER_ORDER:
 		if Progression.mastery_level(mastery_points(id)) >= 9:
 			out.append("master_" + id)

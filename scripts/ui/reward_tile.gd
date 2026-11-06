@@ -55,6 +55,8 @@ static func short_text(r: Dictionary) -> String:
 	match r.get("type", ""):
 		"credits": return "%d" % r.amount
 		"tokens": return "%d TOKENS" % r.amount
+		"champs_tokens": return "%d" % r.amount
+		"title": return "TITLE"
 		"xp": return "%d XP" % r.amount
 		"skin": return "%s SKIN" % Progression.skin_info(r.skin).name
 		"gems": return "%d" % r.amount
@@ -71,6 +73,10 @@ static func draw_icon(ci: CanvasItem, r: Dictionary, c: Vector2, s: float) -> vo
 				UIKit.draw_icon(ci, "coin", c + Vector2((k - (n - 1) * 0.5) * s * 0.55, -k * s * 0.12), s * 1.7)
 		"tokens":
 			UIKit.draw_icon(ci, "token", c, s * 2.0)
+		"champs_tokens":
+			UIKit.draw_icon(ci, "champs_token", c, s * 2.0)
+		"title":
+			UIKit.draw_icon(ci, "laurel", c, s * 2.0)
 		"gems":
 			UIKit.draw_icon(ci, "gem", c, s * 1.9)
 		"brawler":
