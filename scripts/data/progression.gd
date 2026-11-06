@@ -470,7 +470,16 @@ const RANKED_NAMES := ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "NETHE
 const RANKED_IDS := ["bronze", "silver", "gold", "platinum", "diamond", "netherite", "legendary"]
 const RANKED_COLORS := [Color("e07a2a"), Color("aeb8d8"), Color("ffc21a"), Color("4fd8f0"), Color("3a9cff"), Color("a44cff"), Color("ff7a1a")]
 const RANKED_DIVS := ["I", "II", "III"]
-const RANKED_DIV_PTS := 150
+## Bronze I needs 150 RP; every division after that needs 50 RP more than the last.
+const RANKED_DIV_BASE := 150
+const RANKED_DIV_GROW := 50
+
+static func ranked_div_need(step: int) -> int:
+	return RANKED_DIV_BASE + RANKED_DIV_GROW * step
+
+## Total RP at which division `step` starts.
+static func ranked_step_start(step: int) -> int:
+	return RANKED_DIV_BASE * step + RANKED_DIV_GROW * step * (step - 1) / 2
 const RANKED_MODES := ["gem_grab", "knockout", "showdown", "duel"]
 ## Harder climb: wins are worth less and losses cost more the higher you go.
 static func ranked_win_pts(rank: int) -> int:
@@ -484,13 +493,13 @@ const RANKED_STREAK_MAX := 9
 ## Paid automatically every 6 hours, based on your rank at that moment.
 const RANKED_PAYOUT_SECS := 21600
 const RANKED_PAYOUTS := [
-	[{"type": "credits", "amount": 40}],
-	[{"type": "credits", "amount": 80}],
-	[{"type": "credits", "amount": 120}, {"type": "gems", "amount": 3}],
-	[{"type": "credits", "amount": 170}, {"type": "gems", "amount": 6}],
-	[{"type": "credits", "amount": 240}, {"type": "gems", "amount": 10}],
-	[{"type": "credits", "amount": 320}, {"type": "gems", "amount": 16}],
-	[{"type": "credits", "amount": 420}, {"type": "gems", "amount": 25}],
+	[{"type": "credits", "amount": 100}],
+	[{"type": "credits", "amount": 175}],
+	[{"type": "credits", "amount": 250}, {"type": "gems", "amount": 3}],
+	[{"type": "credits", "amount": 350}, {"type": "gems", "amount": 6}],
+	[{"type": "credits", "amount": 425}, {"type": "gems", "amount": 10}],
+	[{"type": "credits", "amount": 500}, {"type": "gems", "amount": 16}],
+	[{"type": "credits", "amount": 750}, {"type": "gems", "amount": 25}],
 ]
 ## First time reaching each rank (index = rank).
 const RANKED_REWARDS := [
@@ -504,19 +513,22 @@ const RANKED_REWARDS := [
 ]
 
 static func ranked_max_points() -> int:
-	return RANKED_NAMES.size() * 3 * RANKED_DIV_PTS - RANKED_DIV_PTS
+	return ranked_step_start(RANKED_NAMES.size() * 3 - 1)
 
-## {rank, div, into, name, color, id}; Legendary III keeps counting points past 100.
+## {rank, div, into, need, step, name, color, id, top}; Legendary III keeps counting past its bar.
 static func ranked_info(points: int) -> Dictionary:
 	var p := maxi(0, points)
-	var step := mini(p / RANKED_DIV_PTS, RANKED_NAMES.size() * 3 - 1)
+	var last := RANKED_NAMES.size() * 3 - 1
+	var step := 0
+	while step < last and p >= ranked_step_start(step + 1):
+		step += 1
 	var rank := step / 3
 	var div := step % 3
-	var into := p - step * RANKED_DIV_PTS
-	return {"rank": rank, "div": div, "into": into, "step": step,
+	var into := p - ranked_step_start(step)
+	return {"rank": rank, "div": div, "into": into, "need": ranked_div_need(step), "step": step,
 		"name": "%s %s" % [RANKED_NAMES[rank], RANKED_DIVS[div]],
 		"color": RANKED_COLORS[rank], "id": RANKED_IDS[rank],
-		"top": step == RANKED_NAMES.size() * 3 - 1}
+		"top": step == last}
 
 ## Bot strength follows your rank.
 const RANKED_MODE_ICONS := {"gem_grab": "mode_gem", "knockout": "mode_knockout", "showdown": "mode_showdown", "duel": "ko"}

@@ -216,7 +216,7 @@ class Hero extends Control:
 			draw_colored_polygon(PackedVector2Array([chip[0], chip[1], chip[1] + Vector2(-1, 10), chip[0] + Vector2(-1, 10)]), Color(1, 1, 1, 0.25 if on else 0.06))
 			S2.text_c(self, Progression.RANKED_DIVS[d], Vector2(px + 31, 116), 20, Color.WHITE if on else Color(1, 1, 1, 0.35))
 		# RP bar (fills smoothly on open, shine sweeps across)
-		var target := 1.0 if bool(info.top) else float(info.into) / Progression.RANKED_DIV_PTS
+		var target := 1.0 if bool(info.top) else float(info.into) / float(info.need)
 		_fill = lerpf(_fill, target, clampf(get_process_delta_time() * 3.0, 0.0, 1.0)) if _t > 0.35 else 0.0
 		var br := Rect2(x0, 146, 210, 30)
 		draw_rect(br.grow(3), UIKit.DARK)
@@ -229,10 +229,10 @@ class Hero extends Control:
 			draw_colored_polygon(PackedVector2Array([Vector2(br.position.x + sx, br.position.y), Vector2(br.position.x + minf(sx + 18, fw), br.position.y),
 				Vector2(br.position.x + minf(sx + 8, fw), br.end.y), Vector2(br.position.x + maxf(sx - 10, 0), br.end.y)]), Color(1, 1, 1, 0.22))
 		var into: int = int(info.into)
-		var txt := ("%d RP" % into) if bool(info.top) else ("%d / %d RP" % [into, Progression.RANKED_DIV_PTS])
+		var txt := ("%d RP" % into) if bool(info.top) else ("%d / %d RP" % [into, int(info.need)])
 		S2.text_c(self, txt, br.get_center() + Vector2(0, 7), 18, Color.WHITE)
 		if not bool(info.top):
-			var nxt := Progression.ranked_info((int(info.step) + 1) * Progression.RANKED_DIV_PTS)
+			var nxt := Progression.ranked_info(Progression.ranked_step_start(int(info.step) + 1))
 			S2.text_l(self, "NEXT: " + String(nxt.name), Vector2(x0, 200), 15, Color(1, 1, 1, 0.6))
 		S2.text_l(self, "WIN +%d RP    LOSS -%d RP" % [Progression.ranked_win_pts(int(info.rank)), Progression.ranked_loss_pts(int(info.rank))], Vector2(x0, 220), 14, Color("ffd23a"))
 
@@ -345,7 +345,7 @@ class RoadRow extends Control:
 		var x_of := func(i: float) -> float: return 60.0 + i * 200.0 + 100.0
 		# path
 		draw_rect(Rect2(x_of.call(0), y - 6, x_of.call(n - 1) - x_of.call(0), 12), UIKit.DARK)
-		var prog := float(info.rank) + (float(info.div) + float(info.into) / Progression.RANKED_DIV_PTS) / 3.0
+		var prog := float(info.rank) + (float(info.div) + float(info.into) / float(info.need)) / 3.0
 		var pc: Color = info.color
 		draw_rect(Rect2(x_of.call(0), y - 3, x_of.call(minf(prog, n - 1)) - x_of.call(0), 6), pc)
 		for i in n:

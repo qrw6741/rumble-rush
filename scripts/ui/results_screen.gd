@@ -793,7 +793,7 @@ class RankedBanner extends Control:
 		var d: int = int(info.delta)
 		var dtxt := ("+%d RP" % d) if d >= 0 else ("%d RP" % d)
 		S2.text_l(self, dtxt, Vector2(400, 38), 28, Color("7dff8a") if d >= 0 else Color("ff7a6a"))
-		var fr := 1.0 if bool(ri.top) else float(ri.into) / Progression.RANKED_DIV_PTS
+		var fr := 1.0 if bool(ri.top) else float(ri.into) / float(ri.need)
 		draw_rect(Rect2(112, 52, 380, 18), UIKit.DARK)
 		draw_rect(Rect2(114, 54, 376 * clampf(fr, 0, 1), 14), c)
 		var sub := ""

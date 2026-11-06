@@ -114,6 +114,13 @@ func load_game() -> void:
 		rk.points = int(rk.points) * 3 / 2
 		rk.best = int(rk.best) * 3 / 2
 		rk["div150"] = true
+	if not rk.get("divgrow", false):
+		for key in ["points", "best"]:
+			var old := int(rk[key])
+			var st := mini(old / 150, Progression.RANKED_NAMES.size() * 3 - 1)
+			var frac := float(old - st * 150) / 150.0
+			rk[key] = Progression.ranked_step_start(st) + int(frac * Progression.ranked_div_need(st))
+		rk["divgrow"] = true
 	for id in Config.BRAWLER_ORDER:
 		data.brawler_trophies[id] = int(data.brawler_trophies.get(id, 0))
 		data.brawler_levels[id] = clampi(int(data.brawler_levels.get(id, 1)), 1, Config.MAX_LEVEL)
@@ -504,7 +511,7 @@ func ranked_record(result: String) -> Dictionary:
 	elif result == "loss":
 		r.streak = 0
 		r.losses = int(r.losses) + 1
-		var floor_pts: int = int(info_b.rank) * 3 * Progression.RANKED_DIV_PTS
+		var floor_pts: int = Progression.ranked_step_start(int(info_b.rank) * 3)
 		delta = -mini(Progression.ranked_loss_pts(int(info_b.rank)), before - floor_pts)
 	r.points = before + delta
 	r.best = maxi(int(r.best), int(r.points))
