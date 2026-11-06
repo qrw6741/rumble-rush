@@ -25,6 +25,22 @@ func _ready() -> void:
 	_build_mode_panel()
 	_build_play()
 	_animate_in()
+	_ranked_payout()
+
+## Auto-collect the 6-hour Ranked reward and announce it.
+func _ranked_payout() -> void:
+	var got := Save.ranked_payout_tick()
+	if got.is_empty():
+		return
+	var parts: Array = []
+	if int(got.get("credits", 0)) > 0:
+		parts.append("+%d COINS" % int(got.credits))
+	if int(got.get("gems", 0)) > 0:
+		parts.append("+%d GEMS" % int(got.gems))
+	await get_tree().create_timer(0.6).timeout
+	Sfx.play("ui_confirm")
+	UIKit.toast(self, "%s RANK REWARD COLLECTED:  %s" % [Progression.RANKED_NAMES[int(got.rank)], "  ".join(parts)], "coin")
+	queue_redraw()
 
 func _animate_in() -> void:
 	var i := 0

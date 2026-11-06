@@ -570,3 +570,40 @@ class StreakBadge extends Control:
 			var lp2 := Vector2(h * 1.02, h * 0.78)
 			draw_string_outline(f, lp2, sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(ls * 0.75), 4, Color("1a1020"))
 			draw_string(f, lp2, sub, HORIZONTAL_ALIGNMENT_LEFT, -1, int(ls * 0.75), Color.WHITE)
+
+
+## Slide-down notification banner (auto hides).
+static func toast(parent: Control, text: String, icon_name := "", col := Color("2a1460")) -> void:
+	var t := Toast.new()
+	t.text = text
+	t.icon_name = icon_name
+	t.col = col
+	parent.add_child(t)
+
+class Toast extends Control:
+	var text := ""
+	var icon_name := ""
+	var col := Color("2a1460")
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		z_index = 50
+		var f := UIKit.bold()
+		var w := f.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22).x + (90.0 if icon_name != "" else 50.0)
+		size = Vector2(w, 64)
+		position = Vector2(640 - w * 0.5, -80)
+		var tw := create_tween()
+		tw.tween_property(self, "position:y", 96.0, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_interval(3.2)
+		tw.tween_property(self, "modulate:a", 0.0, 0.4)
+		tw.tween_callback(queue_free)
+	func _draw() -> void:
+		draw_rect(Rect2(0, 0, size.x, size.y), UIKit.DARK)
+		draw_rect(Rect2(3, 3, size.x - 6, size.y - 6), col)
+		draw_rect(Rect2(3, 3, size.x - 6, 20), Color(1, 1, 1, 0.12))
+		var x := 24.0
+		if icon_name != "":
+			UIKit.draw_icon(self, icon_name, Vector2(44, 32), 50.0)
+			x = 76.0
+		var f := UIKit.bold()
+		draw_string_outline(f, Vector2(x, 40), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, 6, UIKit.DARK)
+		draw_string(f, Vector2(x, 40), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color.WHITE)

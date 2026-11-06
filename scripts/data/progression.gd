@@ -470,10 +470,28 @@ const RANKED_NAMES := ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "NETHE
 const RANKED_IDS := ["bronze", "silver", "gold", "platinum", "diamond", "netherite", "legendary"]
 const RANKED_COLORS := [Color("e07a2a"), Color("aeb8d8"), Color("ffc21a"), Color("4fd8f0"), Color("3a9cff"), Color("a44cff"), Color("ff7a1a")]
 const RANKED_DIVS := ["I", "II", "III"]
-const RANKED_DIV_PTS := 100
+const RANKED_DIV_PTS := 150
 const RANKED_MODES := ["gem_grab", "knockout", "showdown", "duel"]
-const RANKED_WIN := 25
-const RANKED_LOSS := 15
+## Harder climb: wins are worth less and losses cost more the higher you go.
+static func ranked_win_pts(rank: int) -> int:
+	return maxi(10, 22 - rank * 2)
+
+static func ranked_loss_pts(rank: int) -> int:
+	return 15 + rank * 2
+
+const RANKED_STREAK_STEP := 3
+const RANKED_STREAK_MAX := 9
+## Paid automatically every 6 hours, based on your rank at that moment.
+const RANKED_PAYOUT_SECS := 21600
+const RANKED_PAYOUTS := [
+	[{"type": "credits", "amount": 40}],
+	[{"type": "credits", "amount": 80}],
+	[{"type": "credits", "amount": 120}, {"type": "gems", "amount": 3}],
+	[{"type": "credits", "amount": 170}, {"type": "gems", "amount": 6}],
+	[{"type": "credits", "amount": 240}, {"type": "gems", "amount": 10}],
+	[{"type": "credits", "amount": 320}, {"type": "gems", "amount": 16}],
+	[{"type": "credits", "amount": 420}, {"type": "gems", "amount": 25}],
+]
 ## First time reaching each rank (index = rank).
 const RANKED_REWARDS := [
 	[],

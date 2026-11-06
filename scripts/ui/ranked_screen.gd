@@ -22,6 +22,7 @@ var _road: ScrollContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
+	var got := Save.ranked_payout_tick()
 	_info = Progression.ranked_info(int(Save.ranked().points))
 	var bg := Backdrop.new()
 	bg.col = _info.color
@@ -92,6 +93,11 @@ func _ready() -> void:
 	row.custom_minimum_size = Vector2(60 + Progression.RANKED_NAMES.size() * 200 + 40, 240)
 	_road.add_child(row)
 
+	if not got.is_empty():
+		var parts: Array = []
+		if int(got.get("credits", 0)) > 0: parts.append("+%d COINS" % int(got.credits))
+		if int(got.get("gems", 0)) > 0: parts.append("+%d GEMS" % int(got.gems))
+		UIKit.toast(self, "RANK REWARD COLLECTED:  " + "  ".join(parts), "coin")
 	var i := 0
 	for n in [title, hero, lab, grid, play, _road]:
 		UIKit.pop_in(n, 0.05 * i, Vector2(0, 24) if n == _road else Vector2.ZERO)
@@ -150,7 +156,11 @@ class TitleBar extends Control:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
 		S2.text_l(self, "RANKED", Vector2(0, 50), 50, Color.WHITE)
 		UIKit.draw_icon(self, "clock", Vector2(236, 38), 26.0)
-		S2.text_l(self, "SEASON ENDS IN  " + Progression.season_time_left(), Vector2(254, 46), 18, Color("e0d0ff"))
+		S2.text_l(self, "SEASON ENDS IN  " + Progression.season_time_left(), Vector2(254, 34), 16, Color("e0d0ff"))
+		var secs := Save.ranked_next_payout_secs()
+		S2.text_l(self, "NEXT RANK REWARD IN  %dh %02dm  (auto-collected)" % [secs / 3600, (secs % 3600) / 60], Vector2(254, 58), 16, Color("ffd23a"))
+	func _process(_d: float) -> void:
+		queue_redraw()
 
 
 ## Big animated badge, rank name, division chips, RP bar and season stats.
@@ -224,6 +234,7 @@ class Hero extends Control:
 		if not bool(info.top):
 			var nxt := Progression.ranked_info((int(info.step) + 1) * Progression.RANKED_DIV_PTS)
 			S2.text_l(self, "NEXT: " + String(nxt.name), Vector2(x0, 200), 15, Color(1, 1, 1, 0.6))
+		S2.text_l(self, "WIN +%d RP    LOSS -%d RP" % [Progression.ranked_win_pts(int(info.rank)), Progression.ranked_loss_pts(int(info.rank))], Vector2(x0, 220), 14, Color("ffd23a"))
 
 		# season stats
 		var w := int(r.wins)
@@ -232,14 +243,14 @@ class Hero extends Control:
 		var stats := [["WINS", str(w), Color("7dff8a")], ["LOSSES", str(l), Color("ff8a7a")], ["WIN RATE", "%d%%" % wr, Color.WHITE]]
 		for k in stats.size():
 			var sx2 := x0 + k * 72.0
-			draw_rect(Rect2(sx2, 222, 66, 58), Color(0, 0, 0, 0.3))
-			S2.text_c(self, stats[k][1], Vector2(sx2 + 33, 252), 22, stats[k][2])
-			S2.text_c(self, stats[k][0], Vector2(sx2 + 33, 272), 11, Color(1, 1, 1, 0.6))
+			draw_rect(Rect2(sx2, 232, 66, 54), Color(0, 0, 0, 0.3))
+			S2.text_c(self, stats[k][1], Vector2(sx2 + 33, 260), 22, stats[k][2])
+			S2.text_c(self, stats[k][0], Vector2(sx2 + 33, 279), 11, Color(1, 1, 1, 0.6))
 		if int(r.streak) >= 2:
-			UIKit.StreakBadge.flame(self, Vector2(x0 + 14, 306), 30.0, Progression.streak_color(int(r.streak)), _t)
-			S2.text_l(self, "%d WIN STREAK  +%d RP BONUS" % [int(r.streak), mini(15, 5 * int(r.streak))], Vector2(x0 + 34, 314), 15, Color("ffc04a"))
+			UIKit.StreakBadge.flame(self, Vector2(x0 + 14, 312), 30.0, Progression.streak_color(int(r.streak)), _t)
+			S2.text_l(self, "%d WIN STREAK  +%d RP BONUS" % [int(r.streak), mini(Progression.RANKED_STREAK_MAX, Progression.RANKED_STREAK_STEP * int(r.streak))], Vector2(x0 + 34, 320), 15, Color("ffc04a"))
 		var best := Progression.ranked_info(int(r.best))
-		S2.text_l(self, "BEST: " + String(best.name), Vector2(x0, 346), 15, Color("d8c8ff"))
+		S2.text_l(self, "BEST: " + String(best.name), Vector2(x0, 352), 15, Color("d8c8ff"))
 		S2.text_c(self, "PLAYING AS " + String(Config.BRAWLERS[Save.data.selected_brawler].name), Vector2(170, 350), 15, Color(1, 1, 1, 0.7))
 
 
@@ -358,18 +369,12 @@ class RoadRow extends Control:
 			draw_texture_rect(tex, Rect2(cx - sz * 0.5, y - sz * 0.55 + bob, sz, sz), false, tint)
 			S2.text_c(self, Progression.RANKED_NAMES[i], Vector2(cx, 172), 18, rc.lightened(0.3) if got else Color(1, 1, 1, 0.4))
 			# status / rewards
-			var rw: Array = Progression.RANKED_REWARDS[i]
-			if cur:
-				S2.text_c(self, "YOU ARE HERE", Vector2(cx, 196), 13, Color("ffd23a"))
-			elif i == 0:
-				S2.text_c(self, "START", Vector2(cx, 196), 13, Color(1, 1, 1, 0.6))
-			if rw.size() > 0 and not cur:
-				var claimed: bool = i in r.claimed
-				var x := cx - (rw.size() - 1) * 24.0
-				for item in rw:
-					RewardTile.draw_icon(self, item, Vector2(x, 206), 12.0)
-					x += 48.0
-				if claimed:
-					UIKit.draw_icon(self, "check", Vector2(cx + 64, 200), 22.0)
-				elif not got:
-					UIKit.draw_icon(self, "lock", Vector2(cx + 66, 30), 24.0)
+			var rw: Array = Progression.RANKED_PAYOUTS[i]
+			S2.text_c(self, "YOU ARE HERE" if cur else "EVERY 6H:", Vector2(cx, 192), 12, Color("ffd23a") if cur else Color(1, 1, 1, 0.55))
+			var x := cx - (rw.size() - 1) * 40.0
+			for item in rw:
+				UIKit.draw_icon(self, "coin" if item.type == "credits" else "gem", Vector2(x - 14, 211), 20.0)
+				S2.text_l(self, str(int(item.amount)), Vector2(x - 2, 218), 14, Color.WHITE)
+				x += 80.0
+			if not got:
+				UIKit.draw_icon(self, "lock", Vector2(cx + 66, 30), 24.0)

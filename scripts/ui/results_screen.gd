@@ -798,7 +798,7 @@ class RankedBanner extends Control:
 		draw_rect(Rect2(114, 54, 376 * clampf(fr, 0, 1), 14), c)
 		var sub := ""
 		if info.get("new_rank", -1) >= 0:
-			sub = "NEW RANK REACHED!  REWARDS ADDED"
+			sub = "NEW RANK!  BIGGER 6-HOUR REWARDS"
 		elif info.get("promoted", false):
 			sub = "PROMOTED!"
 		elif info.get("demoted", false):

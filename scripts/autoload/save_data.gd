@@ -107,8 +107,13 @@ func load_game() -> void:
 	for v in rk.get("claimed", [0]):
 		cl.append(int(v))
 	rk.claimed = cl
-	for k in ["points", "best", "wins", "losses", "streak"]:
+	for k in ["points", "best", "wins", "losses", "streak", "last_payout"]:
 		rk[k] = int(rk.get(k, 0))
+	if not rk.get("div150", false):
+		# divisions grew from 100 to 150 RP: keep everyone at the same rank and division
+		rk.points = int(rk.points) * 3 / 2
+		rk.best = int(rk.best) * 3 / 2
+		rk["div150"] = true
 	for id in Config.BRAWLER_ORDER:
 		data.brawler_trophies[id] = int(data.brawler_trophies.get(id, 0))
 		data.brawler_levels[id] = clampi(int(data.brawler_levels.get(id, 1)), 1, Config.MAX_LEVEL)
@@ -495,12 +500,12 @@ func ranked_record(result: String) -> Dictionary:
 	if result == "win":
 		r.streak = int(r.streak) + 1
 		r.wins = int(r.wins) + 1
-		delta = Progression.RANKED_WIN + mini(15, 5 * (int(r.streak) - 1))
+		delta = Progression.ranked_win_pts(int(info_b.rank)) + mini(Progression.RANKED_STREAK_MAX, Progression.RANKED_STREAK_STEP * (int(r.streak) - 1))
 	elif result == "loss":
 		r.streak = 0
 		r.losses = int(r.losses) + 1
 		var floor_pts: int = int(info_b.rank) * 3 * Progression.RANKED_DIV_PTS
-		delta = -mini(Progression.RANKED_LOSS, before - floor_pts)
+		delta = -mini(Progression.ranked_loss_pts(int(info_b.rank)), before - floor_pts)
 	r.points = before + delta
 	r.best = maxi(int(r.best), int(r.points))
 	var info_a := Progression.ranked_info(int(r.points))
@@ -508,12 +513,42 @@ func ranked_record(result: String) -> Dictionary:
 	if int(info_a.rank) > int(info_b.rank) and not (int(info_a.rank) in r.claimed):
 		new_rank = int(info_a.rank)
 		r.claimed.append(new_rank)
-		for rw in Progression.RANKED_REWARDS[new_rank]:
-			grant_reward(rw)
 	save_game()
 	return {"before": before, "after": int(r.points), "delta": delta,
 		"promoted": int(info_a.step) > int(info_b.step), "demoted": int(info_a.step) < int(info_b.step),
 		"new_rank": new_rank, "streak": int(r.streak)}
+
+## Pays the 6-hour Ranked reward for every full period since the last payout
+## (up to 4 at once). Returns the total paid, or {} when nothing was due.
+func ranked_payout_tick() -> Dictionary:
+	var r := ranked()
+	var now := int(Time.get_unix_time_from_system())
+	var last := int(r.get("last_payout", 0))
+	if last <= 0:
+		r.last_payout = now
+		save_game()
+		return {}
+	var periods := (now - last) / Progression.RANKED_PAYOUT_SECS
+	if periods <= 0:
+		return {}
+	periods = mini(periods, 4)
+	r.last_payout = last + periods * Progression.RANKED_PAYOUT_SECS
+	if now - int(r.last_payout) >= Progression.RANKED_PAYOUT_SECS:
+		r.last_payout = now
+	var rank: int = int(Progression.ranked_info(int(r.points)).rank)
+	var total := {"credits": 0, "gems": 0, "periods": periods, "rank": rank}
+	for k in periods:
+		for rw in Progression.RANKED_PAYOUTS[rank]:
+			grant_reward(rw)
+			total[rw.type] = int(total.get(rw.type, 0)) + int(rw.amount)
+	save_game()
+	return total
+
+func ranked_next_payout_secs() -> int:
+	var last := int(ranked().get("last_payout", 0))
+	if last <= 0:
+		return Progression.RANKED_PAYOUT_SECS
+	return maxi(0, last + Progression.RANKED_PAYOUT_SECS - int(Time.get_unix_time_from_system()))
 
 func champs() -> Dictionary:
 	return data.champs
