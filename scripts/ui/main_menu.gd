@@ -350,15 +350,15 @@ func _build_play() -> void:
 	ch.name = "Champs"
 	ch.custom_draw = func(ci: Control):
 		ci.draw_rect(Rect2(0, 0, 340, 6), Color("e0a050"))
-		UIKit.draw_icon(ci, "trophy", Vector2(52, 48), 70.0)
-		SlantButton.text_l(ci, "CHAMPS", Vector2(98, 46), 34, Color("ffd98a"))
+		UIKit.draw_icon(ci, "champs", Vector2(74, 40), 128.0)
+		SlantButton.text_l(ci, "COMPETE", Vector2(148, 46), 30, Color("ffd98a"))
 		var c := Save.champs()
 		var st := ""
 		match c.stage:
 			"qualifier": st = "QUALIFIER  %d W - %d L" % [int(c.q_w), int(c.q_l)]
 			"finals": st = "FINALS  %d W - %d L" % [int(c.f_w), int(c.f_l)]
 			_: st = "REWARDS READY!"
-		SlantButton.text_l(ci, st, Vector2(98, 76), 17, Color(1, 1, 1, 0.85))
+		SlantButton.text_l(ci, st, Vector2(148, 76), 16, Color(1, 1, 1, 0.85))
 	ch.pressed.connect(func():
 		Sfx.play("ui_click")
 		Router.goto("champs"))

@@ -114,10 +114,11 @@ class Backdrop extends Control:
 class Header extends Control:
 	func _draw() -> void:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
-		S2.text_l(self, "CHAMPS", Vector2(0, 46), 52, Color.WHITE)
-		UIKit.draw_icon(self, "clock", Vector2(14, 78), 24.0)
-		S2.text_l(self, "Event ends in  " + Progression.season_time_left(), Vector2(32, 86), 18, Color("e0c27a"))
-		S2.text_l(self, "DUEL RUSH 1v1, best of 3 rounds. Qualify, then climb the ranks in the Finals.", Vector2(0, 114), 16, Color(1, 1, 1, 0.8))
+		UIKit.draw_icon(self, "champs", Vector2(62, 52), 132.0)
+		S2.text_l(self, "WEEKEND LEAGUE", Vector2(140, 40), 30, Color.WHITE)
+		UIKit.draw_icon(self, "clock", Vector2(154, 70), 24.0)
+		S2.text_l(self, "Event ends in  " + Progression.season_time_left(), Vector2(172, 78), 18, Color("e0c27a"))
+		S2.text_l(self, "DUEL RUSH 1v1, best of 3 rounds. Qualify, then climb the ranks in the Finals.", Vector2(140, 106), 16, Color(1, 1, 1, 0.8))
 
 
 ## Crest + the row of rank shields from X to I; a marker sits over your rank.
