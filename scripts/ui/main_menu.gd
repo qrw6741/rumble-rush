@@ -28,7 +28,7 @@ func _ready() -> void:
 
 func _animate_in() -> void:
 	var i := 0
-	for n in ["ProfileTile", "TrophyRoad", "Settings"]:
+	for n in ["ProfileTile", "TrophyRoad", "Ranked", "Settings"]:
 		UIKit.pop_in(find_child(n, false, false), 0.03 * i, Vector2(0, -40))
 		i += 1
 	i = 0
@@ -135,7 +135,7 @@ func _build_top_bar() -> void:
 	var bar := SlantButton.new()
 	bar.color = Color("27334d")
 	bar.position = Vector2(226, 10)
-	bar.size = Vector2(440, 92)
+	bar.size = Vector2(330, 92)
 	bar.custom_draw = func(ci: Control):
 		SlantButton.hexagon(ci, Vector2(58, 44), 30.0, Color("4c5a7a"), str(Save.account_level()))
 		var ic := Vector2(112, 34)
@@ -149,18 +149,29 @@ func _build_top_bar() -> void:
 		ci.draw_rect(br, Color("1d2438"))
 		ci.draw_rect(Rect2(br.position, Vector2(br.size.x * float(tt % 100) / 100.0, br.size.y)), Color("ff8a2a"))
 		SlantButton.text_c(ci, "%d / %d" % [tt, goal], br.get_center() + Vector2(0, 6), 13, Color.WHITE)
-		# road button: bright yellow only while a Trophy Road reward is waiting
-		var road_ready := Save.road_unclaimed() > 0
-		var yc := UIKit.YELLOW if road_ready else Color("3a4a70")
-		var y := PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(424, 88), Vector2(318, 88)])
-		ci.draw_colored_polygon(y, yc)
-		ci.draw_colored_polygon(PackedVector2Array([Vector2(330, 4), Vector2(436, 4), Vector2(434, 16), Vector2(328, 16)]), yc.lightened(0.3))
-		SlantButton.text_c(ci, "TROPHY", Vector2(377, 42), 22, Color.WHITE)
-		SlantButton.text_c(ci, "ROAD", Vector2(377, 70), 22, Color.WHITE)
 	bar.name = "TrophyRoad"
 	bar.pressed.connect(func(): Router.goto("road"))
 	add_child(bar)
-	_dot(bar, Save.road_unclaimed(), Vector2(414, -12))
+	_dot(bar, Save.road_unclaimed(), Vector2(306, -12))
+
+	# RANKED tab: current rank badge, opens the Ranked menu
+	var rk := SlantButton.new()
+	rk.color = Color("2a1460")
+	rk.position = Vector2(566, 10)
+	rk.size = Vector2(184, 92)
+	rk.name = "Ranked"
+	var rinfo := Progression.ranked_info(int(Save.ranked().points))
+	var rtex: Texture2D = preload("res://scripts/ui/ranked_screen.gd").badge(rinfo.id, true)
+	rk.custom_draw = func(ci: Control):
+		var c: Color = rinfo.color
+		ci.draw_rect(Rect2(12, 4, 168, 5), c)
+		ci.draw_texture_rect(rtex, Rect2(4, 2, 88, 88), false)
+		SlantButton.text_l(ci, "RANKED", Vector2(94, 44), 20, Color.WHITE)
+		SlantButton.text_l(ci, String(rinfo.name), Vector2(94, 70), 15, c.lightened(0.3))
+	rk.pressed.connect(func():
+		Sfx.play("ui_click")
+		Router.goto("ranked"))
+	add_child(rk)
 
 	# credits + menu (settings)
 	var credits := SlantButton.new()
@@ -341,25 +352,6 @@ func _build_play() -> void:
 		Sfx.play("ui_confirm")
 		Router.goto("match", {"mode": Save.data.selected_mode, "brawler": Save.data.selected_brawler}))
 	add_child(play)
-	# RANKED entry above CHAMPS
-	var rk := SlantButton.new()
-	rk.color = Color("2a1460")
-	rk.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	rk.position = Vector2(-372, -384)
-	rk.size = Vector2(340, 96)
-	rk.name = "Ranked"
-	var rinfo := Progression.ranked_info(int(Save.ranked().points))
-	var rtex: Texture2D = load("res://assets/ranks/%s_crest.png" % rinfo.id)
-	rk.custom_draw = func(ci: Control):
-		ci.draw_rect(Rect2(0, 0, 340, 6), rinfo.color)
-		ci.draw_texture_rect(rtex, Rect2(14, -10, 112, 112), false)
-		SlantButton.text_l(ci, "RANKED", Vector2(138, 46), 30, Color.WHITE)
-		SlantButton.text_l(ci, String(rinfo.name), Vector2(138, 76), 18, rinfo.color.lightened(0.3))
-	rk.pressed.connect(func():
-		Sfx.play("ui_click")
-		Router.goto("ranked"))
-	add_child(rk)
-	UIKit.pop_in(rk, 0.35, Vector2(60, 0))
 	# CHAMPS entry on the right side, above PLAY
 	var ch := SlantButton.new()
 	ch.color = Color("3a1a12")
