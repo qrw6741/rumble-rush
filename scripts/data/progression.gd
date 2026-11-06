@@ -272,7 +272,7 @@ const DROP_TIERS := [
 	{"name": "MEGA", "color": Color("ff4d5e")},
 ]
 const RARITIES := [
-	{"name": "COMMON", "color": Color("8fd3ff")},
+	{"name": "COMMON", "color": Color("b8bfcc")},
 	{"name": "RARE", "color": Color("4fd36a")},
 	{"name": "EPIC", "color": Color("c25bff")},
 	{"name": "MYTHIC", "color": Color("ff4d5e")},

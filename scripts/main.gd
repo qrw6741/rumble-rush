@@ -246,9 +246,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 				stage = a.substr(12)
 		await get_tree().create_timer(0.7).timeout
 		if stage != "":
-			dop._prize["rarity"] = 3
-			dop._tap()
-			dop._tap()
+			dop._prize["rarity"] = 4
+			for k in int(stage.substr(3)) if stage.begins_with("tap") else 2:
+				dop._tap()
 			if stage == "open":
 				dop._tap()
 				dop._tap()

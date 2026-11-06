@@ -1,6 +1,6 @@
 class_name DropOpener
 extends Control
-## Treasure-chest opening for Rush / Super / Mega Drops.
+## Star drop opening for Rush / Super / Mega Drops.
 ## Idle: the chest bobs and glows in its tier colour. Each tap shakes it and, if the
 ## prize is rarer, upgrades the glow one rarity (common > rare > epic > mythic >
 ## legendary) with cracks of light. Once at the rolled rarity, the next tap blows
@@ -203,7 +203,7 @@ func _draw() -> void:
 	if _phase == "reveal":
 		_draw_reveal(c, rc)
 	else:
-		_draw_chest(cc, tier_col, rc)
+		_draw_star(cc, rc)
 		var label: String = "TAP TO OPEN!" if _taps == 0 else String(Progression.RARITIES[_shown].name) + "!"
 		var lc := Color.WHITE if _taps == 0 else rc
 		var ls := 1.0 + 0.06 * sin(_t * 5.0) + 0.2 * _pop
@@ -218,6 +218,95 @@ func _draw() -> void:
 	for sp in _sparks:
 		var col: Color = sp[3]
 		draw_circle(sp[0], 3.0 + 4.0 * float(sp[2]), Color(col.r, col.g, col.b, clampf(float(sp[2]) * 1.4, 0, 1)))
+
+## Faceted six-point star in the colour of the rarity it currently shows.
+func _draw_star(cc: Vector2, rc: Color) -> void:
+	var intro := ease(clampf(_t / 0.45, 0.0, 1.0), -2.5) if _phase == "intro" else 1.0
+	var bob := sin(_t * 2.6) * 8.0
+	var sh := Vector2(sin(_t * 80.0), cos(_t * 71.0)) * 14.0 * _shake
+	var grow := 1.0 + 0.07 * _shown + 0.14 * _pop
+	var open_k := clampf(_t / 0.4, 0.0, 1.0) if _phase == "open" else 0.0
+	var sc := intro * grow * (1.0 + 0.35 * open_k) * (1.1 if _tier == 2 else (1.05 if _tier == 1 else 1.0))
+	var rot := sin(_t * 1.6) * 0.06 + sin(_t * 70.0) * 0.08 * _shake + open_k * 2.2
+	var base := cc + Vector2(0, bob - 20) + sh
+	# ground shadow
+	var sh_pts := PackedVector2Array()
+	for i in 24:
+		var a := TAU * i / 24.0
+		sh_pts.append(cc + Vector2(cos(a) * 120.0 * sc, 160.0 + sin(a) * 22.0 * sc))
+	draw_colored_polygon(sh_pts, Color(0, 0, 0, 0.4))
+	for k in 5:
+		draw_circle(base, (170.0 + k * 26.0) * sc, Color(rc.r, rc.g, rc.b, (0.05 + 0.03 * _shown) * (1.0 + _pop)))
+	draw_set_transform(base, rot, Vector2(sc, sc))
+	var R := 170.0
+	var r := 118.0
+	var outer: Array = []
+	var inner: Array = []
+	for i in 6:
+		outer.append(Vector2.from_angle(-PI / 2 + i * TAU / 6.0) * R)
+		inner.append(Vector2.from_angle(-PI / 2 + PI / 6.0 + i * TAU / 6.0) * r)
+	var ring := PackedVector2Array()
+	for i in 6:
+		ring.append(outer[i])
+		ring.append(inner[i])
+	# ink outline (rounded by a fat polyline)
+	var fat := PackedVector2Array()
+	for p in ring:
+		fat.append(p * 1.0)
+	fat.append(ring[0])
+	draw_colored_polygon(ring, UIKit.DARK)
+	draw_polyline(fat, UIKit.DARK, 30.0, true)
+	# facets: each point is two triangles (lit side / shaded side)
+	var lit := rc.lightened(0.35)
+	var mid := rc
+	var dark := rc.darkened(0.3)
+	var light_dir := Vector2(-0.6, -0.8).normalized()
+	for i in 6:
+		var o: Vector2 = outer[i]
+		var a_in: Vector2 = inner[(i + 5) % 6]
+		var b_in: Vector2 = inner[i]
+		var facing := o.normalized().dot(light_dir)
+		var c1 := lit if facing > 0.2 else (mid if facing > -0.4 else dark)
+		var c2 := c1.darkened(0.18)
+		draw_colored_polygon(PackedVector2Array([Vector2.ZERO, a_in, o]), c1)
+		draw_colored_polygon(PackedVector2Array([Vector2.ZERO, o, b_in]), c2)
+	# glossy highlight on the top-left point
+	draw_colored_polygon(PackedVector2Array([outer[0] * 0.92, inner[5] * 0.85, Vector2(-30, -60)]), Color(1, 1, 1, 0.55))
+	draw_colored_polygon(PackedVector2Array([outer[5] * 0.9, inner[4] * 0.9, inner[5] * 0.8]), Color(1, 1, 1, 0.3))
+	# centre medallion with an original lightning emblem
+	draw_circle(Vector2.ZERO, 84, UIKit.DARK)
+	draw_circle(Vector2.ZERO, 76, rc.darkened(0.12))
+	draw_circle(Vector2.ZERO, 64, UIKit.DARK)
+	draw_circle(Vector2.ZERO, 58, rc.lightened(0.12))
+	draw_circle(Vector2(-18, -24), 14, Color(1, 1, 1, 0.45))
+	var bolt := PackedVector2Array([Vector2(10, -46), Vector2(-26, 6), Vector2(-4, 6), Vector2(-14, 46), Vector2(26, -8), Vector2(4, -8), Vector2(14, -46)])
+	var bolt_o := PackedVector2Array()
+	for p in bolt:
+		bolt_o.append(p * 1.22)
+	draw_colored_polygon(bolt_o, UIKit.DARK)
+	draw_colored_polygon(bolt, Color.WHITE)
+	# rarity cracks of light
+	if _shown > 0:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 91
+		for k in _shown * 2:
+			var p := Vector2.from_angle(rng.randf() * TAU) * rng.randf_range(88, 112)
+			var pts := PackedVector2Array([p])
+			for j in 3:
+				p += Vector2(rng.randf_range(-18, 18), rng.randf_range(-18, 18))
+				pts.append(p)
+			draw_polyline(pts, Color(1, 1, 1, 0.85), 3.0, true)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if open_k > 0.0:
+		for k in 3:
+			draw_circle(base, 200.0 * open_k * (1.0 + k * 0.5), Color(1, 1, 1, 0.25 * (1.0 - open_k)))
+	# twinkles
+	for k in 6:
+		var a := _t * 0.8 + k * TAU / 6.0
+		var p := cc + Vector2(cos(a) * 250.0, sin(a) * 140.0 - 30.0)
+		var s := 6.0 + 4.0 * sin(_t * 5.0 + k)
+		draw_colored_polygon(PackedVector2Array([p + Vector2(0, -s * 2), p + Vector2(s * 0.5, 0), p + Vector2(0, s * 2), p + Vector2(-s * 0.5, 0)]), Color(1, 1, 1, 0.8))
+		draw_colored_polygon(PackedVector2Array([p + Vector2(-s * 2, 0), p + Vector2(0, s * 0.5), p + Vector2(s * 2, 0), p + Vector2(0, -s * 0.5)]), Color(1, 1, 1, 0.8))
 
 func _draw_chest(cc: Vector2, tier_col: Color, rc: Color) -> void:
 	var intro := ease(clampf(_t / 0.45, 0.0, 1.0), -2.5) if _phase == "intro" else 1.0
