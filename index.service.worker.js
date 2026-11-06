@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1793997831|4598010';
+const CACHE_VERSION = '1794001285|4696578';
 /** @type {string} */
 const CACHE_PREFIX = 'Rumble Rush-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
