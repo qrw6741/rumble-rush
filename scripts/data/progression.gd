@@ -465,3 +465,47 @@ static func title_list() -> Array:
 	for id in Config.BRAWLER_ORDER:
 		out.append({"id": "master_" + id, "name": Config.BRAWLERS[id].name + " MASTER", "how": "Reach GOLD III mastery with " + Config.BRAWLERS[id].name})
 	return out
+
+# ------------------------------------------------------------------ RANKED
+## Seven ranks, each split into I, II and III (I lowest). 100 rank points per division.
+const RANKED_NAMES := ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND", "NETHERITE", "LEGENDARY"]
+const RANKED_IDS := ["bronze", "silver", "gold", "platinum", "diamond", "netherite", "legendary"]
+const RANKED_COLORS := [Color("e07a2a"), Color("aeb8d8"), Color("ffc21a"), Color("4fd8f0"), Color("3a9cff"), Color("a44cff"), Color("ff7a1a")]
+const RANKED_DIVS := ["I", "II", "III"]
+const RANKED_DIV_PTS := 100
+const RANKED_MODES := ["gem_grab", "knockout"]
+const RANKED_WIN := 25
+const RANKED_LOSS := 15
+## First time reaching each rank (index = rank).
+const RANKED_REWARDS := [
+	[],
+	[{"type": "credits", "amount": 300}],
+	[{"type": "gems", "amount": 30}],
+	[{"type": "credits", "amount": 600}, {"type": "drop", "tier": 1}],
+	[{"type": "gems", "amount": 60}, {"type": "drop", "tier": 1}],
+	[{"type": "gems", "amount": 100}, {"type": "drop", "tier": 2}],
+	[{"type": "gems", "amount": 200}, {"type": "drop", "tier": 2}],
+]
+
+static func ranked_max_points() -> int:
+	return RANKED_NAMES.size() * 3 * RANKED_DIV_PTS - RANKED_DIV_PTS
+
+## {rank, div, into, name, color, id}; Legendary III keeps counting points past 100.
+static func ranked_info(points: int) -> Dictionary:
+	var p := maxi(0, points)
+	var step := mini(p / RANKED_DIV_PTS, RANKED_NAMES.size() * 3 - 1)
+	var rank := step / 3
+	var div := step % 3
+	var into := p - step * RANKED_DIV_PTS
+	return {"rank": rank, "div": div, "into": into, "step": step,
+		"name": "%s %s" % [RANKED_NAMES[rank], RANKED_DIVS[div]],
+		"color": RANKED_COLORS[rank], "id": RANKED_IDS[rank],
+		"top": step == RANKED_NAMES.size() * 3 - 1}
+
+## Bot strength follows your rank.
+static func ranked_difficulty(points: int) -> String:
+	var r: int = ranked_info(points).rank
+	if r == 0: return "easy"
+	if r <= 2: return "normal"
+	if r <= 4: return "hard"
+	return "extreme"

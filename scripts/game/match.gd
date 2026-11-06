@@ -45,15 +45,19 @@ var _ten_sec_warned := false
 var _paused := false
 var champs := false
 var _champs_info := {}
+var ranked := false
+var _ranked_info := {}
 
 func setup(params: Dictionary) -> void:
 	mode_id = params.get("mode", Save.data.selected_mode)
 	player_brawler = params.get("brawler", Save.data.selected_brawler)
 	difficulty = params.get("difficulty", Config.match_difficulty(player_brawler))
 	champs = params.get("champs", false)
+	ranked = params.get("ranked", false)
 	debug = params.get("debug", false)
 	if debug:
 		champs = false
+		ranked = false
 	autoplay = params.get("autoplay", false)
 	quit_after = params.get("quit_after", false)
 	sim_time_scale = params.get("time_scale", 1.0)
@@ -504,9 +508,11 @@ func _finish_internal(winner: int, forfeited: bool, place := 0) -> void:
 	var mvp := _pick_mvp(winner)
 	var rewards := {}
 	if not autoplay and not debug:
-		rewards = Save.grant_match_rewards(_match_id, player.id, mode_id, result, player.stats.kos, player.stats.deaths, player.stats.damage, mvp == player, place)
+		rewards = Save.grant_match_rewards(_match_id, player.id, mode_id, result, player.stats.kos, player.stats.deaths, player.stats.damage, mvp == player, place, ranked)
 		if champs:
 			_champs_info = Save.champs_record(result)
+		if ranked:
+			_ranked_info = Save.ranked_record(result)
 	var text: String = {"win": "VICTORY!", "loss": "DEFEAT", "draw": "DRAW"}[result]
 	if place > 0:
 		text = "#1 WINNER!" if place == 1 else "RANK #%d" % place
@@ -539,6 +545,7 @@ func _finish_internal(winner: int, forfeited: bool, place := 0) -> void:
 		"players": players, "rewards": rewards, "forfeit": forfeited,
 		"score": mode.hud(), "duration": _elapsed, "view_team": view_team, "place": place,
 		"champs": champs, "champs_info": _champs_info, "debug": debug,
+		"ranked": ranked, "ranked_info": _ranked_info,
 	}
 	if quit_after:
 		print("AUTOTEST RESULT: ", JSON.stringify({"result": result, "winner": winner, "mode": mode_id, "map": map_id, "duration": snappedf(_elapsed, 0.1), "score": mode.hud(), "players": players}))

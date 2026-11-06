@@ -385,12 +385,23 @@ func _team_layout(result: String) -> void:
 	proceed.position = Vector2(1040, 622)
 	if data.get("champs", false):
 		proceed.pressed.connect(func(): Router.goto("champs"))
+	elif data.get("ranked", false):
+		proceed.pressed.connect(func(): Router.goto("ranked"))
 	else:
 		proceed.pressed.connect(func(): Router.goto("menu"))
 	add_child(proceed)
+	if data.get("ranked", false):
+		var rb := RankedBanner.new()
+		rb.info = data.get("ranked_info", {})
+		rb.position = Vector2(700, 92)
+		rb.size = Vector2(540, 96)
+		add_child(rb)
 	var again := UIKit.button("PLAY AGAIN", UIKit.YELLOW, 18, Vector2(180, 48))
 	again.position = Vector2(1090, 560)
-	if data.get("champs", false):
+	if data.get("ranked", false):
+		again.text = "RANKED"
+		again.pressed.connect(func(): Router.goto("ranked"))
+	elif data.get("champs", false):
 		again.text = "CHAMPS"
 		again.pressed.connect(func(): Router.goto("champs"))
 	else:
@@ -745,3 +756,45 @@ class ExitArrow extends Control:
 		var c := size * 0.5
 		draw_rect(Rect2(c.x - 18, c.y - 14, 22, 28), Color.WHITE, false, 4.0)
 		draw_colored_polygon(PackedVector2Array([c + Vector2(-2, -4), c + Vector2(10, -4), c + Vector2(10, -12), c + Vector2(22, 0), c + Vector2(10, 12), c + Vector2(10, 4), c + Vector2(-2, 4)]), Color.WHITE)
+
+
+## Rank change after a Ranked match: badge, new division, RP gained or lost, bar.
+class RankedBanner extends Control:
+	var info: Dictionary = {}
+	var _t := 0.0
+	func _process(d: float) -> void:
+		_t += d
+		queue_redraw()
+	func _draw() -> void:
+		if info.is_empty():
+			return
+		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+		var after: int = int(info.after)
+		var before: int = int(info.before)
+		var k := clampf((_t - 0.6) / 1.0, 0.0, 1.0)
+		var shown := int(lerpf(before, after, ease(k, -2.0)))
+		var ri := Progression.ranked_info(shown)
+		var c: Color = ri.color
+		draw_colored_polygon(PackedVector2Array([Vector2(20, 0), Vector2(size.x, 0), Vector2(size.x - 20, size.y), Vector2(0, size.y)]), Color(0.05, 0.03, 0.15, 0.78))
+		var tex: Texture2D = preload("res://scripts/ui/ranked_screen.gd").badge(ri.id, true)
+		var pop := 1.0 + (0.15 * sin(clampf((_t - 1.6) * 6.0, 0.0, PI)) if info.get("promoted", false) else 0.0)
+		var sz := 104.0 * pop
+		draw_texture_rect(tex, Rect2(52 - sz * 0.5, 44 - sz * 0.5, sz, sz), false)
+		S2.text_l(self, String(ri.name), Vector2(112, 38), 28, c.lightened(0.3))
+		var d: int = int(info.delta)
+		var dtxt := ("+%d RP" % d) if d >= 0 else ("%d RP" % d)
+		S2.text_l(self, dtxt, Vector2(400, 38), 28, Color("7dff8a") if d >= 0 else Color("ff7a6a"))
+		var fr := 1.0 if bool(ri.top) else float(ri.into) / Progression.RANKED_DIV_PTS
+		draw_rect(Rect2(112, 52, 380, 18), UIKit.DARK)
+		draw_rect(Rect2(114, 54, 376 * clampf(fr, 0, 1), 14), c)
+		var sub := ""
+		if info.get("new_rank", -1) >= 0:
+			sub = "NEW RANK REACHED!  REWARDS ADDED"
+		elif info.get("promoted", false):
+			sub = "PROMOTED!"
+		elif info.get("demoted", false):
+			sub = "DEMOTED"
+		elif int(info.get("streak", 0)) >= 2:
+			sub = "WIN STREAK x%d" % int(info.streak)
+		if sub != "" and _t > 1.4:
+			S2.text_l(self, sub, Vector2(112, 90), 16, Color("ffd23a"))

@@ -70,6 +70,7 @@ func _default() -> Dictionary:
 		"skins_owned": [],
 		"gems": 30,
 		"win_streak": 0,
+		"ranked": {"points": 0, "best": 0, "wins": 0, "losses": 0, "streak": 0, "claimed": [0]},
 		"best_streak": 0,
 		"mastery": {},
 		"profile_icon": "",
@@ -100,6 +101,13 @@ func load_game() -> void:
 		if parsed is Dictionary:
 			_merge(data, parsed)
 	# sanitize: numbers from JSON come back as floats
+	var rk: Dictionary = data.ranked
+	var cl: Array = []
+	for v in rk.get("claimed", [0]):
+		cl.append(int(v))
+	rk.claimed = cl
+	for k in ["points", "best", "wins", "losses", "streak"]:
+		rk[k] = int(rk.get(k, 0))
 	for id in Config.BRAWLER_ORDER:
 		data.brawler_trophies[id] = int(data.brawler_trophies.get(id, 0))
 		data.brawler_levels[id] = clampi(int(data.brawler_levels.get(id, 1)), 1, Config.MAX_LEVEL)
@@ -255,7 +263,7 @@ func try_upgrade(id: String) -> bool:
 # ------------------------------------------------------------------ match rewards
 ## result: "win" | "loss" | "draw". Returns the reward breakdown. Rewards are
 ## granted exactly once per match id.
-func grant_match_rewards(match_id: String, brawler_id: String, mode: String, result: String, kos: int, deaths: int, damage: int, mvp: bool, placement := 0) -> Dictionary:
+func grant_match_rewards(match_id: String, brawler_id: String, mode: String, result: String, kos: int, deaths: int, damage: int, mvp: bool, placement := 0, no_trophies := false) -> Dictionary:
 	if _granted_matches.has(match_id):
 		return {"duplicate": true, "trophies": 0, "credits": 0, "xp": 0}
 	_granted_matches[match_id] = true
@@ -288,6 +296,8 @@ func grant_match_rewards(match_id: String, brawler_id: String, mode: String, res
 	var trophy_delta := 0
 	trophy_delta = Progression.trophy_change(bt, result, placement)
 	trophy_delta = max(trophy_delta, -bt)
+	if no_trophies:
+		trophy_delta = 0
 	var credits: int = {"win": 30, "loss": 12, "draw": 18}[result] + mini(kos, 10) * 2 + (10 if mvp else 0)
 	var xp: int = {"win": 40, "loss": 20, "draw": 28}[result] + kos * 3
 
@@ -449,6 +459,40 @@ func unlock_brawler(id: String) -> bool:
 	return true
 
 # ------------------------------------------------------------------ CHAMPS
+# ------------------------------------------------------------------ ranked
+func ranked() -> Dictionary:
+	return data.ranked
+
+## Records one Ranked match: +25 per win (+5 for every extra win in a row, up to +15),
+## -15 per loss. You can drop divisions but never below the start of a rank you reached.
+func ranked_record(result: String) -> Dictionary:
+	var r := ranked()
+	var before := int(r.points)
+	var info_b := Progression.ranked_info(before)
+	var delta := 0
+	if result == "win":
+		r.streak = int(r.streak) + 1
+		r.wins = int(r.wins) + 1
+		delta = Progression.RANKED_WIN + mini(15, 5 * (int(r.streak) - 1))
+	elif result == "loss":
+		r.streak = 0
+		r.losses = int(r.losses) + 1
+		var floor_pts: int = int(info_b.rank) * 3 * Progression.RANKED_DIV_PTS
+		delta = -mini(Progression.RANKED_LOSS, before - floor_pts)
+	r.points = before + delta
+	r.best = maxi(int(r.best), int(r.points))
+	var info_a := Progression.ranked_info(int(r.points))
+	var new_rank := -1
+	if int(info_a.rank) > int(info_b.rank) and not (int(info_a.rank) in r.claimed):
+		new_rank = int(info_a.rank)
+		r.claimed.append(new_rank)
+		for rw in Progression.RANKED_REWARDS[new_rank]:
+			grant_reward(rw)
+	save_game()
+	return {"before": before, "after": int(r.points), "delta": delta,
+		"promoted": int(info_a.step) > int(info_b.step), "demoted": int(info_a.step) < int(info_b.step),
+		"new_rank": new_rank, "streak": int(r.streak)}
+
 func champs() -> Dictionary:
 	return data.champs
 

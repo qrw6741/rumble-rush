@@ -19,6 +19,7 @@ const SCREENS := {
 	"events": "res://scripts/ui/events_screen.gd",
 	"shop": "res://scripts/ui/shop_screen.gd",
 	"champs": "res://scripts/ui/champs_screen.gd",
+	"ranked": "res://scripts/ui/ranked_screen.gd",
 }
 
 var root_container: Node

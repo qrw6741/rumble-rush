@@ -115,6 +115,12 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		if not "graves" in Save.data.unlocked:
 			Save.data.unlocked.append("graves")
 		params["brawler"] = "graves"
+	if "--demo-ranked" in args:
+		Save.save_path = "user://demo_save.json"
+		Save.data.ranked = {"points": 745, "best": 760, "wins": 31, "losses": 12, "streak": 3, "claimed": [0, 1, 2]}
+		if screen == "results":
+			params["ranked"] = true
+			params["ranked_info"] = {"before": 690, "after": 745, "delta": 35, "promoted": true, "demoted": false, "new_rank": -1, "streak": 3}
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:

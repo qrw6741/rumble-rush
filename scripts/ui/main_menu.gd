@@ -341,6 +341,25 @@ func _build_play() -> void:
 		Sfx.play("ui_confirm")
 		Router.goto("match", {"mode": Save.data.selected_mode, "brawler": Save.data.selected_brawler}))
 	add_child(play)
+	# RANKED entry above CHAMPS
+	var rk := SlantButton.new()
+	rk.color = Color("2a1460")
+	rk.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	rk.position = Vector2(-372, -384)
+	rk.size = Vector2(340, 96)
+	rk.name = "Ranked"
+	var rinfo := Progression.ranked_info(int(Save.ranked().points))
+	var rtex: Texture2D = load("res://assets/ranks/%s_crest.png" % rinfo.id)
+	rk.custom_draw = func(ci: Control):
+		ci.draw_rect(Rect2(0, 0, 340, 6), rinfo.color)
+		ci.draw_texture_rect(rtex, Rect2(14, -10, 112, 112), false)
+		SlantButton.text_l(ci, "RANKED", Vector2(138, 46), 30, Color.WHITE)
+		SlantButton.text_l(ci, String(rinfo.name), Vector2(138, 76), 18, rinfo.color.lightened(0.3))
+	rk.pressed.connect(func():
+		Sfx.play("ui_click")
+		Router.goto("ranked"))
+	add_child(rk)
+	UIKit.pop_in(rk, 0.35, Vector2(60, 0))
 	# CHAMPS entry on the right side, above PLAY
 	var ch := SlantButton.new()
 	ch.color = Color("3a1a12")
