@@ -140,7 +140,20 @@ func add_feed(killer: Brawler, victim: Brawler) -> void:
 	tw.tween_property(row, "modulate:a", 0.0, 0.6)
 	tw.tween_callback(row.queue_free)
 
+var _pad_was := false
+
 func _process(delta: float) -> void:
+	var pad := PlayerController.pad_active()
+	if pad != _pad_was:
+		_pad_was = pad
+		if pad:
+			_abilities.visible = true
+			if _joy:
+				_joy.visible = true
+			_hint.text = "L-stick move  ·  R-stick aim  ·  R2 attack  ·  L2 super  ·  R1 gadget  ·  OPTIONS pause"
+			_hint.visible = true
+		else:
+			_hint.text = "Mouse aim  ·  ESC pause"
 	if _announce_t > 0.0:
 		_announce_t -= delta
 		if _announce_t <= 0.3:
@@ -271,6 +284,10 @@ class WasdStick extends Control:
 	func _process(d: float) -> void:
 		var v := Vector2(float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)),
 			float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)))
+		if PlayerController.pad_active():
+			var pads := Input.get_connected_joypads()
+			if not pads.is_empty():
+				v = Vector2(Input.get_joy_axis(pads[0], JOY_AXIS_LEFT_X), Input.get_joy_axis(pads[0], JOY_AXIS_LEFT_Y))
 		if v.length() > 1.0:
 			v = v.normalized()
 		_off = _off.lerp(v * size.x * 0.24, clampf(d * 14.0, 0.0, 1.0))
@@ -281,7 +298,7 @@ class WasdStick extends Control:
 		var kr := size.x * 0.27
 		draw_texture_rect(AbilityReadout.tex("joy_knob"), Rect2(c + _off - Vector2(kr, kr), Vector2(kr, kr) * 2.0), false)
 		var f := UIKit.bold()
-		var t := "WASD"
+		var t := "L-STICK" if PlayerController.pad_active() else "WASD"
 		var w := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
 		draw_string_outline(f, Vector2(c.x - w * 0.5, size.y + 8), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 6, UIKit.DARK)
 		draw_string(f, Vector2(c.x - w * 0.5, size.y + 8), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
@@ -322,7 +339,8 @@ class AbilityReadout extends Control:
 			var fillk := clampf(p.ammo - i, 0.0, 1.0)
 			draw_arc(ac, 58, a0, a0 + 0.31, 8, UIKit.DARK, 11.0, true)
 			draw_arc(ac, 58, a0, a0 + 0.31 * fillk, 8, Color("ff9d2e"), 6.0, true)
-		_t2(f, "LMB", ac + Vector2(0, 70), 15)
+		var pad := PlayerController.pad_active()
+		_t2(f, "R2" if pad else "LMB", ac + Vector2(0, 70), 15)
 		# ---- gadget (green): ready / pressed / cooldown or locked
 		var gc := Vector2(172, 112)
 		var gdown := Input.is_action_pressed("gadget")
@@ -336,7 +354,7 @@ class AbilityReadout extends Control:
 			_t2(f, str(int(ceil(p.gadget_cd))), gc + Vector2(0, 12), 28)
 		else:
 			_btn("gadget_down" if gdown else "gadget", gc + (Vector2(0, 3) if gdown else Vector2.ZERO), 44.0 * (1.0 + 0.04 * sin(_t * 5.0)))
-		_t2(f, "RMB / Q", gc + Vector2(0, 66), 15)
+		_t2(f, "R1" if pad else "RMB / Q", gc + Vector2(0, 66), 15)
 		# ---- super (yellow skull): charging ring / ready (pulsing) / pressed
 		var sc := Vector2(292, 92)
 		var full := p.super_charge >= 1.0
@@ -350,7 +368,7 @@ class AbilityReadout extends Control:
 			_btn("super_charging", sc, 60.0)
 			draw_arc(sc, 50, -PI / 2, -PI / 2 + TAU * p.super_charge, 64, UIKit.DARK, 11.0, true)
 			draw_arc(sc, 50, -PI / 2, -PI / 2 + TAU * p.super_charge, 64, Color("ffd23a"), 7.0, true)
-		_t2(f, "SPACE" if full else "%d%%" % int(p.super_charge * 100), sc + Vector2(0, 82), 16)
+		_t2(f, ("L2" if pad else "SPACE") if full else "%d%%" % int(p.super_charge * 100), sc + Vector2(0, 82), 16)
 
 	func _t2(f: Font, s: String, cb: Vector2, size: int) -> void:
 		var sz := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size)

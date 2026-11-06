@@ -40,6 +40,11 @@ static func ensure_input_actions() -> void:
 	gm.button_index = MOUSE_BUTTON_RIGHT
 	if not InputMap.action_has_event("gadget", gm):
 		InputMap.action_add_event("gadget", gm)
+	# gamepad: Options button pauses
+	var pb := InputEventJoypadButton.new()
+	pb.button_index = JOY_BUTTON_START
+	if not InputMap.action_has_event("pause", pb):
+		InputMap.action_add_event("pause", pb)
 	# gamepad support comes for free
 	_add_joy("move_left", JOY_AXIS_LEFT_X, -1.0)
 	_add_joy("move_right", JOY_AXIS_LEFT_X, 1.0)
@@ -65,7 +70,9 @@ func tick(_delta: float) -> void:
 		b.move_input = Vector2.ZERO
 		preview_mode = ""
 		return
-	if using_touch():
+	if pad_active():
+		_tick_pad()
+	elif using_touch():
 		_tick_touch()
 	else:
 		_tick_mouse()
@@ -103,6 +110,87 @@ func _tick_mouse() -> void:
 			_attack_queued = false
 	if Input.is_action_just_pressed("gadget"):
 		b.try_gadget(dir)
+
+# ------------------------------------------------------------------ PS5 / gamepad
+## Left stick move · right stick aim · R2 attack (hold = keep firing; no aim = auto-aim)
+## L2 super (hold to aim, release to fire) · R1 / L1 / Square gadget · Options pause.
+static var last_pad_time := -100.0
+static var last_mouse_time := 0.0
+
+static func pad_active() -> bool:
+	if Input.get_connected_joypads().is_empty():
+		return false
+	return last_pad_time >= last_mouse_time
+
+static func note_input(e: InputEvent) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if e is InputEventJoypadButton or (e is InputEventJoypadMotion and absf(e.axis_value) > 0.4):
+		last_pad_time = now
+	elif e is InputEventMouseButton or (e is InputEventMouseMotion and e.relative.length() > 3.0) or e is InputEventKey or e is InputEventScreenTouch:
+		if now - last_pad_time > 0.4:  # ignore the cursor's own synthetic clicks
+			last_mouse_time = now
+
+func _pad() -> int:
+	var pads := Input.get_connected_joypads()
+	return pads[0] if not pads.is_empty() else 0
+
+var _pad_super_was := false
+var _pad_gadget_was := false
+
+func _tick_pad() -> void:
+	var dev := _pad()
+	if touch and touch.visible:
+		touch.visible = false
+	var mv := Vector2(Input.get_joy_axis(dev, JOY_AXIS_LEFT_X), Input.get_joy_axis(dev, JOY_AXIS_LEFT_Y))
+	b.move_input = mv if mv.length() > 0.18 else Vector2.ZERO
+	if b.move_input.length() > 1.0:
+		b.move_input = b.move_input.normalized()
+	var aim := Vector2(Input.get_joy_axis(dev, JOY_AXIS_RIGHT_X), Input.get_joy_axis(dev, JOY_AXIS_RIGHT_Y))
+	var aiming := aim.length() > 0.25
+	var fire := Input.get_joy_axis(dev, JOY_AXIS_TRIGGER_RIGHT) > 0.4
+	var sup := Input.get_joy_axis(dev, JOY_AXIS_TRIGGER_LEFT) > 0.4
+	var gad := Input.is_joy_button_pressed(dev, JOY_BUTTON_RIGHT_SHOULDER) or Input.is_joy_button_pressed(dev, JOY_BUTTON_LEFT_SHOULDER) or Input.is_joy_button_pressed(dev, JOY_BUTTON_X)
+	var dir := b.aim_dir
+	var target := _nearest_enemy(b.super_range_px() if sup else b.attack_range_px())
+	if aiming:
+		dir = aim.normalized()
+		if Save.setting("aim_assist"):
+			dir = _assist(dir, b.attack_range_px())
+	elif target:
+		dir = (target.global_position - b.global_position).normalized()
+	elif b.move_input.length() > 0.2:
+		dir = b.move_input.normalized()
+	b.aim_dir = dir
+	preview_dir = dir
+	var rng := b.super_range_px() if sup else b.attack_range_px()
+	preview_dist = clampf(aim.length(), 0.0, 1.0) * rng if aiming else (b.global_position.distance_to(target.global_position) if target else rng)
+	if sup and b.super_charge >= 1.0:
+		_pad_super_was = true
+		preview_mode = "super"
+		preview_strength = 1.0
+	elif _pad_super_was:
+		_pad_super_was = false
+		b.try_super(dir, preview_dist)
+		preview_mode = ""
+	else:
+		preview_mode = "attack" if (aiming or fire) else ""
+		preview_strength = 1.0 if fire else 0.45
+		if fire:
+			b.try_attack(dir, preview_dist)
+	if gad and not _pad_gadget_was:
+		b.try_gadget(dir)
+	_pad_gadget_was = gad
+
+func _nearest_enemy(max_range: float) -> Brawler:
+	var best: Brawler = null
+	var bd := max_range * 1.05
+	for e: Brawler in game.brawlers:
+		if e.alive and e.team != b.team and not e.hidden_from(b.team):
+			var d := e.global_position.distance_to(b.global_position)
+			if d < bd:
+				bd = d
+				best = e
+	return best
 
 ## Light aim assist: if an enemy is close to the cursor direction, snap to it.
 func _assist(dir: Vector2, _dist: float) -> Vector2:

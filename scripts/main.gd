@@ -12,6 +12,8 @@ var _rinner: Control
 func _ready() -> void:
 	Router.root_container = self
 	Router.app = self
+	PlayerController.ensure_input_actions()
+	get_tree().root.add_child.call_deferred(preload("res://scripts/ui/pad_cursor.gd").new())
 	randomize()
 	if OS.has_feature("web") or OS.has_feature("mobile"):
 		# phones: render the 2D UI at game resolution instead of full Retina pixels (big FPS win)
@@ -233,9 +235,40 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	if "--openseason" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_season_rewards()
+	if "--dropdemo" in args:
+		Save.save_path = "user://demo_save.json"
+		Save.data.drops = [2, 1, 0]
+		var dop := DropOpener.new()
+		add_child(dop)
+		var stage := ""
+		for a in args:
+			if a.begins_with("--dropstage="):
+				stage = a.substr(12)
+		await get_tree().create_timer(0.7).timeout
+		if stage != "":
+			dop._prize["rarity"] = 3
+			dop._tap()
+			dop._tap()
+			if stage == "open":
+				dop._tap()
+				dop._tap()
 	if "--openstore" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_store()
+	if "--padtest" in args:
+		var PC := preload("res://scripts/ui/pad_cursor.gd")
+		PC.test_mode = true
+		await get_tree().create_timer(0.6).timeout
+		PC.test_stick = Vector2(-0.8, -0.3)
+		await get_tree().create_timer(0.2).timeout
+		PC.test_stick = Vector2.ZERO
+		for n in get_tree().root.get_children():
+			if n.get_script() == PC:
+				n.pos = Vector2(96, 215)
+		await get_tree().create_timer(0.2).timeout
+		PC.test_cross = true
+		await get_tree().create_timer(0.1).timeout
+		PC.test_cross = false
 	if "--settings" in args:
 		var sp := SettingsPanel.new()
 		sp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
