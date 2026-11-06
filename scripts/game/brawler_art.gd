@@ -115,6 +115,19 @@ const SPRITES := {
 		"side": [69, 196, 32.5, 190.1, 196.0, false],
 		"back": [106, 216, 56.5, 209.5, 216.0, true],
 	},
+	"nova": {
+		"main": [244, 369, 128.0, 359.8, 369.0, true],
+		"super": [268, 225, 129.0, 219.4, 258.8, true],
+		"attack": [98, 100, 55.0, 97.5, 128.0, true],
+		"front": [67, 94, 37.0, 91.6, 110.0, true],
+	},
+	"sprig": {
+		"main": [311, 326, 153.5, 317.8, 326.0, true],
+		"super": [321, 294, 163.5, 286.6, 338.1, true],
+		"attack": [116, 102, 47.5, 99.5, 122.0, true],
+		"win": [125, 100, 63.5, 97.5, 122.0, true],
+		"back": [99, 123, 61.0, 119.9, 123.0, true],
+	},
 	"bruno": {
 		"main": [323, 406, 176.0, 395.8, 406.0, true],
 		"super": [191, 210, 101.0, 204.8, 231.0, true],
@@ -183,9 +196,9 @@ const SPRITES := {
 }
 const SPRITE_UNITS := 84.0
 ## Trail / slash colour per sprite brawler.
-const SPRITE_FX := {"bruno": Color("ff3b4a"), "rio": Color("ff4fd0"), "vex": Color("3fe0ff"), "graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b")}
+const SPRITE_FX := {"nova": Color("3fd0ff"), "sprig": Color("9cff3a"), "bruno": Color("ff3b4a"), "rio": Color("ff4fd0"), "vex": Color("3fe0ff"), "graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b")}
 ## Size of each sprite brawler relative to the others.
-const SPRITE_SIZE := {"bruno": 1.12, "rio": 0.95, "vex": 0.95, "king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0}
+const SPRITE_SIZE := {"nova": 1.0, "sprig": 0.9, "bruno": 1.12, "rio": 0.95, "vex": 0.95, "king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0}
 ## Missing frames fall back to these.
 const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side", "win": "main"}  # drawn height of a sprite character, in art units
 static var _tex_cache := {}
