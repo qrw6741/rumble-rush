@@ -204,7 +204,7 @@ func _ready() -> void:
 	Save.data.pass_tokens = 600
 	Save.claim_pass(6, "gold")
 	check("gold tier 6 awards BRONT gold skin", Save.owns_skin("bront", "gold") and Save.select_skin("bront", "gold"))
-	check("can't equip a skin you don't own", not Save.select_skin("mira", "gold"))
+	check("can't equip a skin you don't own", not Save.select_skin("sprig", "gold"))
 	Save.data.brawler_trophies["nova"] = 65
 	check("rank from trophies (65 -> rank 6)", Save.brawler_rank("nova") == 6)
 	check("rank reward claim works", Save.claim_rank("nova", 6))

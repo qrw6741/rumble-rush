@@ -31,6 +31,16 @@ func _ready() -> void:
 	if "--qa" in args:
 		add_child(load("res://tests/qa_runner.gd").new())
 		return
+	if "--miratest" in args:
+		Save.data.selected_brawler = "mira"
+		Save.data.skins_owned.append("mira:starlight")
+		Save.data.brawler_trophies["mira"] = 50
+		Save.data.history.push_front({"brawler": "mira", "mode": "gem_grab", "result": "win"})
+		var g0 := int(Save.data.gems)
+		Save._remove_retired_brawlers()
+		print("MIRATEST sel=", Save.data.selected_brawler, " skins=", Save.data.skins_owned, " gems+", int(Save.data.gems) - g0, " hist=", Save.data.history.size(), " trophies=", Save.total_trophies())
+		get_tree().quit()
+		return
 	if "--check" in args:
 		_check_scripts()
 		return
@@ -99,7 +109,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			"rewards": {"trophies": 11, "credits": 72, "streak": 4, "streak_trophies": 3, "streak_credits": 30, "xp": 61, "level_up": true, "new_level": 3},
 			"players": [
 				{"name": "Player", "brawler": "nova", "team": 0, "is_player": true, "kos": 6, "deaths": 1, "damage": 18450, "healing": 0, "gems": 7, "mvp": true, "level": 3},
-				{"name": "Juno (BOT)", "brawler": "mira", "team": 0, "is_player": false, "kos": 1, "deaths": 2, "damage": 6100, "healing": 9800, "gems": 2, "mvp": false, "level": 2},
+				{"name": "Juno (BOT)", "brawler": "sprig", "team": 0, "is_player": false, "kos": 1, "deaths": 2, "damage": 6100, "healing": 9800, "gems": 2, "mvp": false, "level": 2},
 				{"name": "Bolt (BOT)", "brawler": "bront", "team": 0, "is_player": false, "kos": 4, "deaths": 3, "damage": 15200, "healing": 0, "gems": 3, "mvp": false, "level": 3},
 				{"name": "Kiwi (BOT)", "brawler": "vex", "team": 1, "is_player": false, "kos": 3, "deaths": 4, "damage": 12000, "healing": 0, "gems": 4, "mvp": false, "level": 2},
 				{"name": "Echo (BOT)", "brawler": "sprig", "team": 1, "is_player": false, "kos": 2, "deaths": 5, "damage": 11800, "healing": 0, "gems": 1, "mvp": false, "level": 3},
@@ -121,6 +131,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		if screen == "results":
 			params["ranked"] = true
 			params["ranked_info"] = {"before": 690, "after": 745, "delta": 35, "promoted": true, "demoted": false, "new_rank": -1, "streak": 3}
+	for a in args:
+		if a.begins_with("--who="):
+			params["who"] = a.substr(6)
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:

@@ -18,7 +18,7 @@ static func match_tokens(result: String, kos: int) -> int:
 const PASS_CHALLENGES := {
 	7: {"brawler": "rio", "kos": 12},
 	14: {"brawler": "vex", "kos": 15},
-	21: {"brawler": "mira", "kos": 20},
+	21: {"brawler": "rio", "kos": 20},
 	27: {"brawler": "bront", "kos": 25},
 }
 
@@ -30,7 +30,7 @@ static func pass_reward(tier: int, track: String) -> Dictionary:
 	if track == "gold" and PASS_CHALLENGES.has(tier):
 		return {"type": "credits", "amount": 350, "challenge": PASS_CHALLENGES[tier]}
 	if track == "gold":
-		var skin_tiers := {6: "bront", 12: "vex", 18: "nova", 24: "mira", 30: "sprig"}
+		var skin_tiers := {6: "bront", 12: "vex", 18: "nova", 24: "rio", 30: "sprig"}
 		if skin_tiers.has(tier):
 			return {"type": "skin", "brawler": skin_tiers[tier], "skin": "gold"}
 		if tier % 5 == 0:
@@ -44,7 +44,7 @@ static func pass_reward(tier: int, track: String) -> Dictionary:
 	if tier == PASS_TIERS:
 		return {"type": "brawler", "brawler": "ember"}
 	if tier % 10 == 0:
-		return {"type": "skin", "brawler": ["nova", "bront", "mira"][tier / 10 - 1], "skin": "shadow"}
+		return {"type": "skin", "brawler": ["nova", "bront", "rio"][tier / 10 - 1], "skin": "shadow"}
 	if tier % 4 == 0:
 		return {"type": "gems", "amount": 5}
 	if tier % 3 == 0:
@@ -217,8 +217,6 @@ const SPECIAL_SKINS := {
 		"primary": Color("1a1a2e"), "secondary": Color("ff3df0"), "accent": Color("3dfff0"), "skin": Color("b98563")},
 	"polar": {"name": "POLAR CHAMP", "only": "bruno", "price": 99,
 		"primary": Color("2a8cff"), "secondary": Color("1a3a7a"), "accent": Color("dff4ff"), "skin": Color("f2f2f6")},
-	"starlight": {"name": "STARLIGHT", "only": "mira", "price": 99, "fx": "stars",
-		"primary": Color("8a7aff"), "secondary": Color("1c1650"), "accent": Color("ffe98a"), "skin": Color("f2c6a0")},
 	"magma": {"name": "MAGMA MINER", "only": "bront", "price": 99, "fx": "fire",
 		"primary": Color("3a2a2a"), "secondary": Color("1a1010"), "accent": Color("ff6a1a"), "skin": Color("c98b62")},
 }

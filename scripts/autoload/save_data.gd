@@ -100,6 +100,7 @@ func load_game() -> void:
 		var parsed = JSON.parse_string(text)
 		if parsed is Dictionary:
 			_merge(data, parsed)
+	_remove_retired_brawlers()
 	# sanitize: numbers from JSON come back as floats
 	var rk: Dictionary = data.ranked
 	var cl: Array = []
@@ -154,6 +155,27 @@ func load_game() -> void:
 		data.selected_mode = "gem_grab"
 	for g in data.granted:
 		_granted_matches[str(g)] = true
+
+## Brawlers that were removed from the game: clear them out of old saves.
+func _remove_retired_brawlers() -> void:
+	for gone in ["mira"]:
+		if data.selected_brawler == gone:
+			data.selected_brawler = "bront"
+		if String(data.get("profile_icon", "")) == gone:
+			data.profile_icon = ""
+		if String(data.champs.get("brawler", "")) == gone:
+			data.champs.brawler = ""
+		data.unlocked.erase(gone)
+		for key in ["brawler_trophies", "brawler_levels", "rank_claimed", "skin_selected", "mastery", "challenge_kos"]:
+			if data.has(key) and data[key] is Dictionary:
+				data[key].erase(gone)
+		var owned: Array = data.skins_owned
+		for k in owned.duplicate():
+			if String(k).begins_with(gone + ":"):
+				owned.erase(k)
+				if String(k).ends_with(":starlight"):
+					data.gems = int(data.gems) + 99  # refund the retired skin
+		data.history = data.history.filter(func(h): return String(h.get("brawler", "")) != gone)
 
 func _merge(base: Dictionary, incoming: Dictionary) -> void:
 	for k in incoming.keys():

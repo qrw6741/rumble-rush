@@ -179,19 +179,6 @@ const BRAWLERS := {
 			"damage": 2200, "range": 13.0, "width": 0.9, "charge": 0.35},
 		"gadget": {"kind": "overclock", "name": "Overclock", "desc": "Instantly refills all ammo.", "cooldown": 15.0},
 	},
-	"mira": {
-		"name": "MIRA", "role": "SUPPORT", "rarity": "EPIC",
-		"tagline": "Heals friends. Haunts enemies.",
-		"bio": "A lantern-keeper whose spirit orbs know exactly who deserves a hug and who deserves a hit.",
-		"health": 3600, "speed": 172.0, "radius": 22.0,
-		"ammo": 3, "reload": 1.45,
-		"primary": Color("ff7bc2"), "secondary": Color("3b2350"), "accent": Color("9dff9a"), "skin": Color("f2c6a0"),
-		"attack": {"kind": "orb", "name": "Spirit Orb", "desc": "Damages the first enemy it hits — or heals the first ally it touches.",
-			"damage": 980, "heal": 810, "range": 7.2, "speed": 520.0, "super_per_hit": 0.25, "sfx": "shoot_heal"},
-		"super": {"kind": "sanctuary", "name": "Sanctuary", "desc": "Throws a glowing field that heals allies and burns enemies for 5 seconds.",
-			"heal": 300, "damage": 230, "range": 7.0, "radius": 2.6, "duration": 5.0, "tick": 0.5},
-		"gadget": {"kind": "mend", "name": "Mend", "desc": "Instantly heals herself and nearby allies.", "cooldown": 15.0, "heal": 1000, "radius": 3.2},
-	},
 	"sprig": {
 		"name": "SPRIG", "role": "CONTROLLER", "rarity": "SUPER RARE",
 		"tagline": "Plants trouble. Watches it grow.",
@@ -376,8 +363,8 @@ const BRAWLERS := {
 		"gadget": {"kind": "shadow_step", "name": "Smoke Veil", "desc": "Disappears in a puff of smoke for 2.5 seconds.", "cooldown": 16.0, "duration": 2.5},
 	},
 }
-const BRAWLER_ORDER := ["bront", "vex", "nova", "mira", "sprig", "rio", "graves", "dusty", "kora", "patch", "bruno", "skye", "ember", "cyber", "king", "templar", "monk", "gunslinger"]
-const STARTER_BRAWLERS := ["bront", "vex", "nova", "mira", "sprig", "rio"]
+const BRAWLER_ORDER := ["bront", "vex", "nova", "sprig", "rio", "graves", "dusty", "kora", "patch", "bruno", "skye", "ember", "cyber", "king", "templar", "monk", "gunslinger"]
+const STARTER_BRAWLERS := ["bront", "vex", "nova", "sprig", "rio"]
 
 const BOT_NAMES := ["Pixel", "Zapper", "Moxie", "Rook", "Tango", "Bolt", "Juno", "Kiwi", "Rumble", "Echo", "Sparx", "Blitz", "Nimbus", "Fuse"]
 

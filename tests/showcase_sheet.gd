@@ -6,7 +6,7 @@ func _ready() -> void:
 	bg.color = Color("1f6ad8")
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	var ids := ["rio", "vex", "nova", "mira", "sprig"]
+	var ids := ["rio", "vex", "nova", "sprig"]
 	for i in ids.size():
 		var p := UIKit.BrawlerPortrait.new()
 		p.brawler_id = ids[i]
