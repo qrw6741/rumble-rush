@@ -66,11 +66,17 @@ func _ready() -> void:
 	_respawn.position = Vector2(-300, 40)
 	add_child(_respawn)
 
-	_hint = UIKit.label("WASD move  ·  Mouse aim  ·  LMB attack  ·  RMB / Q gadget  ·  Hold SPACE super  ·  ESC pause", 14, Color(1, 1, 1, 0.75), 5)
+	_hint = UIKit.label("Mouse aim  ·  ESC pause", 14, Color(1, 1, 1, 0.75), 5)
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_hint.position = Vector2(16, -34)
+	_hint.position = Vector2(210, -34)
 	add_child(_hint)
 
+	var joy := WasdStick.new()
+	joy.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	joy.size = Vector2(170, 170)
+	joy.position = Vector2(24, -196)
+	add_child(joy)
+	_joy = joy
 	_abilities = AbilityReadout.new()
 	_abilities.game = game
 	_abilities.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -86,9 +92,13 @@ func _ready() -> void:
 	_fps.position = Vector2(90, 20)
 	add_child(_fps)
 
+var _joy: Control
+
 func set_touch_mode(on: bool) -> void:
 	_hint.visible = not on
 	_abilities.visible = not on
+	if _joy:
+		_joy.visible = not on
 
 func announce(text: String, col: Color, dur := 1.6, size := 56) -> void:
 	_announce.text = text
@@ -253,6 +263,29 @@ class Scoreboard extends Control:
 		draw_string(f, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
 
 
+## PC: the movement stick from the touch layout, driven by WASD.
+class WasdStick extends Control:
+	var _off := Vector2.ZERO
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	func _process(d: float) -> void:
+		var v := Vector2(float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)),
+			float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)) - float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)))
+		if v.length() > 1.0:
+			v = v.normalized()
+		_off = _off.lerp(v * size.x * 0.24, clampf(d * 14.0, 0.0, 1.0))
+		queue_redraw()
+	func _draw() -> void:
+		var c := size * 0.5
+		draw_texture_rect(AbilityReadout.tex("joy_base"), Rect2(Vector2.ZERO, size), false, Color(1, 1, 1, 0.85))
+		var kr := size.x * 0.27
+		draw_texture_rect(AbilityReadout.tex("joy_knob"), Rect2(c + _off - Vector2(kr, kr), Vector2(kr, kr) * 2.0), false)
+		var f := UIKit.bold()
+		var t := "WASD"
+		var w := f.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		draw_string_outline(f, Vector2(c.x - w * 0.5, size.y + 8), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 6, UIKit.DARK)
+		draw_string(f, Vector2(c.x - w * 0.5, size.y + 8), t, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color.WHITE)
+
 ## PC: shows super charge and gadget cooldown with their key bindings.
 class AbilityReadout extends Control:
 	var game: Node
@@ -265,37 +298,59 @@ class AbilityReadout extends Control:
 		_t += delta
 		queue_redraw()
 
+	static var _tex := {}
+	static func tex(n: String) -> Texture2D:
+		if not _tex.has(n):
+			_tex[n] = load("res://assets/ui/pc/%s.png" % n)
+		return _tex[n]
+
+	func _btn(n: String, c: Vector2, r: float, tint := Color.WHITE) -> void:
+		draw_texture_rect(tex(n), Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, tint)
+
 	func _draw() -> void:
 		var p: Brawler = game.player
 		if p == null:
 			return
 		var f := UIKit.bold()
-		# attack + ammo
-		var ac := Vector2(60, 110)
-		UIKit.draw_icon(self, "ab_%s_attack" % p.id, ac, 74.0)
+		# ---- attack (red): normal / pressed / out of ammo
+		var ac := Vector2(62, 104)
+		var firing := Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+		var an := "attack_empty" if p.ammo < 1.0 else ("attack_down" if firing else "attack")
+		_btn(an, ac + (Vector2(0, 3) if firing else Vector2.ZERO), 50.0)
 		for i in p.max_ammo:
-			var a0 := PI * 1.12 + i * 0.36
+			var a0 := PI * 1.13 + i * 0.37
 			var fillk := clampf(p.ammo - i, 0.0, 1.0)
-			draw_arc(ac, 46, a0, a0 + 0.3, 8, UIKit.DARK, 11.0, true)
-			draw_arc(ac, 46, a0, a0 + 0.3 * fillk, 8, Color("ff9d2e"), 6.0, true)
-		_t2(f, "LMB", ac + Vector2(0, 58), 15)
-		# gadget
-		var gc := Vector2(160, 110)
-		var cd := p.gadget_cd / p.gadget_max_cd if p.has_gadget else 1.0
-		draw_circle(gc, 40, UIKit.DARK)
-		UIKit.draw_icon(self, "ab_%s_gadget" % p.id, gc, 76.0, Color.WHITE if cd <= 0.0 else Color(0.45, 0.45, 0.5))
+			draw_arc(ac, 58, a0, a0 + 0.31, 8, UIKit.DARK, 11.0, true)
+			draw_arc(ac, 58, a0, a0 + 0.31 * fillk, 8, Color("ff9d2e"), 6.0, true)
+		_t2(f, "LMB", ac + Vector2(0, 70), 15)
+		# ---- gadget (green): ready / pressed / cooldown or locked
+		var gc := Vector2(172, 112)
+		var gdown := Input.is_action_pressed("gadget")
 		if not p.has_gadget:
-			UIKit.draw_icon(self, "lock", gc + Vector2(18, 16), 36.0)
-		elif cd > 0.0:
-			draw_arc(gc, 38, -PI / 2, -PI / 2 + TAU * (1.0 - cd), 40, Color("4fd36a"), 6.0, true)
-			_t2(f, str(int(ceil(p.gadget_cd))), gc + Vector2(0, 12), 30)
-		_t2(f, "RMB / Q", gc + Vector2(0, 58), 15)
-		# super: blue button, yellow charge ring
-		var sc := Vector2(282, 92)
+			_btn("gadget_cd", gc, 44.0, Color(0.6, 0.6, 0.65))
+			UIKit.draw_icon(self, "lock", gc + Vector2(20, 18), 36.0)
+		elif p.gadget_cd > 0.0:
+			_btn("gadget_cd", gc, 44.0)
+			var cdk := 1.0 - p.gadget_cd / p.gadget_max_cd
+			draw_arc(gc, 34, -PI / 2, -PI / 2 + TAU * cdk, 40, Color("6dff6a"), 6.0, true)
+			_t2(f, str(int(ceil(p.gadget_cd))), gc + Vector2(0, 12), 28)
+		else:
+			_btn("gadget_down" if gdown else "gadget", gc + (Vector2(0, 3) if gdown else Vector2.ZERO), 44.0 * (1.0 + 0.04 * sin(_t * 5.0)))
+		_t2(f, "RMB / Q", gc + Vector2(0, 66), 15)
+		# ---- super (yellow skull): charging ring / ready (pulsing) / pressed
+		var sc := Vector2(292, 92)
 		var full := p.super_charge >= 1.0
-		var pulse := 1.0 + (0.06 * sin(_t * 8.0) if full else 0.0)
-		SuperButtonArt.draw(self, sc, 56.0 * pulse, p.super_charge, "super", _t)
-		_t2(f, "SPACE" if full else "%d%%" % int(p.super_charge * 100), sc + Vector2(0, 76), 16)
+		var sdown := Input.is_action_pressed("super")
+		if full:
+			for k in 3:
+				draw_circle(sc, 62 + k * 7 + sin(_t * 6.0) * 3.0, Color(1, 0.8, 0.2, 0.10))
+			var pulse := 1.0 + 0.05 * sin(_t * 8.0)
+			_btn("super_down" if sdown else "super", sc + (Vector2(0, 3) if sdown else Vector2.ZERO), 60.0 * pulse)
+		else:
+			_btn("super_charging", sc, 60.0)
+			draw_arc(sc, 50, -PI / 2, -PI / 2 + TAU * p.super_charge, 64, UIKit.DARK, 11.0, true)
+			draw_arc(sc, 50, -PI / 2, -PI / 2 + TAU * p.super_charge, 64, Color("ffd23a"), 7.0, true)
+		_t2(f, "SPACE" if full else "%d%%" % int(p.super_charge * 100), sc + Vector2(0, 82), 16)
 
 	func _t2(f: Font, s: String, cb: Vector2, size: int) -> void:
 		var sz := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size)
