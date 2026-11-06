@@ -110,7 +110,7 @@ func load_game() -> void:
 	for v in rk.get("claimed", [0]):
 		cl.append(int(v))
 	rk.claimed = cl
-	for k in ["points", "best", "wins", "losses", "streak", "last_payout"]:
+	for k in ["points", "best", "wins", "losses", "streak", "last_payout", "season", "season_best", "s_wins", "s_losses"]:
 		rk[k] = int(rk.get(k, 0))
 	if not rk.get("div150", false):
 		# divisions grew from 100 to 150 RP: keep everyone at the same rank and division
@@ -550,6 +550,7 @@ func ranked() -> Dictionary:
 ## Records one Ranked match: +25 per win (+5 for every extra win in a row, up to +15),
 ## -15 per loss. You can drop divisions but never below the start of a rank you reached.
 func ranked_record(result: String) -> Dictionary:
+	ranked_season_tick()
 	var r := ranked()
 	var before := int(r.points)
 	var info_b := Progression.ranked_info(before)
@@ -557,14 +558,17 @@ func ranked_record(result: String) -> Dictionary:
 	if result == "win":
 		r.streak = int(r.streak) + 1
 		r.wins = int(r.wins) + 1
+		r.s_wins = int(r.get("s_wins", 0)) + 1
 		delta = Progression.ranked_win_pts(int(info_b.rank)) + mini(Progression.RANKED_STREAK_MAX, Progression.RANKED_STREAK_STEP * (int(r.streak) - 1))
 	elif result == "loss":
 		r.streak = 0
 		r.losses = int(r.losses) + 1
+		r.s_losses = int(r.get("s_losses", 0)) + 1
 		var floor_pts: int = Progression.ranked_step_start(int(info_b.rank) * 3)
 		delta = -mini(Progression.ranked_loss_pts(int(info_b.rank)), before - floor_pts)
 	r.points = before + delta
 	r.best = maxi(int(r.best), int(r.points))
+	r.season_best = maxi(int(r.get("season_best", 0)), int(r.points))
 	var info_a := Progression.ranked_info(int(r.points))
 	var new_rank := -1
 	if int(info_a.rank) > int(info_b.rank) and not (int(info_a.rank) in r.claimed):
@@ -600,6 +604,43 @@ func ranked_payout_tick() -> Dictionary:
 			total[rw.type] = int(total.get(rw.type, 0)) + int(rw.amount)
 	save_game()
 	return total
+
+## Ends the season if a new one has started: pays rewards for the season's best rank,
+## stores a badge and drops you two ranks. Returns a summary, or {} when nothing happened.
+func ranked_season_tick() -> Dictionary:
+	var r := ranked()
+	var now_s := Progression.ranked_season_now()
+	var cur := int(r.get("season", 0))
+	if cur <= 0:
+		r.season = now_s
+		r.season_best = int(r.points)
+		save_game()
+		return {}
+	if cur >= now_s:
+		return {}
+	var best_pts := maxi(int(r.get("season_best", 0)), int(r.points))
+	var best := Progression.ranked_info(best_pts)
+	var rank: int = int(best.rank)
+	var played := int(r.get("s_wins", 0)) + int(r.get("s_losses", 0))
+	var rewards: Array = Progression.RANKED_SEASON_REWARDS[rank] if played > 0 else []
+	for rw in rewards:
+		grant_reward(rw)
+	if played > 0:
+		var badges: Array = r.get("badges", [])
+		badges.append({"season": cur, "rank": rank, "name": String(best.name)})
+		r.badges = badges
+	var before := int(r.points)
+	r.points = Progression.ranked_reset_points(int(r.points))
+	r.season = now_s
+	r.season_best = int(r.points)
+	r.s_wins = 0
+	r.s_losses = 0
+	r.streak = 0
+	var rep := {"season": cur, "rank": rank, "best_name": String(best.name), "rewards": rewards, "played": played,
+		"from": String(Progression.ranked_info(before).name), "to": String(Progression.ranked_info(int(r.points)).name)}
+	r.season_report = rep
+	save_game()
+	return rep
 
 func ranked_next_payout_secs() -> int:
 	var last := int(ranked().get("last_payout", 0))
@@ -739,6 +780,11 @@ func titles_unlocked() -> Array:
 		out.append("champ1")
 	if "elite" in data.get("champs_bought", []):
 		out.append("elite")
+	for b in data.ranked.get("badges", []):
+		if int(b.rank) >= 4 and not "ranked_diamond" in out:
+			out.append("ranked_diamond")
+		if int(b.rank) >= 6 and not "ranked_legend" in out:
+			out.append("ranked_legend")
 	for id in Config.BRAWLER_ORDER:
 		if Progression.mastery_level(mastery_points(id)) >= 9:
 			out.append("master_" + id)

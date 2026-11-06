@@ -16,6 +16,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
 	Sfx.play_music("music_menu")
+	Save.ranked_season_tick()
 	add_child(LobbyBackground.new())
 
 	_build_stage()
@@ -29,6 +30,8 @@ func _ready() -> void:
 
 ## Auto-collect the 6-hour Ranked reward and announce it.
 func _ranked_payout() -> void:
+	Save.ranked_season_tick()
+	preload("res://scripts/ui/ranked_screen.gd").show_season_report(self)
 	var got := Save.ranked_payout_tick()
 	if got.is_empty():
 		return

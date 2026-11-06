@@ -3,6 +3,7 @@ extends Control
 ## the last 25 matches.
 
 func _ready() -> void:
+	Save.ranked_season_tick()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
 	add_child(preload("res://scripts/ui/main_menu.gd").LobbyBackground.new())
@@ -86,6 +87,25 @@ func _ready() -> void:
 			["KOs", s.kos], ["DEATHS", s.deaths], ["DAMAGE", s.damage],
 			["WIN STREAK", int(Save.data.get("win_streak", 0))], ["BEST STREAK", maxi(int(Save.data.get("best_streak", 0)), int(Save.data.get("win_streak", 0)))]]:
 		grid.add_child(_tile(pair[0], str(pair[1])))
+	var badges: Array = Save.ranked().get("badges", [])
+	lv.add_child(UIKit.label("RANKED SEASON BADGES", 18, Color("d8c8ff"), 5))
+	var brow := HBoxContainer.new()
+	brow.add_theme_constant_override("separation", 6)
+	lv.add_child(brow)
+	if badges.is_empty():
+		brow.add_child(UIKit.label("Finish a Ranked season to earn your first badge.", 14, Color(1, 1, 1, 0.6), 4))
+	for bd in badges.slice(maxi(0, badges.size() - 7)):
+		var bv := VBoxContainer.new()
+		bv.add_theme_constant_override("separation", -4)
+		var t := TextureRect.new()
+		t.texture = load("res://assets/ranks/%s_crest.png" % Progression.RANKED_IDS[int(bd.rank)])
+		t.custom_minimum_size = Vector2(54, 54)
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		t.tooltip_text = "Season %d: %s" % [int(bd.season), String(bd.name)]
+		bv.add_child(t)
+		bv.add_child(UIKit.label("S%d" % int(bd.season), 13, Color.WHITE, 4, HORIZONTAL_ALIGNMENT_CENTER))
+		brow.add_child(bv)
 	var reset := UIKit.button("RESET PROGRESS", Color("8a3040"), 16, Vector2(220, 46))
 	reset.pressed.connect(_confirm_reset)
 	lv.add_child(reset)

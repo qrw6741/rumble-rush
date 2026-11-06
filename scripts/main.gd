@@ -156,6 +156,16 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		if a.begins_with("--who="):
 			params["who"] = a.substr(6)
 			params["id"] = a.substr(6)
+	if "--demo-season" in args:
+		Save.save_path = "user://demo_save.json"
+		var cur := Progression.ranked_season_now() + 1
+		Save.data.ranked.season = cur - 1
+		Progression.season_debug_offset = 1
+		Save.data.ranked.points = Progression.ranked_step_start(13) + 40
+		Save.data.ranked.season_best = Progression.ranked_step_start(13) + 60
+		Save.data.ranked.s_wins = 20
+		Save.data.ranked.s_losses = 9
+		Save.data.ranked.badges = [{"season": cur - 2, "rank": 2, "name": "GOLD III"}]
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:
@@ -220,6 +230,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	if "--openabil" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_abilities()
+	if "--openseason" in args:
+		await get_tree().create_timer(0.8).timeout
+		Router.current._open_season_rewards()
 	if "--openstore" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_store()

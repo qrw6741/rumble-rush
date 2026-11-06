@@ -22,6 +22,7 @@ var _road: ScrollContainer
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UIKit.theme()
+	Save.ranked_season_tick()
 	var got := Save.ranked_payout_tick()
 	_info = Progression.ranked_info(int(Save.ranked().points))
 	var bg := Backdrop.new()
@@ -98,6 +99,12 @@ func _ready() -> void:
 		if int(got.get("credits", 0)) > 0: parts.append("+%d COINS" % int(got.credits))
 		if int(got.get("gems", 0)) > 0: parts.append("+%d GEMS" % int(got.gems))
 		UIKit.toast(self, "RANK REWARD COLLECTED:  " + "  ".join(parts), "coin")
+	var sr := UIKit.button("SEASON REWARDS", Color("8a3cff"), 16, Vector2(220, 46))
+	sr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	sr.position = Vector2(-350, 18)
+	sr.pressed.connect(_open_season_rewards)
+	add_child(sr)
+	show_season_report.call_deferred(self)
 	var i := 0
 	for n in [title, hero, lab, grid, play, _road]:
 		UIKit.pop_in(n, 0.05 * i, Vector2(0, 24) if n == _road else Vector2.ZERO)
@@ -108,6 +115,108 @@ func _ready() -> void:
 	var tw := create_tween()
 	tw.tween_interval(0.35)
 	tw.tween_property(_road, "scroll_horizontal", target, 0.9).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+## Shows the "season ended" popup once, if there is a report waiting.
+static func show_season_report(parent: Control) -> void:
+	var r := Save.ranked()
+	var rep: Dictionary = r.get("season_report", {})
+	if rep.is_empty():
+		return
+	r.erase("season_report")
+	Save.save_game()
+	var o := Control.new()
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.z_index = 40
+	var dim := ColorRect.new()
+	dim.color = Color(0.03, 0.02, 0.1, 0.88)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(c)
+	var p := UIKit.panel(Color("21124a"))
+	p.custom_minimum_size = Vector2(640, 0)
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	v.add_child(UIKit.label("RANKED SEASON %d IS OVER!" % int(rep.season), 32, UIKit.YELLOW, 8, HORIZONTAL_ALIGNMENT_CENTER))
+	var bc := CenterContainer.new()
+	var b := TextureRect.new()
+	b.texture = badge(Progression.RANKED_IDS[int(rep.rank)])
+	b.custom_minimum_size = Vector2(180, 180)
+	b.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	b.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bc.add_child(b)
+	v.add_child(bc)
+	if int(rep.played) > 0:
+		v.add_child(UIKit.label("BEST RANK:  " + String(rep.best_name), 24, Progression.RANKED_COLORS[int(rep.rank)].lightened(0.3), 6, HORIZONTAL_ALIGNMENT_CENTER))
+		var parts: Array = []
+		for rw in rep.rewards:
+			parts.append(Progression.reward_text(rw))
+		v.add_child(UIKit.label("REWARDS:  " + "  ·  ".join(parts), 17, Color.WHITE, 5, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("Season %d badge added to your profile." % int(rep.season), 15, Color("d8c8ff"), 4, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		v.add_child(UIKit.label("You didn't play Ranked last season, so there are no rewards.", 17, Color.WHITE, 4, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("NEW SEASON: %s  »  %s" % [String(rep.from), String(rep.to)], 17, Color("ffb070"), 5, HORIZONTAL_ALIGNMENT_CENTER))
+	var ok := UIKit.button("COLLECT", UIKit.GREEN, 24, Vector2(240, 62))
+	ok.pressed.connect(func():
+		o.queue_free()
+		if not Save.data.drops.is_empty():
+			var d := DropOpener.new()
+			parent.add_child(d))
+	var cc := CenterContainer.new()
+	cc.add_child(ok)
+	v.add_child(cc)
+	parent.add_child(o)
+	UIKit.pop_in(p)
+	Sfx.play("victory", -2.0, 0.0)
+
+## Season reward table popup.
+func _open_season_rewards() -> void:
+	var o := Control.new()
+	o.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0.03, 0.02, 0.1, 0.85)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(dim)
+	var c := CenterContainer.new()
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	o.add_child(c)
+	var p := UIKit.panel(Color("21124a"))
+	c.add_child(p)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	p.add_child(v)
+	var r := Save.ranked()
+	v.add_child(UIKit.label("SEASON %d REWARDS" % Progression.ranked_season_now(), 30, UIKit.YELLOW, 8, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("Paid when the season ends, for the BEST rank you reach. Then everyone drops %d ranks." % Progression.RANKED_SEASON_DROP, 15, Color(1, 1, 1, 0.75), 4, HORIZONTAL_ALIGNMENT_CENTER))
+	var best_rank: int = int(Progression.ranked_info(maxi(int(r.get("season_best", 0)), int(r.points))).rank)
+	for i in range(Progression.RANKED_NAMES.size() - 1, -1, -1):
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		var ic := TextureRect.new()
+		ic.texture = badge(Progression.RANKED_IDS[i], true)
+		ic.custom_minimum_size = Vector2(44, 44)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		row.add_child(ic)
+		var nm := UIKit.label(Progression.RANKED_NAMES[i], 19, Progression.RANKED_COLORS[i].lightened(0.3), 5)
+		nm.custom_minimum_size = Vector2(150, 0)
+		row.add_child(nm)
+		var parts: Array = []
+		for rw in Progression.RANKED_SEASON_REWARDS[i]:
+			parts.append(Progression.reward_text(rw))
+		row.add_child(UIKit.label("  ·  ".join(parts), 16, Color.WHITE if i != best_rank else Color("7dff8a"), 4))
+		if i == best_rank:
+			row.add_child(UIKit.label("  ◀ YOUR BEST", 15, Color("7dff8a"), 4))
+		v.add_child(row)
+	var close := UIKit.button("CLOSE", Color("6b5f86"), 20, Vector2(200, 54))
+	close.pressed.connect(o.queue_free)
+	var cc := CenterContainer.new()
+	cc.add_child(close)
+	v.add_child(cc)
+	add_child(o)
+	UIKit.pop_in(p)
 
 func _play() -> void:
 	var r := Save.ranked()
@@ -156,7 +265,7 @@ class TitleBar extends Control:
 		var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
 		S2.text_l(self, "RANKED", Vector2(0, 50), 50, Color.WHITE)
 		UIKit.draw_icon(self, "clock", Vector2(236, 38), 26.0)
-		S2.text_l(self, "SEASON ENDS IN  " + Progression.season_time_left(), Vector2(254, 34), 16, Color("e0d0ff"))
+		S2.text_l(self, "SEASON %d ENDS IN  %s" % [Progression.ranked_season_now(), Progression.ranked_season_left()], Vector2(254, 34), 16, Color("e0d0ff"))
 		var secs := Save.ranked_next_payout_secs()
 		S2.text_l(self, "NEXT RANK REWARD IN  %dh %02dm  (auto-collected)" % [secs / 3600, (secs % 3600) / 60], Vector2(254, 58), 16, Color("ffd23a"))
 	func _process(_d: float) -> void:
@@ -249,8 +358,8 @@ class Hero extends Control:
 		if int(r.streak) >= 2:
 			UIKit.StreakBadge.flame(self, Vector2(x0 + 14, 312), 30.0, Progression.streak_color(int(r.streak)), _t)
 			S2.text_l(self, "%d WIN STREAK  +%d RP BONUS" % [int(r.streak), mini(Progression.RANKED_STREAK_MAX, Progression.RANKED_STREAK_STEP * int(r.streak))], Vector2(x0 + 34, 320), 15, Color("ffc04a"))
-		var best := Progression.ranked_info(int(r.best))
-		S2.text_l(self, "BEST: " + String(best.name), Vector2(x0, 352), 15, Color("d8c8ff"))
+		var sbest := Progression.ranked_info(maxi(int(r.get("season_best", 0)), int(r.points)))
+		S2.text_l(self, "SEASON BEST: " + String(sbest.name), Vector2(x0, 352), 15, Color("d8c8ff"))
 		S2.text_c(self, "PLAYING AS " + String(Config.BRAWLERS[Save.data.selected_brawler].name), Vector2(170, 350), 15, Color(1, 1, 1, 0.7))
 
 

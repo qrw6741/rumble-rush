@@ -253,7 +253,7 @@ static func palette(brawler_id: String, skin: String) -> Dictionary:
 
 static func reward_text(r: Dictionary) -> String:
 	match r.get("type", ""):
-		"credits": return "%d CREDITS" % r.amount
+		"credits": return "%d COINS" % r.amount
 		"tokens": return "%d PASS TOKENS" % r.amount
 		"champs_tokens": return "%d CHAMPS TOKENS" % r.amount
 		"xp": return "%d XP" % r.amount
@@ -472,6 +472,8 @@ static func title_list() -> Array:
 		{"id": "qualifier", "name": "CHAMPS QUALIFIER", "how": "Finish a Champs Finals run"},
 		{"id": "champ1", "name": "CHAMPS LEGEND", "how": "Finish Champs at RANK I"},
 		{"id": "elite", "name": "CHAMPS ELITE", "how": "Buy it in the Champs Store"},
+		{"id": "ranked_diamond", "name": "DIAMOND VETERAN", "how": "Finish a Ranked season in Diamond or higher"},
+		{"id": "ranked_legend", "name": "RANKED LEGEND", "how": "Finish a Ranked season in Legendary"},
 	]
 	for id in Config.BRAWLER_ORDER:
 		out.append({"id": "master_" + id, "name": Config.BRAWLERS[id].name + " MASTER", "how": "Reach GOLD III mastery with " + Config.BRAWLERS[id].name})
@@ -552,3 +554,37 @@ static func ranked_difficulty(points: int) -> String:
 	if r <= 2: return "normal"
 	if r <= 4: return "hard"
 	return "extreme"
+
+
+# ------------------------------------------------------------------ RANKED SEASONS
+## Seasons last 4 weeks, starting from a fixed date so every device agrees.
+const RANKED_SEASON_EPOCH := 1793750400  # 2026-11-01 00:00 UTC
+const RANKED_SEASON_SECS := 28 * 86400
+## End-of-season rewards by the best rank reached that season.
+const RANKED_SEASON_REWARDS := [
+	[{"type": "credits", "amount": 300}],
+	[{"type": "credits", "amount": 600}, {"type": "gems", "amount": 10}],
+	[{"type": "credits", "amount": 1000}, {"type": "gems", "amount": 25}, {"type": "drop", "tier": 0}],
+	[{"type": "credits", "amount": 1500}, {"type": "gems", "amount": 40}, {"type": "drop", "tier": 1}],
+	[{"type": "credits", "amount": 2000}, {"type": "gems", "amount": 60}, {"type": "drop", "tier": 1}],
+	[{"type": "credits", "amount": 3000}, {"type": "gems", "amount": 100}, {"type": "drop", "tier": 2}],
+	[{"type": "credits", "amount": 5000}, {"type": "gems", "amount": 150}, {"type": "drop", "tier": 2}],
+]
+## How many ranks you drop when a new season starts.
+const RANKED_SEASON_DROP := 2
+
+static var season_debug_offset := 0  # testing only
+
+static func ranked_season_now() -> int:
+	return int((int(Time.get_unix_time_from_system()) - RANKED_SEASON_EPOCH) / RANKED_SEASON_SECS) + 1 + season_debug_offset
+
+static func ranked_season_left() -> String:
+	var now := int(Time.get_unix_time_from_system())
+	var end := RANKED_SEASON_EPOCH + ranked_season_now() * RANKED_SEASON_SECS
+	var left := maxi(0, end - now)
+	return "%dd %dh" % [left / 86400, (left % 86400) / 3600]
+
+## Points you restart at after a season where you finished at `points`.
+static func ranked_reset_points(points: int) -> int:
+	var rank: int = int(ranked_info(points).rank)
+	return ranked_step_start(maxi(0, rank - RANKED_SEASON_DROP) * 3)
