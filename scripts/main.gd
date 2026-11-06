@@ -135,6 +135,7 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 	for a in args:
 		if a.begins_with("--who="):
 			params["who"] = a.substr(6)
+			params["id"] = a.substr(6)
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:

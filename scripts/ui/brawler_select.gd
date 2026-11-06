@@ -18,6 +18,10 @@ var _search := ""
 var _sort := "RARITY"
 var _sort_buttons: Dictionary = {}
 var _overlay: Control
+var _open_ranks_for := ""
+
+func setup(p: Dictionary) -> void:
+	_open_ranks_for = String(p.get("ranks", ""))
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -30,6 +34,8 @@ func _ready() -> void:
 	shade.modulate = Color(0.55, 0.7, 1.0, 0.5)
 	add_child(shade)
 	_focus = Save.data.selected_brawler
+	if _open_ranks_for != "":
+		(func(): _open_ranks(_open_ranks_for)).call_deferred()
 
 	# back arrow (left) + home (right)
 	Lobby.build_header(self, "", func(): Router.goto("menu"))
@@ -233,6 +239,10 @@ func _clear_detail() -> void:
 		c.queue_free()
 
 func _show(id: String) -> void:
+	Sfx.play("ui_click", -2.0, 0.04)
+	Router.goto("brawler", {"id": id})
+
+func _show_old(id: String) -> void:
 	_focus = id
 	_open_overlay()
 	var d: Dictionary = Config.BRAWLERS[id]

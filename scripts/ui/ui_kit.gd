@@ -344,6 +344,11 @@ class IconDraw extends Control:
 			queue_redraw()
 
 	func _draw() -> void:
+		# prefer the painted icon set when it has this icon
+		if kind in ["gem", "coin", "trophy", "token", "xp"] and UIKit.icon(kind):
+			var s := minf(size.x, size.y) * 1.25
+			draw_texture_rect(UIKit.icon(kind), Rect2(size * 0.5 - Vector2(s, s) * 0.5, Vector2(s, s)), false)
+			return
 		var names := {"trophy": "trophy", "coin": "coin", "gem": "crystal", "gems": "gem", "star": "star", "xp": "xp", "token": "token"}
 		UIKit.draw_icon(self, names.get(kind, kind), size * 0.5, min(size.x, size.y) * 1.15)
 
