@@ -236,7 +236,7 @@ func _open_abilities() -> void:
 		var h2 := HBoxContainer.new()
 		h2.add_theme_constant_override("separation", 14)
 		var ic2 := TextureRect.new()
-		ic2.texture = UIKit.icon("star")
+		ic2.texture = UIKit.icon("star_power")
 		ic2.custom_minimum_size = Vector2(64, 64)
 		ic2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic2.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -465,7 +465,7 @@ class AbilityRow extends Button:
 			draw_polygon(hexi, PackedColorArray([col.lightened(0.3), col.lightened(0.3), col, col.darkened(0.2), col.darkened(0.3), col.darkened(0.2), col, col.lightened(0.15)]))
 			draw_circle(c + Vector2(-12, -15), 8, Color(1, 1, 1, 0.25))
 			var locked := (k == 1 and not Save.has_gadget(id)) or (k == 3 and not Save.has_star(id))
-			var icn: String = "star" if k == 3 else "ab_%s_%s" % [id, slots[k][0]]
+			var icn: String = "star_power" if k == 3 else "ab_%s_%s" % [id, slots[k][0]]
 			UIKit.draw_icon(self, icn, c, 60.0 + 3.0 * sin(_t * 2.0 + k), Color(0.45, 0.45, 0.5) if locked else Color.WHITE)
 			var lab: String = "STAR POWER" if k == 3 else String(slots[k][0]).to_upper()
 			S2.text_c(self, lab, c + Vector2(0, 64), 12, col.lightened(0.4))
