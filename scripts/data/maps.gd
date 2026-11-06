@@ -12,6 +12,36 @@ const W := 21
 const H := 33
 
 const MAPS := {
+	"night_harbor": {
+		"name": "NIGHT HARBOR",
+		"theme": {
+			"floor_a": Color("33406e"), "floor_b": Color("2c3864"), "floor_edge": Color("232c52"),
+			"wall_top": Color("2ab8ff"), "wall_side": Color("1270b8"), "wall_line": Color("8fe0ff"),
+			"bush": Color("6a86f0"), "bush_dark": Color("3a50c0"),
+			"water": Color("2a9ae8"), "water_light": Color("8fd4ff"),
+			"crate": Color("8a90a8"), "crate_dark": Color("5a6078"),
+			"bg": Color("141a36"), "decal": Color("3c4a80"),
+		},
+		"rows": [
+			".....................",
+			"........R.R.R........",
+			".................BB..",
+			"###..............BB..",
+			"CC.............C###..",
+			".....................",
+			"....##BB.............",
+			"....##BB.............",
+			".....................",
+			"..................#..",
+			"...............BB####",
+			"...BB...BB.....BB####",
+			"...BBWWWBB...........",
+			"...BBWWWBB...........",
+			"......CCCC...........",
+			".....................",
+			"..........G..........",
+		],
+	},
 	"sunset_ruins": {
 		"name": "SUNSET RUINS",
 		"theme": {

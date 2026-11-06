@@ -31,7 +31,7 @@ const MODES := {
 		"rules": "Crystals spawn from the central mine. If your team carries 10 or more AND more than the enemy, a 15 s countdown starts. Lose crystals and it stops. KO'd brawlers drop everything they carry. If time runs out, the team carrying more wins.",
 		"time_limit": 150.0,
 		"color": Color("b25bff"),
-		"maps": ["crystal_canyon", "neon_district", "sunset_ruins"],
+		"maps": ["crystal_canyon", "neon_district", "sunset_ruins", "night_harbor"],
 		"icon": "mode_gem",
 	},
 	"showdown": {
@@ -50,7 +50,7 @@ const MODES := {
 		"time_limit": 150.0,
 		"target": 10,
 		"color": Color("ff7a2b"),
-		"maps": ["neon_district", "crystal_canyon", "frost_yard"],
+		"maps": ["neon_district", "crystal_canyon", "frost_yard", "night_harbor"],
 		"icon": "mode_knockout",
 	},
 	"duel": {
