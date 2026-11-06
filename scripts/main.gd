@@ -41,6 +41,17 @@ func _ready() -> void:
 		print("MIRATEST sel=", Save.data.selected_brawler, " skins=", Save.data.skins_owned, " gems+", int(Save.data.gems) - g0, " hist=", Save.data.history.size(), " trophies=", Save.total_trophies())
 		get_tree().quit()
 		return
+	if "--synctest" in args:
+		Save.data.credits = 4321
+		Save.data.ranked.points = 777
+		var code := Save.export_code()
+		Save.data.credits = 1
+		Save.data.ranked.points = 0
+		var err := Save.import_code(code)
+		print("SYNCTEST len=", code.length(), " err='", err, "' credits=", Save.data.credits, " rp=", Save.data.ranked.points)
+		print("SYNCTEST bad='", Save.import_code(code.substr(0, code.length() - 9)), "'")
+		get_tree().quit()
+		return
 	if "--check" in args:
 		_check_scripts()
 		return
@@ -192,6 +203,11 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			ev.global_position = at
 			Input.parse_input_event(ev)
 			await get_tree().process_frame
+	if "--syncpanel" in args:
+		var tp: Control = preload("res://scripts/ui/transfer_panel.gd").new()
+		add_child(tp)
+		await get_tree().create_timer(0.5).timeout
+		tp._code_box.text = Save.export_code()
 	if "--openstore" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_store()

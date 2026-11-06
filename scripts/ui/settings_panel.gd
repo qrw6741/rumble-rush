@@ -21,6 +21,15 @@ func _ready() -> void:
 	v.add_theme_constant_override("separation", 4)
 	p.add_child(v)
 	v.add_child(UIKit.label("SETTINGS", 34, UIKit.YELLOW, 10, HORIZONTAL_ALIGNMENT_CENTER))
+	var outer := v
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = Vector2(620, 520)
+	outer.add_child(sc)
+	v = VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 4)
+	sc.add_child(v)
 	v.add_child(slider_row("MUSIC", "music_volume"))
 	v.add_child(slider_row("SOUND EFFECTS", "sfx_volume"))
 	v.add_child(choice_row("BOT DIFFICULTY", "difficulty", ["auto", "easy", "normal", "hard", "extreme"], ["AUTO", "EASY", "MED", "HARD", "EXTRM"], 66))
@@ -41,7 +50,7 @@ func _ready() -> void:
 		v.add_child(toggle_row("FULLSCREEN", "fullscreen"))
 	var bottom := HBoxContainer.new()
 	bottom.add_theme_constant_override("separation", 10)
-	v.add_child(bottom)
+	outer.add_child(bottom)
 	var dbg := UIKit.button("DEBUG", Color("8a3a8f"), 20, Vector2(170, 52))
 	dbg.pressed.connect(func():
 		var dp: Control = preload("res://scripts/ui/debug_panel.gd").new()
@@ -49,7 +58,14 @@ func _ready() -> void:
 		closed.emit()
 		queue_free())
 	bottom.add_child(dbg)
-	var close := UIKit.button("DONE", UIKit.GREEN, 24, Vector2(380, 52))
+	var sync := UIKit.button("SYNC", UIKit.BLUE, 20, Vector2(170, 52))
+	sync.pressed.connect(func():
+		var tp: Control = preload("res://scripts/ui/transfer_panel.gd").new()
+		get_parent().add_child(tp)
+		closed.emit()
+		queue_free())
+	bottom.add_child(sync)
+	var close := UIKit.button("DONE", UIKit.GREEN, 24, Vector2(200, 52))
 	close.pressed.connect(func():
 		closed.emit()
 		queue_free())

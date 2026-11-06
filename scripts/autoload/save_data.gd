@@ -198,6 +198,48 @@ func _merge(base: Dictionary, incoming: Dictionary) -> void:
 		else:
 			base[k] = incoming[k]
 
+# ------------------------------------------------------------------ account transfer
+const TRANSFER_PREFIX := "RR1-"
+
+## The whole save as a short copy-paste code (settings and match history are left out).
+func export_code() -> String:
+	var d: Dictionary = data.duplicate(true)
+	d.erase("settings")
+	d.erase("history")
+	d.erase("granted")
+	var raw := JSON.stringify(d).to_utf8_buffer()
+	var packed := raw.compress(FileAccess.COMPRESSION_DEFLATE)
+	var body := Marshalls.raw_to_base64(packed)
+	return TRANSFER_PREFIX + str(raw.size()) + "-" + body + "-" + _check(body)
+
+## Loads a code from export_code(). Keeps this device's settings. Returns "" or an error text.
+func import_code(code: String) -> String:
+	var c := code.strip_edges().replace(" ", "").replace("\n", "")
+	if not c.begins_with(TRANSFER_PREFIX):
+		return "That isn't a Rumble Rush transfer code."
+	var parts := c.substr(TRANSFER_PREFIX.length()).split("-")
+	if parts.size() != 3:
+		return "The code is incomplete. Copy the whole code and try again."
+	if _check(parts[1]) != parts[2]:
+		return "The code is damaged or incomplete. Copy it again."
+	var packed := Marshalls.base64_to_raw(parts[1])
+	var raw := packed.decompress(int(parts[0]), FileAccess.COMPRESSION_DEFLATE)
+	var parsed = JSON.parse_string(raw.get_string_from_utf8())
+	if not parsed is Dictionary or not parsed.has("brawler_trophies"):
+		return "The code could not be read."
+	var keep_settings: Dictionary = data.settings.duplicate(true)
+	var keep_history: Array = data.history.duplicate(true)
+	data = _default()
+	_merge(data, parsed)
+	data.settings = keep_settings
+	data.history = keep_history
+	save_game()
+	load_game()
+	return ""
+
+func _check(body: String) -> String:
+	return body.md5_text().substr(0, 6)
+
 func save_game() -> void:
 	var text := JSON.stringify(data)
 	_web_write(text)
