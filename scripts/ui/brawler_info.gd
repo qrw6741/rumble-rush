@@ -213,8 +213,26 @@ func _open_abilities() -> void:
 		vv.add_child(UIKit.label("%s  ·  %s%s" % [row[0], String(row[1].name), extra], 19, (row[3] as Color).lightened(0.3), 6))
 		vv.add_child(UIKit.body(String(row[1].desc), 15))
 		h.add_child(vv)
+		if row[0] == "GADGET" and not Save.has_gadget(id):
+			ic.modulate = Color(0.5, 0.5, 0.55)
+			var blk := Save.gadget_block(id)
+			var bb := UIKit.button("BUY  %d COINS" % Config.GADGET_COST, UIKit.GREEN, 17, Vector2(190, 56))
+			match blk:
+				"level": bb.text = "NEEDS POWER %d" % Config.GADGET_LEVEL
+				"locked": bb.text = "UNLOCK BRAWLER"
+				"coins": bb.text = "NEED %d COINS" % Config.GADGET_COST
+			bb.disabled = blk != ""
+			bb.pressed.connect(func():
+				if Save.buy_gadget(id):
+					Sfx.play("victory", -2.0, 0.0)
+					Router.goto("brawler", {"id": id}, true)
+				else:
+					Sfx.play("ui_error"))
+			h.add_child(bb)
 		v.add_child(h)
 	var speed_name := "VERY FAST" if d.speed >= 200 else ("NORMAL" if d.speed >= 168 else "SLOW")
+	if not Save.has_gadget(id):
+		v.add_child(UIKit.label("Gadgets unlock at POWER %d and cost %d coins." % [Config.GADGET_LEVEL, Config.GADGET_COST], 15, Color("ffd23a"), 5, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("RANGE %.1f tiles   ·   AMMO %d (%.2fs reload)   ·   SPEED %s" % [a.range, d.ammo, d.reload, speed_name], 15, Color("8fd0ff"), 5, HORIZONTAL_ALIGNMENT_CENTER))
 	_finish_popup(v)
 
@@ -413,10 +431,17 @@ class AbilityRow extends Button:
 			draw_colored_polygon(hexo, UIKit.DARK)
 			draw_polygon(hexi, PackedColorArray([col.lightened(0.3), col.lightened(0.3), col, col.darkened(0.2), col.darkened(0.3), col.darkened(0.2), col, col.lightened(0.15)]))
 			draw_circle(c + Vector2(-14, -18), 10, Color(1, 1, 1, 0.25))
-			UIKit.draw_icon(self, "ab_%s_%s" % [id, slots[k][0]], c, 74.0 + 3.0 * sin(_t * 2.0 + k))
+			var locked_g: bool = k == 1 and not Save.has_gadget(id)
+			UIKit.draw_icon(self, "ab_%s_%s" % [id, slots[k][0]], c, 74.0 + 3.0 * sin(_t * 2.0 + k), Color(0.45, 0.45, 0.5) if locked_g else Color.WHITE)
 			S2.text_c(self, String(slots[k][0]).to_upper(), c + Vector2(0, 76), 13, col.lightened(0.4))
 			var nm: String = slots[k][2]
-			S2.text_c(self, nm, c + Vector2(0, 96), 14 if nm.length() < 14 else 12, Color.WHITE)
+			if locked_g:
+				UIKit.draw_icon(self, "lock", c + Vector2(26, 24), 34.0)
+				var blk := Save.gadget_block(id)
+				nm = "TAP TO BUY" if blk == "" or blk == "coins" else ("POWER %d NEEDED" % Config.GADGET_LEVEL)
+				S2.text_c(self, nm, c + Vector2(0, 96), 12, Color("ffd23a"))
+			else:
+				S2.text_c(self, nm, c + Vector2(0, 96), 14 if nm.length() < 14 else 12, Color.WHITE)
 
 
 class PowerPanel extends Control:

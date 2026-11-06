@@ -21,6 +21,9 @@ const BUSH_REVEAL_DISTANCE := 1.9 * TILE
 const ATTACK_REVEAL_TIME := 1.0
 const UPGRADE_BONUS_PER_LEVEL := 0.06
 const MAX_LEVEL := 7
+## Gadgets are bought per brawler once it reaches this power level.
+const GADGET_LEVEL := 6
+const GADGET_COST := 1500
 const UPGRADE_COSTS := [0, 60, 120, 200, 300, 420, 560] # cost to go from level i to i+1
 
 # ------------------------------------------------------------------ modes

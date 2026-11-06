@@ -52,6 +52,15 @@ func _ready() -> void:
 		print("SYNCTEST bad='", Save.import_code(code.substr(0, code.length() - 9)), "'")
 		get_tree().quit()
 		return
+	if "--gadgettest" in args:
+		Save.data.credits = 5000
+		Save.data.brawler_levels["vex"] = 5
+		var a := Save.gadget_block("vex")
+		Save.data.brawler_levels["vex"] = 6
+		var ok := Save.buy_gadget("vex")
+		print("GADGETTEST lvl5=", a, " buy@6=", ok, " coins=", Save.data.credits, " owned=", Save.has_gadget("vex"), " again=", Save.buy_gadget("vex"))
+		get_tree().quit()
+		return
 	if "--check" in args:
 		_check_scripts()
 		return
@@ -208,6 +217,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		add_child(tp)
 		await get_tree().create_timer(0.5).timeout
 		tp._code_box.text = Save.export_code()
+	if "--openabil" in args:
+		await get_tree().create_timer(0.8).timeout
+		Router.current._open_abilities()
 	if "--openstore" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_store()

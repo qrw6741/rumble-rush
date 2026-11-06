@@ -281,10 +281,12 @@ class AbilityReadout extends Control:
 		_t2(f, "LMB", ac + Vector2(0, 58), 15)
 		# gadget
 		var gc := Vector2(160, 110)
-		var cd := p.gadget_cd / p.gadget_max_cd
+		var cd := p.gadget_cd / p.gadget_max_cd if p.has_gadget else 1.0
 		draw_circle(gc, 40, UIKit.DARK)
 		UIKit.draw_icon(self, "ab_%s_gadget" % p.id, gc, 76.0, Color.WHITE if cd <= 0.0 else Color(0.45, 0.45, 0.5))
-		if cd > 0.0:
+		if not p.has_gadget:
+			UIKit.draw_icon(self, "lock", gc + Vector2(18, 16), 36.0)
+		elif cd > 0.0:
 			draw_arc(gc, 38, -PI / 2, -PI / 2 + TAU * (1.0 - cd), 40, Color("4fd36a"), 6.0, true)
 			_t2(f, str(int(ceil(p.gadget_cd))), gc + Vector2(0, 12), 30)
 		_t2(f, "RMB / Q", gc + Vector2(0, 58), 15)

@@ -307,7 +307,7 @@ func _maybe_super(has_target: bool) -> void:
 				b.try_super((p - b.global_position).normalized(), b.global_position.distance_to(p))
 
 func _maybe_gadget(has_target: bool) -> void:
-	if b.gadget_cd > 0.0:
+	if not b.has_gadget or b.gadget_cd > 0.0:
 		return
 	var gd: Dictionary = b.d.gadget
 	var hp_frac := b.hp / b.max_hp

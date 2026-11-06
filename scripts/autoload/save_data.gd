@@ -71,6 +71,7 @@ func _default() -> Dictionary:
 		"gems": 30,
 		"win_streak": 0,
 		"champs_tokens": 0,
+		"gadgets": [],
 		"champs_bought": [],
 		"ranked": {"points": 0, "best": 0, "wins": 0, "losses": 0, "streak": 0, "claimed": [0], "mode": "gem_grab"},
 		"best_streak": 0,
@@ -605,6 +606,30 @@ func ranked_next_payout_secs() -> int:
 	if last <= 0:
 		return Progression.RANKED_PAYOUT_SECS
 	return maxi(0, last + Progression.RANKED_PAYOUT_SECS - int(Time.get_unix_time_from_system()))
+
+# ------------------------------------------------------------------ gadgets
+func has_gadget(id: String) -> bool:
+	return id in data.get("gadgets", [])
+
+## "" when it can be bought, otherwise why not.
+func gadget_block(id: String) -> String:
+	if has_gadget(id):
+		return "owned"
+	if not is_unlocked(id):
+		return "locked"
+	if brawler_level(id) < Config.GADGET_LEVEL:
+		return "level"
+	if int(data.credits) < Config.GADGET_COST:
+		return "coins"
+	return ""
+
+func buy_gadget(id: String) -> bool:
+	if gadget_block(id) != "":
+		return false
+	data.credits = int(data.credits) - Config.GADGET_COST
+	data.gadgets.append(id)
+	save_game()
+	return true
 
 func champs_buy(item: Dictionary) -> bool:
 	if item.get("once", false) and String(item.id) in data.champs_bought:

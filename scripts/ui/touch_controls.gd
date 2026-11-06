@@ -48,7 +48,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		var p: Vector2 = event.position
 		if event.pressed:
-			if p.distance_to(gadget_center()) < 52.0:
+			if ctrl.b and ctrl.b.has_gadget and p.distance_to(gadget_center()) < 52.0:
 				ctrl.touch_gadget()
 				get_viewport().set_input_as_handled()
 			elif _sup_idx == -1 and p.distance_to(super_center()) < 66.0:
@@ -188,7 +188,9 @@ func _draw() -> void:
 		_coin(sc, 46, Color("5a6078"), Color("454b62"), Color("262a3c"), 0.92)
 		draw_arc(sc, 40, -PI / 2, -PI / 2 + TAU * b.super_charge, 56, Color("ffd23a"), 7.0, true)
 		UIKit.draw_icon(self, "super", sc, 54.0, Color(0.6, 0.6, 0.66, 0.8))
-	# ---------- GADGET
+	# ---------- GADGET (hidden until bought)
+	if not b.has_gadget:
+		return
 	var gc := gadget_center()
 	var cd := b.gadget_cd / b.gadget_max_cd
 	if cd <= 0.0:

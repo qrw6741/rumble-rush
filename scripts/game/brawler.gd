@@ -28,6 +28,7 @@ var radius := 22.0
 var super_charge := 0.0
 var gadget_cd := 0.0
 var gadget_max_cd := 12.0
+var has_gadget := true
 
 # state
 var alive := true
@@ -108,6 +109,8 @@ func setup(brawler_id: String, team_id: int, player: bool, name_text: String, lv
 	radius = d.radius
 	gadget_max_cd = d.gadget.cooldown
 	gadget_cd = 3.0 # short lock at match start
+	# gadgets must be bought at power 6; bots get theirs from power 6
+	has_gadget = Save.has_gadget(id) if player else level >= Config.GADGET_LEVEL
 
 func _ready_rest() -> void:
 	overhead = BrawlerOverhead.new()
@@ -338,7 +341,7 @@ func try_super(dir: Vector2, dist := -1.0) -> bool:
 	return true
 
 func try_gadget(dir: Vector2) -> bool:
-	if not can_act() or gadget_cd > 0.0:
+	if not has_gadget or not can_act() or gadget_cd > 0.0:
 		return false
 	gadget_cd = gadget_max_cd
 	if dir.length() > 0.01:
