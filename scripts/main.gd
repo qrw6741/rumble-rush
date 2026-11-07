@@ -191,6 +191,12 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		Save.data.skin_selected["vex"] = "gold"
 		Save.data.selected_brawler = "vex"
 		params["id"] = "vex"
+	if "--goldvex" in args:
+		Save.save_path = "user://demo_save.json"
+		if not "vex:gold" in Save.data.skins_owned:
+			Save.data.skins_owned.append("vex:gold")
+		print("GOLDVEX select=", Save.select_skin("vex", "gold"), " sel=", Save.selected_skin("vex"))
+		Save.data.selected_brawler = "vex"
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:
@@ -288,9 +294,49 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 				Input.parse_input_event(jb)
 				await get_tree().create_timer(0.15).timeout
 			await get_tree().create_timer(0.25).timeout
+	if "--openskins" in args:
+		await get_tree().create_timer(0.8).timeout
+		Router.current._open_skins()
+	if "--previewgold" in args:
+		await get_tree().create_timer(0.8).timeout
+		Router.current._stage.preview = "gold"
 	if "--openstore" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_store()
+	if "--paddrop" in args:
+		var PC := preload("res://scripts/ui/pad_cursor.gd")
+		PC.test_mode = true
+		var dop: Node = null
+		if not "--padmode=shop" in args:
+			Save.data.drops = [1, 0]
+			dop = DropOpener.new()
+			add_child(dop)
+		await get_tree().create_timer(0.6).timeout
+		if "--padmode=shop" in args:
+			for n in get_tree().root.get_children():
+				if n.get_script() == PC:
+					n.pos = Vector2(528, 330)
+		for n in get_tree().root.get_children():
+			if n.get_script() == PC:
+				n.pos = Vector2(640, 400)
+		var mode := "tap"
+		for a in args:
+			if a.begins_with("--padmode="):
+				mode = a.substr(10)
+		if mode == "openall":
+			for n in get_tree().root.get_children():
+				if n.get_script() == PC:
+					n.pos = Vector2(1185, 41)
+		if mode == "circle":
+			PC.test_circle = true
+			await get_tree().create_timer(0.2).timeout
+			PC.test_circle = false
+		for k in 14:
+			PC.test_cross = true
+			await get_tree().create_timer(0.12).timeout
+			PC.test_cross = false
+			await get_tree().create_timer(0.35).timeout
+		print("PADDROP done drops=", Save.data.drops.size())
 	if "--padtest" in args:
 		var PC := preload("res://scripts/ui/pad_cursor.gd")
 		PC.test_mode = true

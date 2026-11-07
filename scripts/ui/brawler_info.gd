@@ -7,6 +7,7 @@ const Lobby := preload("res://scripts/ui/main_menu.gd")
 const S := preload("res://scripts/ui/main_menu.gd").SlantButton
 
 var id := "bront"
+var _stage: Control
 
 func setup(p: Dictionary) -> void:
 	id = String(p.get("id", Save.data.selected_brawler))
@@ -59,6 +60,7 @@ func _ready() -> void:
 
 	# ---------------- centre: the brawler
 	var stage := Stage.new()
+	_stage = stage
 	stage.id = id
 	stage.position = Vector2(380, 80)
 	stage.size = Vector2(500, 640)
@@ -288,17 +290,33 @@ func _open_skins() -> void:
 		col.add_child(pic)
 		var nm: String = "DEFAULT" if sk == "" else String(Progression.skin_info(sk).name)
 		col.add_child(UIKit.label(nm, 15, Color.WHITE, 5, HORIZONTAL_ALIGNMENT_CENTER))
-		var b := UIKit.button("EQUIPPED" if cur else ("EQUIP" if owned else "LOCKED"), UIKit.GREEN if owned else Color("4a5570"), 16, Vector2(150, 46))
-		b.disabled = cur or not owned
+		var b := UIKit.button("EQUIPPED" if cur else ("EQUIP" if owned else "PREVIEW"), UIKit.GREEN if owned else UIKit.BLUE, 16, Vector2(150, 46))
+		b.disabled = cur
+		var popup_root: Node = v.get_parent().get_parent().get_parent()
 		b.pressed.connect(func():
-			if Save.select_skin(id, sk):
-				Sfx.play("ui_confirm")
-				Router.goto("brawler", {"id": id}, true))
+			if owned:
+				if Save.select_skin(id, sk):
+					Sfx.play("ui_confirm")
+					Router.goto("brawler", {"id": id}, true)
+			else:
+				Sfx.play("ui_click")
+				_stage.preview = sk
+				popup_root.queue_free()
+				UIKit.toast(self, "Get %s from the Shop's skin rotation or the Rush Pass" % nm, "skin"))
 		col.add_child(b)
+		if not owned:
+			col.add_child(UIKit.label(_where(sk), 12, Color(1, 1, 1, 0.6), 3, HORIZONTAL_ALIGNMENT_CENTER))
 		h.add_child(col)
 	if Progression.skins_for(id).size() > 0:
 		v.add_child(UIKit.body("Special skins come and go in the Shop every 2 hours.", 14, Color(1, 1, 1, 0.65)))
 	_finish_popup(v)
+
+func _where(sk: String) -> String:
+	if sk == "gold":
+		return "Rush Pass / Trophy Road / Shop"
+	if sk == "shadow":
+		return "Rush Pass / Trophy Road / Shop"
+	return "Shop skin rotation"
 
 func _confirm_upgrade(cost: int) -> void:
 	var d: Dictionary = Config.BRAWLERS[id]
@@ -347,6 +365,7 @@ class Backdrop extends Control:
 
 class Stage extends Control:
 	var id := "bront"
+	var preview := "-"  # "-" = show the equipped skin
 	var _t := 0.0
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -361,7 +380,12 @@ class Stage extends Control:
 			sh.append(feet + Vector2(cos(a) * 150, sin(a) * 26))
 		draw_colored_polygon(sh, Color(0, 0.08, 0.3, 0.35))
 		var sc := 4.6 if BrawlerArt.has_sprites(id) else 4.0
-		BrawlerArt.draw(self, id, feet, sc, {"t": _t, "aim": Vector2(1, 0.15), "skin": Save.selected_skin(id), "no_shadow": true})
+		var sk: String = preview if preview != "-" else Save.selected_skin(id)
+		BrawlerArt.draw(self, id, feet, sc, {"t": _t, "aim": Vector2(1, 0.15), "skin": sk, "no_shadow": true})
+		if preview != "-":
+			var S2 := preload("res://scripts/ui/main_menu.gd").SlantButton
+			var nm: String = "DEFAULT" if preview == "" else String(Progression.skin_info(preview).get("name", preview))
+			S2.text_c(self, "PREVIEW: " + nm, Vector2(size.x * 0.5, 40), 22, Color("ffd23a"), 7)
 
 
 class NameBanner extends Control:

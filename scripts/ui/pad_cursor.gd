@@ -11,6 +11,7 @@ var _visible := false
 ## Testing without hardware: fake stick / Cross values.
 static var test_stick := Vector2.ZERO
 static var test_cross := false
+static var test_circle := false
 static var test_mode := false
 
 func _ready() -> void:
@@ -64,7 +65,7 @@ func _process(d: float) -> void:
 		_down = cross
 		_send_click(wpos, cross)
 	# Circle = back (acts like ESC / the back arrow)
-	var circle := Input.is_joy_button_pressed(dev, JOY_BUTTON_B)
+	var circle := test_circle or Input.is_joy_button_pressed(dev, JOY_BUTTON_B)
 	if circle and not _back_was:
 		var k := InputEventKey.new()
 		k.keycode = KEY_ESCAPE
