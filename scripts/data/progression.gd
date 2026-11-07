@@ -217,6 +217,8 @@ const SPECIAL_SKINS := {
 		"primary": Color("1a1a2e"), "secondary": Color("ff3df0"), "accent": Color("3dfff0"), "skin": Color("b98563")},
 	"polar": {"name": "POLAR CHAMP", "only": "bruno", "price": 99,
 		"primary": Color("2a8cff"), "secondary": Color("1a3a7a"), "accent": Color("dff4ff"), "skin": Color("f2f2f6")},
+	"crimson": {"name": "CRIMSON HUNTER", "only": "gunslinger", "price": 149, "fx": "",
+		"primary": Color("b8142a"), "secondary": Color("1a0a10"), "accent": Color("ff3b4a"), "skin": Color("e8d8e8")},
 	"magma": {"name": "MAGMA MINER", "only": "bront", "price": 99, "fx": "fire",
 		"primary": Color("3a2a2a"), "secondary": Color("1a1010"), "accent": Color("ff6a1a"), "skin": Color("c98b62")},
 }

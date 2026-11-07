@@ -179,6 +179,14 @@ const SPRITES := {
 		"walk3": [73, 112, 32.5, 109.2, 113.0, true],
 		"hurt": [157, 172, 98.5, 167.7, 200.0, true],
 	},
+	"gunslinger_crimson": {
+		"main": [365, 397, 241.5, 387.1, 397.0, false],
+		"idle": [122, 209, 57.0, 203.8, 209.0, true],
+		"win": [112, 208, 55.0, 202.8, 208.0, true],
+		"front": [63, 76, 32.0, 74.1, 76.0, true],
+		"back": [62, 75, 31.5, 73.1, 75.0, true],
+		"attack": [94, 72, 37.0, 70.2, 76.0, true],
+	},
 	"gunslinger": {
 		"main": [410, 429, 331.0, 418.3, 429.0, false],
 		"front": [106, 132, 57.5, 128.7, 132.0, true],
@@ -205,9 +213,11 @@ const SPRITES := {
 }
 const SPRITE_UNITS := 84.0
 ## Trail / slash colour per sprite brawler.
-const SPRITE_FX := {"dusty": Color("ffb030"), "nova": Color("3fd0ff"), "sprig": Color("9cff3a"), "bruno": Color("ff3b4a"), "rio": Color("ff4fd0"), "vex": Color("3fe0ff"), "graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b")}
+## Skins with their own hand-drawn sprite set ("brawler:skin" -> sprite id).
+const SKIN_SPRITES := {"gunslinger:crimson": "gunslinger_crimson"}
+const SPRITE_FX := {"gunslinger_crimson": Color("ff2a3a"), "dusty": Color("ffb030"), "nova": Color("3fd0ff"), "sprig": Color("9cff3a"), "bruno": Color("ff3b4a"), "rio": Color("ff4fd0"), "vex": Color("3fe0ff"), "graves": Color("a46bff"), "cyber": Color("3fd8ff"), "king": Color("5ab8ff"), "templar": Color("c060ff"), "monk": Color("5fc4ff"), "gunslinger": Color("ff3b3b")}
 ## Size of each sprite brawler relative to the others.
-const SPRITE_SIZE := {"dusty": 1.0, "nova": 1.0, "sprig": 0.9, "bruno": 1.12, "rio": 0.95, "vex": 0.95, "king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0}
+const SPRITE_SIZE := {"gunslinger_crimson": 1.05, "dusty": 1.0, "nova": 1.0, "sprig": 0.9, "bruno": 1.12, "rio": 0.95, "vex": 0.95, "king": 1.12, "cyber": 0.98, "templar": 1.05, "monk": 1.0, "gunslinger": 1.0}
 ## Missing frames fall back to these.
 const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side", "win": "main"}  # drawn height of a sprite character, in art units
 static var _tex_cache := {}
@@ -571,6 +581,12 @@ static func _mesh(ci: CanvasItem, id: String, frame: String, pos: Vector2, s: fl
 ## Draw a brawler with feet at `pos`.
 static func draw(ci: CanvasItem, id: String, pos: Vector2, s: float, anim: Dictionary) -> void:
 	var d: Dictionary = Progression.palette(id, anim.get("skin", ""))
+	var sk_key := "%s:%s" % [id, String(anim.get("skin", ""))]
+	if SKIN_SPRITES.has(sk_key):
+		var a2 := anim.duplicate()
+		a2["skin"] = ""
+		_draw_sprite(ci, SKIN_SPRITES[sk_key], d, pos, s, a2)
+		return
 	if SPRITES.has(id) and not anim.get("vector", false):
 		_draw_sprite(ci, id, d, pos, s, anim)
 		return

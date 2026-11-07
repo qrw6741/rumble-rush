@@ -197,6 +197,15 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			Save.data.skins_owned.append("vex:gold")
 		print("GOLDVEX select=", Save.select_skin("vex", "gold"), " sel=", Save.selected_skin("vex"))
 		Save.data.selected_brawler = "vex"
+	if "--crimson" in args:
+		Save.save_path = "user://demo_save.json"
+		if not "gunslinger" in Save.data.unlocked:
+			Save.data.unlocked.append("gunslinger")
+		if not "gunslinger:crimson" in Save.data.skins_owned:
+			Save.data.skins_owned.append("gunslinger:crimson")
+		Save.select_skin("gunslinger", "crimson")
+		Save.data.selected_brawler = "gunslinger"
+		params["brawler"] = "gunslinger"
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:
