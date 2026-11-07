@@ -212,6 +212,54 @@ const SPRITE_SIZE := {"dusty": 1.0, "nova": 1.0, "sprig": 0.9, "bruno": 1.12, "r
 const FRAME_FALLBACK := {"walk": "side", "idle": "main", "attack": "main", "hurt": "main", "super": "main", "run": "side", "win": "main"}  # drawn height of a sprite character, in art units
 static var _tex_cache := {}
 
+## Skin recolours for sprite brawlers (GPU shader): skin id -> [ramp colours, lift, keep, hue_mode]
+const SKIN_RAMPS := {
+	"gold": [["3a2208", "a8680e", "f2b42a", "ffe070", "fffbe0"], 0.42, 0.0, false],
+	"shadow": [["06020e", "32145a", "8246dc", "d2aaff", "fff0ff"], 1.0, 0.2, false],
+	"frost": [["081024", "285aaa", "6ec8ff", "c8f0ff", "ffffff"], 0.8, 0.15, false],
+	"polar": [["081024", "285aaa", "6ec8ff", "c8f0ff", "ffffff"], 0.8, 0.15, false],
+	"inferno": [["0e0204", "5a0810", "d21e28", "ff6e5a", "ffdcc8"], 0.9, 0.2, false],
+	"magma": [["140602", "963208", "ff8c14", "ffdc50", "ffffe6"], 0.7, 0.15, false],
+	"neon": [["000000", "000000", "000000", "000000", "000000"], 1.0, 0.0, true],
+}
+static var _skin_mats := {}
+static var _skin_items := {}
+
+static func _skin_material(skin: String) -> ShaderMaterial:
+	if _skin_mats.has(skin):
+		return _skin_mats[skin]
+	var def: Array = SKIN_RAMPS[skin]
+	var cols: Array = def[0]
+	var m := ShaderMaterial.new()
+	m.shader = load("res://assets/shaders/skin_ramp.gdshader")
+	for i in 5:
+		var c := Color(String(cols[i]))
+		m.set_shader_parameter("c%d" % i, Vector3(c.r, c.g, c.b))
+	m.set_shader_parameter("params", Vector4(float(def[1]), float(def[2]), 1.0 if bool(def[3]) else 0.0, 0.45))
+	_skin_mats[skin] = m
+	return m
+
+## A child canvas item of `ci` that draws with the skin material. Cleared once per frame.
+static func _skin_item(ci: CanvasItem, skin: String) -> RID:
+	var key := ci.get_instance_id()
+	var frame := Engine.get_frames_drawn()
+	var e: Dictionary = _skin_items.get(key, {})
+	if e.is_empty():
+		var rid := RenderingServer.canvas_item_create()
+		RenderingServer.canvas_item_set_parent(rid, ci.get_canvas_item())
+		e = {"rid": rid, "frame": -1, "skin": ""}
+		_skin_items[key] = e
+		ci.tree_exiting.connect(func():
+			RenderingServer.free_rid(rid)
+			_skin_items.erase(key), CONNECT_ONE_SHOT)
+	if int(e.frame) != frame:
+		RenderingServer.canvas_item_clear(e.rid)
+		e.frame = frame
+	if String(e.skin) != skin:
+		RenderingServer.canvas_item_set_material(e.rid, _skin_material(skin).get_rid())
+		e.skin = skin
+	return e.rid
+
 static func has_sprites(id: String) -> bool:
 	return SPRITES.has(id)
 
@@ -234,12 +282,10 @@ static func _draw_sprite(ci: CanvasItem, id: String, d: Dictionary, pos: Vector2
 	var aim: Vector2 = anim.get("aim", Vector2.RIGHT)
 	var facing := -1.0 if aim.x < -0.05 else 1.0
 	var tint := Color(1, 1, 1, alpha)
-	match d.get("fx", ""):
-		"frost": tint = Color(0.72, 0.9, 1.0, alpha)
-		"fire": tint = Color(1.0, 0.8, 0.7, alpha)
 	var fl: float = anim.get("flash", 0.0)
 	tint = tint.lerp(Color(1.6, 1.6, 1.6, alpha), fl * 0.6)
-	var P := {"t": t, "lean": 0.0, "sq": 1.0, "flutter": 1.0, "stride": 0.0, "scissor": 0.0, "lift": 0.0, "shake": 0.0, "pop": 1.0, "facing": facing}
+	var skin_id: String = String(anim.get("skin", ""))
+	var P := {"skin": skin_id if SKIN_RAMPS.has(skin_id) else "", "t": t, "lean": 0.0, "sq": 1.0, "flutter": 1.0, "stride": 0.0, "scissor": 0.0, "lift": 0.0, "shake": 0.0, "pop": 1.0, "facing": facing}
 	var glow_c: Color = SPRITE_FX.get(id, d.get("accent", Color("a46bff")))
 	const ATK_LEN := 0.42
 	var forced: String = anim.get("frame", "")
@@ -509,7 +555,16 @@ static func _mesh(ci: CanvasItem, id: String, frame: String, pos: Vector2, s: fl
 			var i2 := i0 + COLS + 1
 			var i3 := i2 + 1
 			idx.append_array([i0, i1, i2, i1, i3, i2])
-	ci.draw_set_transform(pos - Vector2(0, float(P.lift) * s), 0.0, Vector2(tk * flip / sq, tk))
+	var xs := Vector2(tk * flip / sq, tk)
+	var xo := pos - Vector2(0, float(P.lift) * s)
+	var xf := Transform2D(Vector2(xs.x, 0), Vector2(0, xs.y), xo)
+	if String(P.get("skin", "")) != "" and ci.is_inside_tree():
+		var rid := _skin_item(ci, String(P.skin))
+		RenderingServer.canvas_item_add_set_transform(rid, xf)
+		RenderingServer.canvas_item_add_triangle_array(rid, idx, pts, cols, uvs, PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
+		RenderingServer.canvas_item_add_set_transform(rid, Transform2D.IDENTITY)
+		return
+	ci.draw_set_transform(xo, 0.0, xs)
 	RenderingServer.canvas_item_add_triangle_array(ci.get_canvas_item(), idx, pts, cols, uvs, PackedInt32Array(), PackedFloat32Array(), tex.get_rid())
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 

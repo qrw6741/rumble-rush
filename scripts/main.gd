@@ -71,6 +71,15 @@ func _ready() -> void:
 		print("STARTEST lvl6blk=", Save.star_block("bront"), " buy=", Save.buy_star("graves"), " coins=", Save.data.credits, " has=", Save.has_star("graves"))
 		get_tree().quit()
 		return
+	if "--ramptest" in args:
+		var m := BrawlerArt._skin_material("gold")
+		var gt: GradientTexture1D = m.get_shader_parameter("ramp")
+		print("RAMP ", gt.gradient.offsets, " ", gt.gradient.colors)
+		await RenderingServer.frame_post_draw
+		var img := gt.get_image()
+		print("RAMP img ", img.get_size(), " ", img.get_pixel(10, 0), " ", img.get_pixel(90, 0))
+		get_tree().quit()
+		return
 	if "--check" in args:
 		_check_scripts()
 		return
@@ -176,6 +185,12 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		Save.data.ranked.s_wins = 20
 		Save.data.ranked.s_losses = 9
 		Save.data.ranked.badges = [{"season": cur - 2, "rank": 2, "name": "GOLD III"}]
+	if "--goldvex" in args:
+		Save.data.skins_owned.append("vex:gold")
+		Save.data.skins_owned.append("vex:shadow")
+		Save.data.skin_selected["vex"] = "gold"
+		Save.data.selected_brawler = "vex"
+		params["id"] = "vex"
 	if "--debugres" in args:
 		params["debug"] = true
 	if "--touch" in args:
@@ -237,6 +252,9 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		add_child(tp)
 		await get_tree().create_timer(0.5).timeout
 		tp._code_box.text = Save.export_code()
+	if "--openskins" in args:
+		await get_tree().create_timer(0.8).timeout
+		Router.current._open_skins()
 	if "--openabil" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_abilities()
@@ -260,6 +278,16 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 			if stage == "open":
 				dop._tap()
 				dop._tap()
+	if "--padpress" in args:
+		await get_tree().create_timer(1.0).timeout
+		for k in 8:
+			for pr in [true, false]:
+				var jb := InputEventJoypadButton.new()
+				jb.button_index = JOY_BUTTON_A
+				jb.pressed = pr
+				Input.parse_input_event(jb)
+				await get_tree().create_timer(0.15).timeout
+			await get_tree().create_timer(0.25).timeout
 	if "--openstore" in args:
 		await get_tree().create_timer(0.8).timeout
 		Router.current._open_store()
@@ -277,6 +305,24 @@ func _screenshot_mode(args: PackedStringArray, screen: String) -> void:
 		PC.test_cross = true
 		await get_tree().create_timer(0.1).timeout
 		PC.test_cross = false
+	if "--paddrop" in args:
+		var PC2 := preload("res://scripts/ui/pad_cursor.gd")
+		PC2.test_mode = true
+		Save.data.drops = [1, 0]
+		var dop2 := DropOpener.new()
+		add_child(dop2)
+		await get_tree().create_timer(0.8).timeout
+		for k in 8:
+			var jb := InputEventJoypadButton.new()
+			jb.button_index = JOY_BUTTON_A
+			jb.pressed = true
+			Input.parse_input_event(jb)
+			await get_tree().create_timer(0.1).timeout
+			jb = InputEventJoypadButton.new()
+			jb.button_index = JOY_BUTTON_A
+			Input.parse_input_event(jb)
+			await get_tree().create_timer(0.5).timeout
+			print("PADDROP step ", k, " phase=", dop2._phase if is_instance_valid(dop2) else "freed", " left=", Save.data.drops.size())
 	if "--settings" in args:
 		var sp := SettingsPanel.new()
 		sp.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

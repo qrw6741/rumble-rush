@@ -29,6 +29,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	z_index = 50
+	add_to_group("pad_modal")
+	add_to_group("drop_opener")
 	var skip := UIKit.button("OPEN ALL", Color("6b5f86"), 16, Vector2(150, 46))
 	skip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	skip.position = Vector2(-170, 18)
@@ -86,11 +88,42 @@ func _open_all() -> void:
 	_lid = 1.0
 	Sfx.play("victory", -3.0, 0.0)
 
+## Controller: Cross / R2 taps, Triangle opens everything.
+func _input(e: InputEvent) -> void:
+	if not is_inside_tree():
+		return
+	if e is InputEventJoypadButton and e.pressed:
+		if e.button_index == JOY_BUTTON_Y:
+			get_viewport().set_input_as_handled()
+			if _phase != "reveal" or not Save.data.drops.is_empty():
+				_open_all()
+			return
+		if e.button_index in [JOY_BUTTON_A, JOY_BUTTON_RIGHT_SHOULDER]:
+			get_viewport().set_input_as_handled()
+			_handle_tap()
+			return
+		get_viewport().set_input_as_handled()  # swallow other buttons while open
+	elif e is InputEventJoypadMotion and e.axis == JOY_AXIS_TRIGGER_RIGHT and e.axis_value > 0.6 and not _r2_was:
+		_r2_was = true
+		get_viewport().set_input_as_handled()
+		_handle_tap()
+	elif e is InputEventJoypadMotion and e.axis == JOY_AXIS_TRIGGER_RIGHT and e.axis_value < 0.3:
+		_r2_was = false
+	elif (e is InputEventMouseButton or e is InputEventScreenTouch) and e.has_meta("from_pad"):
+		get_viewport().set_input_as_handled()  # the pad cursor's own click: handled above
+
+var _r2_was := false
+
 func _gui_input(e: InputEvent) -> void:
 	var tap: bool = (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed)
-	if not tap or _tap_lock > 0.0:
+	if not tap:
 		return
 	accept_event()
+	_handle_tap()
+
+func _handle_tap() -> void:
+	if _tap_lock > 0.0 or not is_inside_tree():
+		return
 	match _phase:
 		"intro", "idle":
 			_tap()
@@ -204,7 +237,7 @@ func _draw() -> void:
 		_draw_reveal(c, rc)
 	else:
 		_draw_star(cc, rc)
-		var label: String = "TAP TO OPEN!" if _taps == 0 else String(Progression.RARITIES[_shown].name) + "!"
+		var label: String = ("PRESS X TO OPEN!" if PlayerController.pad_active() else "TAP TO OPEN!") if _taps == 0 else String(Progression.RARITIES[_shown].name) + "!"
 		var lc := Color.WHITE if _taps == 0 else rc
 		var ls := 1.0 + 0.06 * sin(_t * 5.0) + 0.2 * _pop
 		draw_set_transform(Vector2(c.x, size.y - 70), 0.0, Vector2(ls, ls))

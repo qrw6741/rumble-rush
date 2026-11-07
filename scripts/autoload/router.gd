@@ -15,6 +15,7 @@ const SCREENS := {
 	"skins": "res://tests/skin_sheet.gd",
 	"poses": "res://tests/pose_sheet.gd",
 	"model": "res://tests/model_sheet.gd",
+	"skintest": "res://tests/skin_test.gd",
 	"pass": "res://scripts/ui/pass_screen.gd",
 	"road": "res://scripts/ui/road_screen.gd",
 	"events": "res://scripts/ui/events_screen.gd",

@@ -30,8 +30,11 @@ func _input(e: InputEvent) -> void:
 func _in_match() -> bool:
 	return Router.current_name == "match" and not get_tree().paused
 
+func _drop_open() -> bool:
+	return not get_tree().get_nodes_in_group("drop_opener").is_empty()
+
 func _process(d: float) -> void:
-	var show := (test_mode or PlayerController.pad_active()) and not _in_match()
+	var show := (test_mode or PlayerController.pad_active()) and not _in_match() and get_tree().get_nodes_in_group("pad_modal").is_empty() and not _drop_open()
 	if show != _visible:
 		_visible = show
 		_draw_node.queue_redraw()
